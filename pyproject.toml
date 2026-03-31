@@ -45,6 +45,9 @@ sequence = [
 # [tool.uv]
 # exclude-newer = "7 days"
 
+[tool.ty.src]
+exclude = ["scripts/e2e_test_bootstrap/"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
