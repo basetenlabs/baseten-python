@@ -4,6 +4,46 @@ import json
 import re
 
 
+def preprocess_truss_config_schema(data: bytes) -> bytes:
+    doc = json.loads(data)
+
+    # Rename Truss-prefixed definitions and the root title to Model-prefixed.
+    # Field names (e.g. truss_*) are property keys, not definition names, and
+    # are left untouched.
+    defs = doc.get("$defs", {})
+    renames = {
+        name: "Model" + name[len("Truss") :]
+        for name in defs
+        if name.startswith("Truss")
+    }
+    if renames:
+        _rename_defs_refs(doc, renames)
+        for old, new in renames.items():
+            defs[new] = defs.pop(old)
+    title = doc.get("title")
+    if isinstance(title, str) and title.startswith("Truss"):
+        doc["title"] = "Model" + title[len("Truss") :]
+
+    return json.dumps(doc, indent=2).encode()
+
+
+_DEFS_REF_PATTERN = re.compile(r"#/\$defs/(\w+)")
+
+
+def _rename_defs_refs(node: object, renames: dict[str, str]) -> None:
+    if isinstance(node, dict):
+        ref = node.get("$ref")  # ty: ignore[invalid-argument-type]
+        if isinstance(ref, str):
+            m = _DEFS_REF_PATTERN.fullmatch(ref)
+            if m and m.group(1) in renames:
+                node["$ref"] = f"#/$defs/{renames[m.group(1)]}"  # ty: ignore[invalid-assignment]
+        for child in node.values():
+            _rename_defs_refs(child, renames)
+    elif isinstance(node, list):
+        for child in node:
+            _rename_defs_refs(child, renames)
+
+
 def preprocess_spec(data: bytes) -> bytes:
     doc = json.loads(data)
 
