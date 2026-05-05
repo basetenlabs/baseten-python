@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
 import httpx
 
 import baseten.client.managementapi
+from baseten.client._user_agent import with_user_agent
 
 
 @dataclass(frozen=True)
@@ -18,6 +20,9 @@ class ManagementClientOptions:
 
     api_key: str
     """API key for authentication."""
+
+    headers: Mapping[str, str] | None = None
+    """Additional headers to send on every request."""
 
     base_url_override: str | None = None
     """Explicit base URL override, or ``None`` to use the default."""
@@ -46,30 +51,37 @@ class ManagementClient:
         self,
         *,
         api_key: str,
+        headers: Mapping[str, str] | None = None,
         base_url_override: str | None = None,
-        http_client: httpx.Client | None = None,
+        http_client_override: httpx.Client | None = None,
         close_http_client_on_close: bool | None = None,
     ) -> None:
         """Create a new synchronous management client.
 
         Args:
             api_key: API key for authentication.
+            headers: Additional headers to send on every request.
             base_url_override: Override the default base URL. When ``None``,
                 :meth:`default_base_url` is used.
-            http_client: Pre-configured httpx client. When provided, the
-                caller is responsible for setting base URL and auth headers.
+            http_client_override: Pre-configured httpx client. When provided,
+                the caller is responsible for setting base URL and all
+                headers.
             close_http_client_on_close: Whether :meth:`close` should close
                 the underlying HTTP client. Defaults to ``True`` when the
-                client is created internally, ``False`` when *http_client*
-                is provided.
+                client is created internally, ``False`` when
+                *http_client_override* is provided.
         """
         self._options = ManagementClientOptions(
-            api_key=api_key, base_url_override=base_url_override
+            api_key=api_key, headers=headers, base_url_override=base_url_override
         )
-        if http_client is None:
+        if http_client_override is None:
+            request_headers: dict[str, str] = {**(headers or {})}
+            # Empty api_key is an advanced opt-out from sending Authorization.
+            if api_key != "":
+                request_headers["Authorization"] = f"Api-Key {api_key}"
             self._http_client = httpx.Client(
                 base_url=self._options.base_url,
-                headers={"Authorization": f"Api-Key {api_key}"},
+                headers=with_user_agent(request_headers),
             )
             self.close_http_client_on_close = (
                 True
@@ -77,7 +89,7 @@ class ManagementClient:
                 else close_http_client_on_close
             )
         else:
-            self._http_client = http_client
+            self._http_client = http_client_override
             self.close_http_client_on_close = (
                 False
                 if close_http_client_on_close is None
@@ -132,31 +144,37 @@ class AsyncManagementClient:
         self,
         *,
         api_key: str,
+        headers: Mapping[str, str] | None = None,
         base_url_override: str | None = None,
-        http_client: httpx.AsyncClient | None = None,
+        http_client_override: httpx.AsyncClient | None = None,
         close_http_client_on_close: bool | None = None,
     ) -> None:
         """Create a new asynchronous management client.
 
         Args:
             api_key: API key for authentication.
+            headers: Additional headers to send on every request.
             base_url_override: Override the default base URL. When ``None``,
                 :meth:`default_base_url` is used.
-            http_client: Pre-configured httpx async client. When provided,
-                the caller is responsible for setting base URL and auth
-                headers.
+            http_client_override: Pre-configured httpx async client. When
+                provided, the caller is responsible for setting base URL
+                and all headers.
             close_http_client_on_close: Whether :meth:`close` should close
                 the underlying HTTP client. Defaults to ``True`` when the
-                client is created internally, ``False`` when *http_client*
-                is provided.
+                client is created internally, ``False`` when
+                *http_client_override* is provided.
         """
         self._options = ManagementClientOptions(
-            api_key=api_key, base_url_override=base_url_override
+            api_key=api_key, headers=headers, base_url_override=base_url_override
         )
-        if http_client is None:
+        if http_client_override is None:
+            request_headers: dict[str, str] = {**(headers or {})}
+            # Empty api_key is an advanced opt-out from sending Authorization.
+            if api_key != "":
+                request_headers["Authorization"] = f"Api-Key {api_key}"
             self._http_client = httpx.AsyncClient(
                 base_url=self._options.base_url,
-                headers={"Authorization": f"Api-Key {api_key}"},
+                headers=with_user_agent(request_headers),
             )
             self.close_http_client_on_close = (
                 True
@@ -164,7 +182,7 @@ class AsyncManagementClient:
                 else close_http_client_on_close
             )
         else:
-            self._http_client = http_client
+            self._http_client = http_client_override
             self.close_http_client_on_close = (
                 False
                 if close_http_client_on_close is None
