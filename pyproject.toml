@@ -53,5 +53,11 @@ exclude = ["scripts/e2e_test_bootstrap/"]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# baseten is a PEP 420 namespace package shared across baseten-* distributions
+# (e.g. baseten-loops provides baseten.loops). There is intentionally no
+# baseten/__init__.py; this names the namespace dir for hatchling to package.
+[tool.hatch.build.targets.wheel]
+packages = ["baseten"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
