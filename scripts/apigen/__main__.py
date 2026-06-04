@@ -64,6 +64,7 @@ def generate_api(spec_file: Path, out_dir: Path, display_name: str) -> None:
 
     models_file = out_dir / "_models.py"
     run_datamodel_codegen(preprocessed, models_file)
+    models_file.write_text(postprocess_models(models_file.read_text()))
     print(f"  -> {models_file}")
 
     client_file = out_dir / "_client.py"

@@ -127,7 +127,7 @@ class InferenceClient:
             request_headers: dict[str, str] = {**(headers or {})}
             # Empty api_key is an advanced opt-out from sending Authorization.
             if api_key != "":
-                request_headers["Authorization"] = f"Api-Key {api_key}"
+                request_headers["Authorization"] = f"Bearer {api_key}"
             self._http_client = httpx.Client(
                 base_url=self._options.base_url,
                 headers=with_user_agent(request_headers),
@@ -242,7 +242,7 @@ class AsyncInferenceClient:
             request_headers: dict[str, str] = {**(headers or {})}
             # Empty api_key is an advanced opt-out from sending Authorization.
             if api_key != "":
-                request_headers["Authorization"] = f"Api-Key {api_key}"
+                request_headers["Authorization"] = f"Bearer {api_key}"
             self._http_client = httpx.AsyncClient(
                 base_url=self._options.base_url,
                 headers=with_user_agent(request_headers),

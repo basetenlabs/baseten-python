@@ -8,6 +8,12 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, RootModel
 from datetime import date as date_aliased
 
 
+class DeploymentConfigOutputFormat(Enum):
+    raw = "raw"
+    parsed = "parsed"
+    both = "both"
+
+
 class CheckpointSyncStatus(Enum):
     SYNCING = "SYNCING"
     COMPLETED = "COMPLETED"
@@ -200,6 +206,7 @@ class V1InteractiveSessionAuthProvider(Enum):
 class V1InteractiveSessionProvider(Enum):
     vs_code = "vs_code"
     cursor = "cursor"
+    ssh = "ssh"
 
 
 class V1InteractiveSessionTrigger(Enum):
@@ -230,6 +237,20 @@ class FileSummary(BaseModel):
     permissions: Annotated[
         str, Field(description="Permissions of the file", title="Permissions")
     ]
+
+
+class TrainerCheckpointTarget(Enum):
+    sampler = "sampler"
+    trainer = "trainer"
+
+
+class Name(Enum):
+    CREATED = "CREATED"
+    DEPLOYING = "DEPLOYING"
+    RUNNING = "RUNNING"
+    SCALED_TO_ZERO = "SCALED_TO_ZERO"
+    FAILED = "FAILED"
+    STOPPED = "STOPPED"
 
 
 class APIKeyCategory(Enum):
@@ -281,6 +302,10 @@ class UpsertSecretRequest(BaseModel):
             title="Value",
         ),
     ]
+
+
+class SecretTombstone(BaseModel):
+    name: Annotated[str, Field(description="Name of the deleted secret", title="Name")]
 
 
 class Team(BaseModel):
@@ -362,6 +387,143 @@ class InstanceTypePrices(BaseModel):
     ]
 
 
+class DeploymentArchivePayload(BaseModel):
+    config: Annotated[
+        dict[str, Any],
+        Field(description="Parsed model config as a JSON object.", title="Config"),
+    ]
+    raw_config: Annotated[
+        str | None,
+        Field(
+            description="Original config.yaml text, persisted as-is on the deployment. Best-effort: invalid raw configs are logged and dropped without failing the request.",
+            title="Raw Config",
+        ),
+    ] = None
+    user_env: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="Client environment metadata (e.g. client version, Python version). Validated server-side.",
+            title="User Env",
+        ),
+    ] = None
+    environment_name: Annotated[
+        str | None,
+        Field(
+            description="Stable environment to push to (e.g. `production`). If unset, the deployment is created without environment selection. Caller must have push permission for the named environment.",
+            title="Environment Name",
+        ),
+    ] = None
+    preserve_env_instance_type: Annotated[
+        bool | None,
+        Field(
+            description="Retain the target environment's current instance type rather than the one in `config`. Only meaningful when `environment_name` is set and that environment already exists.",
+            title="Preserve Env Instance Type",
+        ),
+    ] = True
+    deploy_timeout_minutes: Annotated[
+        int | None,
+        Field(
+            description="Deploy timeout in minutes; allowed range 10 to 1440. Server default applies if unset.",
+            title="Deploy Timeout Minutes",
+        ),
+    ] = None
+    deployment_name: Annotated[
+        str | None,
+        Field(
+            description="Optional human-readable name for the deployment.",
+            title="Deployment Name",
+        ),
+    ] = None
+    labels: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="User-provided key-value labels for the deployment.",
+            title="Labels",
+        ),
+    ] = None
+
+
+class PrepareModelUploadRequest(BaseModel):
+    deployment: Annotated[
+        DeploymentArchivePayload,
+        Field(
+            description="Deployment-level payload, identical to the payload sent at commit."
+        ),
+    ]
+    name: Annotated[
+        str | None,
+        Field(
+            description="Set to validate a new-model push. Exactly one of `name` or `model_id` is required.",
+            title="Name",
+        ),
+    ] = None
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Team the new model will belong to. Only valid when `name` is set; defaults to the organization's default team when omitted. Must not be set when `model_id` is set (the existing model already has a team).",
+            title="Team Id",
+        ),
+    ] = None
+    model_id: Annotated[
+        str | None,
+        Field(
+            description="Set to validate an add-deployment push to an existing model. Exactly one of `name` or `model_id` is required.",
+            title="Model Id",
+        ),
+    ] = None
+    dry_run: Annotated[
+        bool | None,
+        Field(
+            description="If true, validate the payload only and do not issue upload credentials. The response sets `creds`, `s3_bucket`, and `s3_key` to `null`.",
+            title="Dry Run",
+        ),
+    ] = False
+    is_development: Annotated[
+        bool | None,
+        Field(
+            description="If true, validate a development-deployment push. Only valid when `name` is set. The following `deployment` fields must be left at their defaults: `environment_name`, `preserve_env_instance_type`, `deployment_name`.",
+            title="Is Development",
+        ),
+    ] = False
+
+
+class AWSCredentials(BaseModel):
+    aws_access_key_id: Annotated[
+        str, Field(description="The AWS access key ID", title="Aws Access Key Id")
+    ]
+    aws_secret_access_key: Annotated[
+        str,
+        Field(description="The AWS secret access key", title="Aws Secret Access Key"),
+    ]
+    aws_session_token: Annotated[
+        str, Field(description="The AWS session token", title="Aws Session Token")
+    ]
+
+
+class PrepareModelUploadResponse(BaseModel):
+    creds: Annotated[
+        AWSCredentials | None,
+        Field(description="STS credentials to upload the model archive."),
+    ] = None
+    s3_bucket: Annotated[
+        str | None,
+        Field(
+            description="S3 bucket the credentials are scoped to.", title="S3 Bucket"
+        ),
+    ] = None
+    s3_key: Annotated[
+        str | None,
+        Field(
+            description="S3 key the credentials are scoped to. Pass this to `POST /v1/models` (in the `model_archive` source) once the upload completes.",
+            title="S3 Key",
+        ),
+    ] = None
+    s3_region: Annotated[
+        str | None,
+        Field(description="AWS region the S3 bucket resides in.", title="S3 Region"),
+    ] = None
+
+
 class Model(BaseModel):
     id: Annotated[str, Field(description="Unique identifier of the model", title="Id")]
     created_at: Annotated[
@@ -411,10 +573,71 @@ class Models(BaseModel):
     models: Annotated[list[Model], Field(title="Models")]
 
 
-class ModelTombstone(BaseModel):
-    id: Annotated[str, Field(description="Unique identifier of the model", title="Id")]
-    deleted: Annotated[
-        bool, Field(description="Whether the model was deleted", title="Deleted")
+class LibraryListingSource(BaseModel):
+    kind: Annotated[Literal["library_listing"], Field(title="Kind")] = "library_listing"
+    lab_display_name: Annotated[
+        str,
+        Field(
+            description="Identifier of the publishing organization, as returned by `GET /v1/library_models`.",
+            title="Lab Display Name",
+        ),
+    ]
+    user_defined_listing_id: Annotated[
+        str,
+        Field(
+            description="Listing identifier within the publishing organization.",
+            title="User Defined Listing Id",
+        ),
+    ]
+    deployed_model_name: Annotated[
+        str | None,
+        Field(
+            description="Optional name for the new deployed model. Defaults to the listing's configured name.",
+            title="Deployed Model Name",
+        ),
+    ] = None
+
+
+class ModelArchiveSource(BaseModel):
+    kind: Annotated[Literal["model_archive"], Field(title="Kind")] = "model_archive"
+    name: Annotated[str, Field(description="Name of the new model.", title="Name")]
+    deployment: Annotated[
+        DeploymentArchivePayload,
+        Field(
+            description="Deployment-level configuration for the model's first deployment."
+        ),
+    ]
+    s3_key: Annotated[
+        str,
+        Field(
+            description="S3 key of the uploaded archive, from the credentials returned by `POST /v1/prepare_model_upload`.",
+            title="S3 Key",
+        ),
+    ]
+    disable_archive_download: Annotated[
+        bool | None,
+        Field(
+            description="If true, the uploaded archive is not downloadable after creation. Locked at model creation; cannot be changed by subsequent deployments.",
+            title="Disable Archive Download",
+        ),
+    ] = False
+    is_development: Annotated[
+        bool | None,
+        Field(
+            description="If true, push as a development deployment (the model's single mutable dev slot; overwrites any existing development deployment). The following `deployment` fields must be left at their defaults: `environment_name`, `preserve_env_instance_type`, `deployment_name`.",
+            title="Is Development",
+        ),
+    ] = False
+
+
+class CreateModelRequest(BaseModel):
+    source: Annotated[
+        LibraryListingSource | ModelArchiveSource,
+        Field(
+            description="Where the new model is created from.",
+            discriminator="kind",
+            title="Source",
+        ),
     ]
 
 
@@ -458,6 +681,13 @@ class AutoscalingSettings(BaseModel):
         Field(
             description="Target number of in-flight tokens for autoscaling decisions. Early access only.",
             title="Target In Flight Tokens",
+        ),
+    ] = None
+    max_scale_down_rate: Annotated[
+        float | None,
+        Field(
+            description="Maximum rate at which replicas can scale down (e.g. 2.0 means at most halve replicas per window).",
+            title="Max Scale Down Rate",
         ),
     ] = None
 
@@ -542,10 +772,54 @@ class Deployment(BaseModel):
     ] = None
 
 
+class CreatedModelDeployment(BaseModel):
+    model: Annotated[
+        Model,
+        Field(
+            description="The model the deployment belongs to. May have been created by this call."
+        ),
+    ]
+    deployment: Annotated[
+        Deployment, Field(description="The newly created deployment.")
+    ]
+
+
+class ModelTombstone(BaseModel):
+    id: Annotated[str, Field(description="Unique identifier of the model", title="Id")]
+    deleted: Annotated[
+        bool, Field(description="Whether the model was deleted", title="Deleted")
+    ]
+
+
 class Deployments(BaseModel):
     deployments: Annotated[
         list[Deployment],
         Field(description="A list of deployments of a model", title="Deployments"),
+    ]
+
+
+class DeploymentArchiveSource(BaseModel):
+    kind: Annotated[Literal["model_archive"], Field(title="Kind")] = "model_archive"
+    deployment: Annotated[
+        DeploymentArchivePayload, Field(description="Deployment-level configuration.")
+    ]
+    s3_key: Annotated[
+        str,
+        Field(
+            description="S3 key of the uploaded archive, from the credentials returned by `POST /v1/prepare_model_upload`.",
+            title="S3 Key",
+        ),
+    ]
+
+
+class CreateModelDeploymentRequest(BaseModel):
+    source: Annotated[
+        DeploymentArchiveSource,
+        Field(
+            description="Where the new deployment is created from.",
+            discriminator="kind",
+            title="Source",
+        ),
     ]
 
 
@@ -559,6 +833,19 @@ class DeploymentTombstone(BaseModel):
     model_id: Annotated[
         str, Field(description="Unique identifier of the model", title="Model Id")
     ]
+
+
+class MaxScaleDownRate(RootModel[float]):
+    root: Annotated[
+        float | None,
+        Field(
+            description="Maximum rate at which replicas can scale down (e.g. 2.0 means at most halve replicas per window).",
+            examples=[2.0],
+            gt=1.0,
+            le=2.0,
+            title="Max Scale Down Rate",
+        ),
+    ] = None
 
 
 class UpdateAutoscalingSettings(BaseModel):
@@ -615,6 +902,14 @@ class UpdateAutoscalingSettings(BaseModel):
             description="Target number of in-flight tokens for autoscaling decisions. Early access only.",
             examples=[40000],
             title="Target In Flight Tokens",
+        ),
+    ] = None
+    max_scale_down_rate: Annotated[
+        MaxScaleDownRate | None,
+        Field(
+            description="Maximum rate at which replicas can scale down (e.g. 2.0 means at most halve replicas per window).",
+            examples=[2.0],
+            title="Max Scale Down Rate",
         ),
     ] = None
 
@@ -697,6 +992,71 @@ class RetryDeploymentResponse(BaseModel):
     ]
 
 
+class DownloadDeploymentResponse(BaseModel):
+    download_url: Annotated[
+        str,
+        Field(
+            description="Presigned URL to download the truss tar file",
+            title="Download Url",
+        ),
+    ]
+
+
+class DeploymentConfigResponse(BaseModel):
+    config: Annotated[
+        dict[str, Any] | None,
+        Field(description="The parsed config of the deployment.", title="Config"),
+    ] = None
+    raw_config: Annotated[
+        str | None,
+        Field(
+            description="The original config.yaml text — preserves comments, ordering, formatting.",
+            title="Raw Config",
+        ),
+    ] = None
+
+
+class GetDeploymentConfigRequest(BaseModel):
+    output_format: Annotated[
+        DeploymentConfigOutputFormat | None,
+        Field(
+            description="'raw': verbatim config.yaml with comments — not available for deployments created before 2026-04-30. 'parsed': dict with server-side defaults applied — always available. 'both': both fields populated."
+        ),
+    ] = DeploymentConfigOutputFormat.both
+
+
+class Log(BaseModel):
+    timestamp: Annotated[
+        str,
+        Field(
+            description="Epoch nanosecond timestamp of the log message.",
+            title="Timestamp",
+        ),
+    ]
+    message: Annotated[
+        str, Field(description="The contents of the log message.", title="Message")
+    ]
+    replica: Annotated[
+        str | None,
+        Field(
+            description="The replica the log line was emitted from.", title="Replica"
+        ),
+    ]
+    request_id: Annotated[
+        str | None,
+        Field(
+            description="The request ID associated with an inference request.",
+            title="Request Id",
+        ),
+    ] = None
+
+
+class GetLogsResponse(BaseModel):
+    logs: Annotated[
+        list[Log], Field(description="Logs for a specific entity.", title="Logs")
+    ]
+
+
 class SortOrder(Enum):
     asc = "asc"
     desc = "desc"
@@ -704,7 +1064,7 @@ class SortOrder(Enum):
 
 class Limit(RootModel[int]):
     root: Annotated[
-        int,
+        int | None,
         Field(
             description="Limit of logs to fetch in a single request",
             ge=1,
@@ -742,31 +1102,6 @@ class GetDeploymentLogsRequest(BaseModel):
     ]
 
 
-class Log(BaseModel):
-    timestamp: Annotated[
-        str,
-        Field(
-            description="Epoch nanosecond timestamp of the log message.",
-            title="Timestamp",
-        ),
-    ]
-    message: Annotated[
-        str, Field(description="The contents of the log message.", title="Message")
-    ]
-    replica: Annotated[
-        str | None,
-        Field(
-            description="The replica the log line was emitted from.", title="Replica"
-        ),
-    ]
-
-
-class GetLogsResponse(BaseModel):
-    logs: Annotated[
-        list[Log], Field(description="Logs for a specific entity.", title="Logs")
-    ]
-
-
 class TerminateReplicaResponse(BaseModel):
     success: Annotated[
         bool | None,
@@ -775,6 +1110,53 @@ class TerminateReplicaResponse(BaseModel):
             title="Success",
         ),
     ] = True
+
+
+class SignSSHCertificateRequest(BaseModel):
+    public_key: Annotated[
+        str,
+        Field(
+            description="The user's SSH public key (e.g., 'ssh-ed25519 AAAA... user@host').",
+            title="Public Key",
+        ),
+    ]
+    replica_id: Annotated[
+        str | None,
+        Field(
+            description="The replica to connect to. Required for training jobs (e.g. '0'). Optional for inference (server picks a running replica if omitted).",
+            title="Replica Id",
+        ),
+    ] = None
+
+
+class SignSSHCertificateResponse(BaseModel):
+    ssh_certificate: Annotated[
+        str,
+        Field(
+            description="The signed SSH certificate in OpenSSH format.",
+            title="Ssh Certificate",
+        ),
+    ]
+    jwt: Annotated[
+        str,
+        Field(
+            description="Signed JWT (ES256) for SSH proxy authorization.", title="Jwt"
+        ),
+    ]
+    proxy_address: Annotated[
+        str,
+        Field(
+            description="Address of the SSH proxy to connect to (host:port).",
+            title="Proxy Address",
+        ),
+    ]
+    ssh_cert_expires_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="When the certificate expires, in ISO 8601 format.",
+            title="Ssh Cert Expires At",
+        ),
+    ]
 
 
 class InProgressPromotionStatus(Enum):
@@ -1002,6 +1384,7 @@ class ChainletEnvironmentSettingsRequest(BaseModel):
                     "autoscaling_window": 60,
                     "concurrency_target": 1,
                     "max_replica": 1,
+                    "max_scale_down_rate": None,
                     "min_replica": 0,
                     "scale_down_delay": 900,
                     "target_in_flight_tokens": None,
@@ -1077,6 +1460,7 @@ class ChainletEnvironmentAutoscalingSettingsUpdate(BaseModel):
                     "autoscaling_window": 800,
                     "concurrency_target": 3,
                     "max_replica": 2,
+                    "max_scale_down_rate": None,
                     "min_replica": 1,
                     "scale_down_delay": 60,
                     "target_in_flight_tokens": None,
@@ -1099,6 +1483,7 @@ class UpdateChainletEnvironmentAutoscalingSettingsRequest(BaseModel):
                             "autoscaling_window": 800,
                             "concurrency_target": 4,
                             "max_replica": 3,
+                            "max_scale_down_rate": None,
                             "min_replica": 2,
                             "scale_down_delay": 63,
                             "target_in_flight_tokens": None,
@@ -1113,6 +1498,7 @@ class UpdateChainletEnvironmentAutoscalingSettingsRequest(BaseModel):
                             "autoscaling_window": None,
                             "concurrency_target": None,
                             "max_replica": None,
+                            "max_scale_down_rate": None,
                             "min_replica": 0,
                             "scale_down_delay": None,
                             "target_in_flight_tokens": None,
@@ -1125,6 +1511,7 @@ class UpdateChainletEnvironmentAutoscalingSettingsRequest(BaseModel):
                             "autoscaling_window": None,
                             "concurrency_target": None,
                             "max_replica": None,
+                            "max_scale_down_rate": None,
                             "min_replica": 0,
                             "scale_down_delay": None,
                             "target_in_flight_tokens": None,
@@ -1428,6 +1815,19 @@ class GetTrainingJobLogsRequest(BaseModel):
     ]
 
 
+class TrainingJobMetric(BaseModel):
+    value: Annotated[
+        float, Field(description="The value of the metric.", title="Value")
+    ]
+    timestamp: Annotated[
+        AwareDatetime,
+        Field(
+            description="The timestamp of the metric in ISO 8601 format.",
+            title="Timestamp",
+        ),
+    ]
+
+
 class GetTrainingJobMetricsRequest(BaseModel):
     end_epoch_millis: Annotated[
         int | None,
@@ -1445,27 +1845,11 @@ class GetTrainingJobMetricsRequest(BaseModel):
     ] = None
 
 
-class TrainingJobMetric(BaseModel):
-    value: Annotated[
-        float, Field(description="The value of the metric.", title="Value")
-    ]
-    timestamp: Annotated[
-        AwareDatetime,
-        Field(
-            description="The timestamp of the metric in ISO 8601 format.",
-            title="Timestamp",
-        ),
-    ]
-
-
 class StopTrainingJobRequest(BaseModel):
     pass
 
 
 class TrainingJobCheckpoint(BaseModel):
-    training_job_id: Annotated[
-        str, Field(description="The ID of the training job.", title="Training Job Id")
-    ]
     checkpoint_id: Annotated[
         str, Field(description="The ID of the checkpoint.", title="Checkpoint Id")
     ]
@@ -1501,6 +1885,9 @@ class TrainingJobCheckpoint(BaseModel):
             title="Sync Status",
         ),
     ] = None
+    training_job_id: Annotated[
+        str, Field(description="The ID of the training job.", title="Training Job Id")
+    ]
 
 
 class GetTrainingJobCheckpointFilesResponse(BaseModel):
@@ -1525,6 +1912,23 @@ class GetTrainingJobCheckpointFilesResponse(BaseModel):
             title="Total Count",
         ),
     ]
+
+
+class GetTrainingJobCheckpointFilesRequest(BaseModel):
+    page_size: Annotated[
+        int | None,
+        Field(
+            description="Max files per page (default 1000).", ge=1, title="Page Size"
+        ),
+    ] = 1000
+    page_token: Annotated[
+        int | None,
+        Field(
+            description="Offset into the file list (default 0).",
+            ge=0,
+            title="Page Token",
+        ),
+    ] = 0
 
 
 class AuthCode(BaseModel):
@@ -1778,16 +2182,745 @@ class SearchTrainingJobsRequest(BaseModel):
     ]
 
 
-class AWSCredentials(BaseModel):
-    aws_access_key_id: Annotated[
-        str, Field(description="The AWS access key ID", title="Aws Access Key Id")
-    ]
-    aws_secret_access_key: Annotated[
+class SearchTrainersRequest(BaseModel):
+    trainer_id: Annotated[
+        str | None,
+        Field(
+            description="Filter by trainer ID.",
+            examples=["k4q95w5"],
+            title="Trainer Id",
+        ),
+    ] = None
+
+
+class SearchedTrainer(BaseModel):
+    trainer_id: Annotated[str, Field(description="The trainer ID.", title="Trainer Id")]
+    session_id: Annotated[
         str,
-        Field(description="The AWS secret access key", title="Aws Secret Access Key"),
+        Field(
+            description="The session ID this trainer belongs to.", title="Session Id"
+        ),
     ]
-    aws_session_token: Annotated[
-        str, Field(description="The AWS session token", title="Aws Session Token")
+    base_model: Annotated[
+        str,
+        Field(
+            description="The HuggingFace base model the trainer is fine-tuning.",
+            title="Base Model",
+        ),
+    ]
+
+
+class SearchTrainersResponse(BaseModel):
+    trainers: Annotated[
+        list[SearchedTrainer], Field(description="List of trainers.", title="Trainers")
+    ]
+
+
+class CheckpointSearchRequest(BaseModel):
+    checkpoint_path: Annotated[
+        str,
+        Field(
+            description="bt:// URI of a trainer checkpoint. Form: bt://loops:<trainer_id>/(weights|sampler_weights)/<checkpoint_name>.",
+            examples=["bt://loops:k4q95w5/sampler_weights/step-100"],
+            title="Checkpoint Path",
+        ),
+    ]
+
+
+class TrainerServerCheckpoint(BaseModel):
+    checkpoint_id: Annotated[
+        str, Field(description="The ID of the checkpoint.", title="Checkpoint Id")
+    ]
+    created_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="The timestamp of the checkpoint in ISO 8601 format.",
+            title="Created At",
+        ),
+    ]
+    checkpoint_type: Annotated[
+        str, Field(description="The type of checkpoint.", title="Checkpoint Type")
+    ]
+    base_model: Annotated[
+        str | None,
+        Field(description="The base model of the checkpoint.", title="Base Model"),
+    ]
+    lora_adapter_config: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="The adapter config of the checkpoint.",
+            title="Lora Adapter Config",
+        ),
+    ]
+    size_bytes: Annotated[
+        int,
+        Field(description="The size of the checkpoint in bytes.", title="Size Bytes"),
+    ]
+    sync_status: Annotated[
+        str | None,
+        Field(
+            description="Sync state of the checkpoint: SYNCING or COMPLETE.",
+            title="Sync Status",
+        ),
+    ] = None
+    id: Annotated[
+        str, Field(description="The TrainerServerCheckpoint database ID.", title="Id")
+    ]
+    trainer_id: Annotated[
+        str, Field(description="The ID of the trainer.", title="Trainer Id")
+    ]
+    target: Annotated[
+        TrainerCheckpointTarget,
+        Field(
+            description="Whether this checkpoint is loadable by the sampler ('sampler') or by the trainer ('trainer')."
+        ),
+    ]
+
+
+class CheckpointSearchResponse(BaseModel):
+    checkpoint: Annotated[
+        TrainerServerCheckpoint,
+        Field(description="The checkpoint metadata (id, target, type, sizes, etc.)."),
+    ]
+
+
+class CreateTrainerSessionRequest(BaseModel):
+    training_project_id: Annotated[
+        str | None,
+        Field(
+            description="ID of the training project to associate with. If omitted, a default project is created for the org.",
+            title="Training Project Id",
+        ),
+    ] = None
+
+
+class TrainerSession(BaseModel):
+    id: Annotated[str, Field(title="Id")]
+
+
+class CreateTrainerSessionResponse(BaseModel):
+    session: TrainerSession
+
+
+class CreateTrainerServerRequest(BaseModel):
+    model: Annotated[
+        str, Field(description="Base model ID (e.g. 'Qwen/Qwen3-8B').", title="Model")
+    ]
+    max_seq_len: Annotated[
+        int | None,
+        Field(
+            description="Maximum sequence length for training. Defaults to the maximum supported by the model configuration.",
+            title="Max Seq Len",
+        ),
+    ] = None
+    lora_rank: Annotated[
+        int | None, Field(description="LoRA rank.", title="Lora Rank")
+    ] = 64
+    seed: Annotated[
+        int | None, Field(description="Random seed for reproducibility.", title="Seed")
+    ] = None
+    scale_down_delay_seconds: Annotated[
+        int | None,
+        Field(
+            description="Seconds of inactivity before the trainer scales to zero. Must be positive. Defaults to 3600 (1 hour).",
+            gt=0,
+            title="Scale Down Delay Seconds",
+        ),
+    ] = 3600
+    checkpoint_path: Annotated[
+        str | None,
+        Field(
+            description="Optional bt:// URI of an existing trainer-target checkpoint to resume training from. Form: bt://loops:<trainer_id>/weights/<checkpoint_name>.",
+            examples=["bt://loops:k4q95w5/weights/step-100"],
+            title="Checkpoint Path",
+        ),
+    ] = None
+
+
+class SamplingServer(BaseModel):
+    id: Annotated[str, Field(title="Id")]
+    base_url: Annotated[str, Field(title="Base Url")]
+    model_id: Annotated[
+        str,
+        Field(description="Hashid of the underlying Baseten model.", title="Model Id"),
+    ]
+    deployment_id: Annotated[
+        str,
+        Field(
+            description="Hashid of the specific model deployment (version).",
+            title="Deployment Id",
+        ),
+    ]
+
+
+class TrainerServer(BaseModel):
+    id: Annotated[str, Field(title="Id")]
+    base_url: Annotated[str, Field(title="Base Url")]
+    sampling_server: SamplingServer
+
+
+class CreateTrainerServerResponse(BaseModel):
+    trainer_server: TrainerServer
+
+
+class CreateSamplingServerRequest(BaseModel):
+    model: Annotated[
+        str,
+        Field(
+            description="Model to use for standalone samplers (eg, for baselines).",
+            title="Model",
+        ),
+    ]
+    max_seq_length: Annotated[
+        int | None,
+        Field(
+            description="Maximum prompt length (in tokens) the sampler must handle. Set this to the longest prompt you plan to send. Omit to use the default for the base model.",
+            title="Max Seq Length",
+        ),
+    ] = None
+    checkpoint_path: Annotated[
+        str | None,
+        Field(
+            description="Optional bt:// URI of an existing sampler-target checkpoint to load weights from on startup. Form: bt://loops:<trainer_id>/sampler_weights/<checkpoint_name>.",
+            examples=["bt://loops:k4q95w5/sampler_weights/step-100"],
+            title="Checkpoint Path",
+        ),
+    ] = None
+
+
+class CreateSamplingServerResponse(BaseModel):
+    sampling_server: SamplingServer
+
+
+class GetTrainerServerCheckpointsResponse(BaseModel):
+    trainer_id: Annotated[
+        str, Field(description="The ID of the trainer.", title="Trainer Id")
+    ]
+    checkpoints: Annotated[
+        list[TrainerServerCheckpoint],
+        Field(description="The checkpoints for the trainer.", title="Checkpoints"),
+    ]
+
+
+class GetTrainerServerCheckpointFilesResponse(BaseModel):
+    presigned_urls: Annotated[
+        list[CheckpointFile],
+        Field(
+            description="List of presigned URLs for checkpoint files.",
+            title="Presigned Urls",
+        ),
+    ]
+    next_page_token: Annotated[
+        int | None,
+        Field(
+            description="Token to use for fetching the next page of results. None when there are no more results.",
+            title="Next Page Token",
+        ),
+    ] = None
+    total_count: Annotated[
+        int,
+        Field(
+            description="Total number of checkpoint files available.",
+            title="Total Count",
+        ),
+    ]
+
+
+class SupportedModel(BaseModel):
+    model_name: Annotated[
+        str, Field(description="The name of the supported model.", title="Model Name")
+    ]
+    max_context_length: Annotated[
+        int,
+        Field(
+            description="The maximum context length (in tokens) supported by this model.",
+            title="Max Context Length",
+        ),
+    ]
+
+
+class GetLoopsCapabilitiesResponse(BaseModel):
+    supported_models: Annotated[
+        list[SupportedModel],
+        Field(
+            description="List of models available on the server.",
+            title="Supported Models",
+        ),
+    ]
+
+
+class CreateLoopsSessionRequest(BaseModel):
+    training_project_id: Annotated[
+        str | None,
+        Field(
+            description="ID of the training project to associate with. If omitted, a default project is created for the org.",
+            title="Training Project Id",
+        ),
+    ] = None
+
+
+class LoopsSession(BaseModel):
+    id: Annotated[str, Field(title="Id")]
+
+
+class CreateLoopsSessionResponse(BaseModel):
+    session: LoopsSession
+
+
+class GetLoopsSessionResponse(BaseModel):
+    session: Annotated[LoopsSession, Field(description="The Loops session.")]
+
+
+class LoopsSamplerStatus(BaseModel):
+    name: Annotated[
+        DeploymentStatus, Field(description="The current status of the Loops sampler.")
+    ]
+
+
+class LoopsSampler(BaseModel):
+    id: Annotated[str, Field(title="Id")]
+    base_url: Annotated[str, Field(title="Base Url")]
+    base_model: Annotated[
+        str,
+        Field(
+            description="The HuggingFace base model the sampler is serving.",
+            title="Base Model",
+        ),
+    ]
+    created_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="Time the sampler was created in ISO 8601 format",
+            title="Created At",
+        ),
+    ]
+    model_id: Annotated[
+        str,
+        Field(description="Hashid of the underlying Baseten model.", title="Model Id"),
+    ]
+    deployment_id: Annotated[
+        str,
+        Field(
+            description="Hashid of the specific model deployment (version).",
+            title="Deployment Id",
+        ),
+    ]
+    status: Annotated[
+        LoopsSamplerStatus, Field(description="The sampler's current status.")
+    ]
+
+
+class ListLoopsRunsQueryParams(BaseModel):
+    run_id: Annotated[
+        str | None,
+        Field(description="Filter by run ID.", examples=["k4q95w5"], title="Run Id"),
+    ] = None
+    base_model: Annotated[
+        str | None,
+        Field(
+            description="Filter runs by base model name.",
+            examples=["Qwen/Qwen3-8B"],
+            title="Base Model",
+        ),
+    ] = None
+
+
+class CreateLoopsRunRequest(BaseModel):
+    session_id: Annotated[
+        str,
+        Field(
+            description="ID of the Loops session this run belongs to.",
+            title="Session Id",
+        ),
+    ]
+    base_model: Annotated[
+        str,
+        Field(description="Base model ID (e.g. 'Qwen/Qwen3-8B').", title="Base Model"),
+    ]
+    max_seq_len: Annotated[
+        int | None,
+        Field(
+            description="Maximum prompt length (in tokens) the run must handle. Set this to the longest training example you plan to send. Defaults to the maximum supported by the model configuration.",
+            title="Max Seq Len",
+        ),
+    ] = None
+    lora_rank: Annotated[
+        int | None, Field(description="LoRA rank.", title="Lora Rank")
+    ] = 64
+    seed: Annotated[
+        int | None, Field(description="Random seed for reproducibility.", title="Seed")
+    ] = None
+    scale_down_delay_seconds: Annotated[
+        int | None,
+        Field(
+            description="Seconds of inactivity before the run scales to zero. Must be positive. Defaults to 3600 (1 hour).",
+            gt=0,
+            title="Scale Down Delay Seconds",
+        ),
+    ] = 3600
+    path: Annotated[
+        str | None,
+        Field(
+            description="Optional bt:// URI of an existing checkpoint to load weights from on startup. Form: bt://loops:<run_id>/weights/<checkpoint_name>.",
+            examples=["bt://loops:k4q95w5/weights/step-100"],
+            title="Path",
+        ),
+    ] = None
+    reuse_from_session_id: Annotated[
+        str | None,
+        Field(
+            description="Optional Loops session ID whose trainer deployment should be reused for this run, sharing the infrastructure across sessions instead of provisioning fresh. The named session must belong to the same team. Reuse is best-effort: if the prior deployment is stopped, failed, or its sampler is unhealthy, a new deployment is provisioned instead.",
+            title="Reuse From Session Id",
+        ),
+    ] = None
+
+
+class ListLoopsSamplersResponse(BaseModel):
+    samplers: Annotated[
+        list[LoopsSampler], Field(description="List of samplers.", title="Samplers")
+    ]
+
+
+class CreateLoopsSamplerRequest(BaseModel):
+    session_id: Annotated[
+        str,
+        Field(
+            description="ID of the Loops session this sampler belongs to.",
+            title="Session Id",
+        ),
+    ]
+    base_model: Annotated[
+        str,
+        Field(
+            description="Base model ID for standalone samplers (e.g., for baselines).",
+            title="Base Model",
+        ),
+    ]
+    max_seq_length: Annotated[
+        int | None,
+        Field(
+            description="Maximum prompt length (in tokens) the sampler must handle. Set this to the longest prompt you plan to send. Omit to use the default for the base model.",
+            title="Max Seq Length",
+        ),
+    ] = None
+    model_path: Annotated[
+        str | None,
+        Field(
+            description="Optional bt:// URI of an existing sampler-target checkpoint to load weights from on startup. Form: bt://loops:<run_id>/sampler_weights/<checkpoint_name>.",
+            examples=["bt://loops:k4q95w5/sampler_weights/step-100"],
+            title="Model Path",
+        ),
+    ] = None
+    reuse_from_session_id: Annotated[
+        str | None,
+        Field(
+            description="Optional Loops session ID whose deployment should be reused for this sampler. Same best-effort semantics as the run endpoint.",
+            title="Reuse From Session Id",
+        ),
+    ] = None
+
+
+class CreateLoopsSamplerResponse(BaseModel):
+    sampler: LoopsSampler
+
+
+class GetLoopsSamplerResponse(BaseModel):
+    sampler: Annotated[LoopsSampler, Field(description="The Loops sampler.")]
+
+
+class LoopsCheckpoint(BaseModel):
+    checkpoint_id: Annotated[
+        str, Field(description="The ID of the checkpoint.", title="Checkpoint Id")
+    ]
+    created_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="The timestamp of the checkpoint in ISO 8601 format.",
+            title="Created At",
+        ),
+    ]
+    checkpoint_type: Annotated[
+        str, Field(description="The type of checkpoint.", title="Checkpoint Type")
+    ]
+    base_model: Annotated[
+        str | None,
+        Field(description="The base model of the checkpoint.", title="Base Model"),
+    ]
+    lora_adapter_config: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="The adapter config of the checkpoint.",
+            title="Lora Adapter Config",
+        ),
+    ]
+    size_bytes: Annotated[
+        int,
+        Field(description="The size of the checkpoint in bytes.", title="Size Bytes"),
+    ]
+    sync_status: Annotated[
+        str | None,
+        Field(
+            description="Sync state of the checkpoint: SYNCING or COMPLETE.",
+            title="Sync Status",
+        ),
+    ] = None
+    id: Annotated[str, Field(description="The checkpoint ID.", title="Id")]
+    run_id: Annotated[
+        str,
+        Field(
+            description="The ID of the run that produced the checkpoint.",
+            title="Run Id",
+        ),
+    ]
+    target: Annotated[
+        TrainerCheckpointTarget,
+        Field(
+            description="Whether this checkpoint is loadable by the sampler or by the run."
+        ),
+    ]
+
+
+class ListLoopsCheckpointsResponse(BaseModel):
+    checkpoints: Annotated[
+        list[LoopsCheckpoint],
+        Field(description="Matching checkpoints.", title="Checkpoints"),
+    ]
+
+
+class ListLoopsCheckpointsQueryParams(BaseModel):
+    run_id: Annotated[
+        str | None,
+        Field(
+            description="Filter by run ID. Returns all checkpoints saved by the run.",
+            examples=["k4q95w5"],
+            title="Run Id",
+        ),
+    ] = None
+    base_model: Annotated[
+        str | None,
+        Field(
+            description="Filter by base model. Returns checkpoints across the caller's runs of this base model.",
+            examples=["Qwen/Qwen3-8B"],
+            title="Base Model",
+        ),
+    ] = None
+    checkpoint_path: Annotated[
+        str | None,
+        Field(
+            description="bt:// URI of a Loops checkpoint. Form: bt://loops:<run_id>/(weights|sampler_weights)/<checkpoint_name>.",
+            examples=["bt://loops:k4q95w5/sampler_weights/step-100"],
+            title="Checkpoint Path",
+        ),
+    ] = None
+
+
+class ValidateLoopsCheckpointRequest(BaseModel):
+    checkpoint_path: Annotated[
+        str,
+        Field(
+            description="bt:// URI of a sampler checkpoint. Form: bt://loops:<run_id>/sampler_weights/<checkpoint_name>.",
+            examples=["bt://loops:k4q95w5/sampler_weights/step-100"],
+            title="Checkpoint Path",
+        ),
+    ]
+
+
+class ValidateLoopsCheckpointResponse(BaseModel):
+    pass
+
+
+class LoopsCheckpointFilesResponse(BaseModel):
+    presigned_urls: Annotated[
+        list[CheckpointFile],
+        Field(
+            description="List of presigned URLs for checkpoint files.",
+            title="Presigned Urls",
+        ),
+    ]
+    next_page_token: Annotated[
+        int | None,
+        Field(
+            description="Token to use for fetching the next page of results. None when there are no more results.",
+            title="Next Page Token",
+        ),
+    ] = None
+    total_count: Annotated[
+        int,
+        Field(
+            description="Total number of checkpoint files available.",
+            title="Total Count",
+        ),
+    ]
+
+
+class LoopsDeploymentStatus(BaseModel):
+    name: Annotated[Name, Field(description="Latest status of the Loops deployment.")]
+
+
+class LoopsDeployment(BaseModel):
+    id: Annotated[str, Field(description="The Loops deployment ID.", title="Id")]
+    base_model: Annotated[
+        str,
+        Field(
+            description="The HuggingFace base model the deployment is fine-tuning.",
+            title="Base Model",
+        ),
+    ]
+    base_url: Annotated[str, Field(description="The run's base URL.", title="Base Url")]
+    status: Annotated[
+        LoopsDeploymentStatus, Field(description="Latest deployment status.")
+    ]
+    sampler: Annotated[
+        LoopsSampler, Field(description="The sampler bound to this deployment.")
+    ]
+
+
+class ListLoopsDeploymentsResponse(BaseModel):
+    deployments: Annotated[
+        list[LoopsDeployment],
+        Field(description="Active Loops deployments.", title="Deployments"),
+    ]
+
+
+class DeactivateLoopsDeploymentResponse(BaseModel):
+    id: Annotated[
+        str, Field(description="The deactivated Loops deployment ID.", title="Id")
+    ]
+    base_model: Annotated[
+        str,
+        Field(
+            description="The base model whose Loops deployment was deactivated.",
+            title="Base Model",
+        ),
+    ]
+    user: Annotated[User, Field(description="The user who owned the Loops deployment.")]
+
+
+class GetLoopsDeploymentResponse(BaseModel):
+    deployment: Annotated[LoopsDeployment, Field(description="The Loops deployment.")]
+
+
+class GetLoopsDeploymentMetricsRequest(BaseModel):
+    end_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch millis to end fetching metrics.",
+            title="End Epoch Millis",
+        ),
+    ] = None
+    start_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch millis to start fetching metrics.",
+            title="Start Epoch Millis",
+        ),
+    ] = None
+
+
+class InferenceVolumeByStatusDatapoint(BaseModel):
+    timestamp: Annotated[
+        AwareDatetime, Field(description="ISO 8601 timestamp.", title="Timestamp")
+    ]
+    status_2xx: Annotated[
+        float, Field(description="2xx requests per second.", title="Status 2Xx")
+    ]
+    status_4xx: Annotated[
+        float, Field(description="4xx requests per second.", title="Status 4Xx")
+    ]
+    status_5xx: Annotated[
+        float, Field(description="5xx requests per second.", title="Status 5Xx")
+    ]
+
+
+class ResponseTimeDatapoint(BaseModel):
+    timestamp: Annotated[
+        AwareDatetime, Field(description="ISO 8601 timestamp.", title="Timestamp")
+    ]
+    p50: Annotated[
+        float | None,
+        Field(
+            description="50th percentile request latency (milliseconds).", title="P50"
+        ),
+    ] = None
+    p95: Annotated[
+        float | None,
+        Field(
+            description="95th percentile request latency (milliseconds).", title="P95"
+        ),
+    ] = None
+    p99: Annotated[
+        float | None,
+        Field(
+            description="99th percentile request latency (milliseconds).", title="P99"
+        ),
+    ] = None
+
+
+class GetLoopsDeploymentLogsRequest(BaseModel):
+    start_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch millis timestamp to start fetching logs",
+            title="Start Epoch Millis",
+        ),
+    ] = None
+    end_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch millis timestamp to end fetching logs",
+            title="End Epoch Millis",
+        ),
+    ] = None
+    direction: Annotated[SortOrder | None, Field(description="Sort order for logs")] = (
+        None
+    )
+    limit: Annotated[
+        Limit | None,
+        Field(
+            default_factory=lambda: Limit(500),
+            description="Limit of logs to fetch in a single request",
+            title="Limit",
+        ),
+    ]
+
+
+class TrainingGpuCapacityItem(BaseModel):
+    gpu_type: Annotated[
+        str,
+        Field(
+            description="GPU type identifier (e.g. H100, A100-40GB)", title="Gpu Type"
+        ),
+    ]
+    baseline: Annotated[
+        int,
+        Field(
+            description="Baseline GPU allocation; jobs below this threshold are expected to run immediately. 0 if not configured.",
+            title="Baseline",
+        ),
+    ]
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum concurrent GPUs of this type for this org",
+            title="Limit",
+        ),
+    ]
+    usage_count: Annotated[
+        int,
+        Field(
+            description="GPUs currently in use by active training jobs",
+            title="Usage Count",
+        ),
+    ]
+
+
+class GetTrainingGpuCapacityResponse(BaseModel):
+    gpu_capacities: Annotated[
+        list[TrainingGpuCapacityItem],
+        Field(
+            description="GPU capacity limits and current usage per GPU type",
+            title="Gpu Capacities",
+        ),
     ]
 
 
@@ -1937,6 +3070,13 @@ class CreateLLMModelRequest(BaseModel):
             title="Environment Variables",
         ),
     ] = None
+    model_metadata: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="Model metadata persisted into model_config",
+            title="Model Metadata",
+        ),
+    ] = None
     autoscaling_settings: Annotated[
         UpdateAutoscalingSettings | None,
         Field(
@@ -1946,6 +3086,7 @@ class CreateLLMModelRequest(BaseModel):
                     "autoscaling_window": 600,
                     "concurrency_target": None,
                     "max_replica": 5,
+                    "max_scale_down_rate": None,
                     "min_replica": 1,
                     "scale_down_delay": 300,
                     "target_in_flight_tokens": None,
@@ -1970,19 +3111,42 @@ class CreateLLMModelRequest(BaseModel):
             title="Metadata",
         ),
     ] = None
-    name: Annotated[str, Field(description="Name of the model", title="Name")]
-
-
-class LLMModel(BaseModel):
-    id: Annotated[str, Field(description="Unique identifier of the model", title="Id")]
-    created_at: Annotated[
-        AwareDatetime,
+    weights: Annotated[
+        list[dict[str, Any]] | None,
         Field(
-            description="Time the model was created in ISO 8601 format",
-            title="Created At",
+            description="Weight configurations for BDN model weight distribution",
+            examples=[
+                [
+                    {
+                        "mount_location": "/models/base",
+                        "source": "hf://meta-llama/Llama-3-8B",
+                    }
+                ]
+            ],
+            title="Weights",
         ),
-    ]
+    ] = None
     name: Annotated[str, Field(description="Name of the model", title="Name")]
+
+
+class LLMModelHandle(BaseModel):
+    model_id: Annotated[
+        str, Field(description="Unique identifier of the model", title="Model Id")
+    ]
+    version_id: Annotated[
+        str,
+        Field(description="Unique identifier of the model version", title="Version Id"),
+    ]
+    hostname: Annotated[
+        str, Field(description="Hostname used to invoke the model", title="Hostname")
+    ]
+    instance_type_name: Annotated[
+        str | None,
+        Field(
+            description="Name of the instance type the model deployment is running on",
+            title="Instance Type Name",
+        ),
+    ] = None
 
 
 class CreateLLMModelVersionRequest(BaseModel):
@@ -2007,6 +3171,13 @@ class CreateLLMModelVersionRequest(BaseModel):
             title="Environment Variables",
         ),
     ] = None
+    model_metadata: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="Model metadata persisted into model_config",
+            title="Model Metadata",
+        ),
+    ] = None
     autoscaling_settings: Annotated[
         UpdateAutoscalingSettings | None,
         Field(
@@ -2016,6 +3187,7 @@ class CreateLLMModelVersionRequest(BaseModel):
                     "autoscaling_window": 600,
                     "concurrency_target": None,
                     "max_replica": 5,
+                    "max_scale_down_rate": None,
                     "min_replica": 1,
                     "scale_down_delay": 300,
                     "target_in_flight_tokens": None,
@@ -2040,20 +3212,21 @@ class CreateLLMModelVersionRequest(BaseModel):
             title="Metadata",
         ),
     ] = None
-
-
-class LLMModelVersion(BaseModel):
-    id: Annotated[
-        str, Field(description="Unique identifier of the model version", title="Id")
-    ]
-    created_at: Annotated[
-        AwareDatetime,
+    weights: Annotated[
+        list[dict[str, Any]] | None,
         Field(
-            description="Time the model was created in ISO 8601 format",
-            title="Created At",
+            description="Weight configurations for BDN model weight distribution",
+            examples=[
+                [
+                    {
+                        "mount_location": "/models/base",
+                        "source": "hf://meta-llama/Llama-3-8B",
+                    }
+                ]
+            ],
+            title="Weights",
         ),
-    ]
-    name: Annotated[str, Field(description="Name of the model version", title="Name")]
+    ] = None
 
 
 class LibraryListing(BaseModel):
@@ -2500,6 +3673,227 @@ class Subtotal8(RootModel[str]):
     ]
 
 
+class UsageSummaryRequest(BaseModel):
+    start_date: Annotated[
+        AwareDatetime,
+        Field(
+            description="Start date (ISO 8601, UTC). Earliest queryable: 2026-01-01.",
+            title="Start Date",
+        ),
+    ]
+    end_date: Annotated[
+        AwareDatetime,
+        Field(
+            description="End date in ISO 8601 format (UTC). Date range cannot exceed 31 days.",
+            title="End Date",
+        ),
+    ]
+
+
+class UserInfo(BaseModel):
+    user_id: Annotated[
+        str, Field(description="Unique identifier for the user", title="User Id")
+    ]
+    email: Annotated[
+        str | None, Field(description="Email address of the user", title="Email")
+    ] = None
+    name: Annotated[
+        str | None, Field(description="Display name of the user", title="Name")
+    ] = None
+    workspace_name: Annotated[
+        str | None,
+        Field(description="Name of the user's workspace", title="Workspace Name"),
+    ] = None
+
+
+class Name1(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="Optional display name for the group.",
+            examples=["Acme prod"],
+            max_length=255,
+            title="Name",
+        ),
+    ] = None
+
+
+class GroupMetadata(BaseModel):
+    name: Annotated[
+        Name1 | None,
+        Field(
+            description="Optional display name for the group.",
+            examples=["Acme prod"],
+            title="Name",
+        ),
+    ] = None
+    external_entity_id: Annotated[
+        str,
+        Field(
+            description="External-system identifier for this group. Unique within the caller's org.",
+            examples=["cust_42"],
+            max_length=255,
+            min_length=1,
+            title="External Entity Id",
+        ),
+    ]
+
+
+class LimitEnforcement(Enum):
+    CASCADING = "CASCADING"
+    INDEPENDENT = "INDEPENDENT"
+
+
+class LimitType(Enum):
+    REQUEST = "REQUEST"
+    TOKEN = "TOKEN"
+
+
+class PaginationResponse(BaseModel):
+    has_more: Annotated[
+        bool,
+        Field(
+            description="Whether more items exist after this page.", title="Has More"
+        ),
+    ]
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor to pass into the next request. Null when there is no next page.",
+            title="Cursor",
+        ),
+    ] = None
+
+
+class RateLimitUnit(Enum):
+    SECOND = "SECOND"
+    MINUTE = "MINUTE"
+
+
+class RateLimit(BaseModel):
+    type: Annotated[
+        LimitType,
+        Field(description="The type of the rate limit", examples=["TOKEN", "REQUEST"]),
+    ]
+    unit: Annotated[
+        RateLimitUnit,
+        Field(description="The unit of the rate limit", examples=["SECOND", "MINUTE"]),
+    ]
+    threshold: Annotated[
+        int,
+        Field(
+            description="The threshold for the rate limit",
+            examples=[1000, 50000],
+            ge=1,
+            title="Threshold",
+        ),
+    ]
+
+
+class UsageLimitUnit(Enum):
+    DAY = "DAY"
+
+
+class UsageLimit(BaseModel):
+    type: Annotated[
+        LimitType,
+        Field(description="The type of the usage limit", examples=["REQUEST", "TOKEN"]),
+    ]
+    unit: Annotated[
+        UsageLimitUnit,
+        Field(description="The unit of the usage limit", examples=["DAY"]),
+    ]
+    threshold: Annotated[
+        int,
+        Field(
+            description="The threshold for the usage limit",
+            examples=[10000000],
+            ge=1,
+            title="Threshold",
+        ),
+    ]
+
+
+class UpdateGroupMetadata(BaseModel):
+    name: Annotated[
+        Name1 | None,
+        Field(
+            description="Optional display name for the group.",
+            examples=["Acme prod"],
+            title="Name",
+        ),
+    ] = None
+
+
+class GatewayKeyInfo(BaseModel):
+    prefix: Annotated[
+        str, Field(description="The prefix of the Model API key.", title="Prefix")
+    ]
+    name: Annotated[
+        str | None, Field(description="Optional display name.", title="Name")
+    ] = None
+
+
+class KeysForGroupResponse(BaseModel):
+    items: Annotated[
+        list[GatewayKeyInfo], Field(description="Items in this page.", title="Items")
+    ]
+    pagination: Annotated[
+        PaginationResponse, Field(description="Pagination metadata for the page.")
+    ]
+
+
+class CreateApiKeyForGroupRequest(BaseModel):
+    name: Annotated[
+        str | None,
+        Field(
+            description="Optional display name for the new key.",
+            examples=["prod-key-1"],
+            title="Name",
+        ),
+    ] = None
+
+
+class CreateApiKeyForGroupResponse(BaseModel):
+    api_key: Annotated[
+        str,
+        Field(
+            description="Plaintext key string, returned exactly once.", title="Api Key"
+        ),
+    ]
+    prefix: Annotated[
+        str, Field(description="Key prefix (the part before the dot).", title="Prefix")
+    ]
+    name: Annotated[
+        str | None, Field(description="Display name of the key.", title="Name")
+    ] = None
+
+
+class RegisterAPIKeyRequest(BaseModel):
+    name: Annotated[
+        str | None,
+        Field(
+            description="Optional name for the Model API key",
+            examples=["my-model-api-key"],
+            title="Name",
+        ),
+    ] = None
+    key: Annotated[
+        str,
+        Field(
+            description="Value of the API key to register",
+            examples=["my-secure-api-key-value"],
+            title="Key",
+        ),
+    ]
+
+
+class RegisterAPIKeyResponse(BaseModel):
+    ok: Annotated[
+        bool, Field(description="Whether the registration was successful", title="Ok")
+    ]
+
+
 class RollingDeployConfig(BaseModel):
     rolling_deploy_strategy: Annotated[
         RollingDeployStrategy | None,
@@ -2604,6 +3998,7 @@ class CreateEnvironmentRequest(BaseModel):
                     "autoscaling_window": 800,
                     "concurrency_target": 3,
                     "max_replica": 2,
+                    "max_scale_down_rate": None,
                     "min_replica": 1,
                     "scale_down_delay": 60,
                     "target_in_flight_tokens": None,
@@ -2643,6 +4038,7 @@ class UpdateEnvironmentRequest(BaseModel):
                     "autoscaling_window": 800,
                     "concurrency_target": 3,
                     "max_replica": 2,
+                    "max_scale_down_rate": None,
                     "min_replica": 1,
                     "scale_down_delay": 60,
                     "target_in_flight_tokens": None,
@@ -2740,6 +4136,7 @@ class CreateChainEnvironmentRequest(BaseModel):
                             "autoscaling_window": 800,
                             "concurrency_target": 4,
                             "max_replica": 3,
+                            "max_scale_down_rate": None,
                             "min_replica": 2,
                             "scale_down_delay": 63,
                             "target_in_flight_tokens": None,
@@ -2753,6 +4150,7 @@ class CreateChainEnvironmentRequest(BaseModel):
                             "autoscaling_window": None,
                             "concurrency_target": None,
                             "max_replica": 3,
+                            "max_scale_down_rate": None,
                             "min_replica": 3,
                             "scale_down_delay": None,
                             "target_in_flight_tokens": None,
@@ -2863,6 +4261,13 @@ class TrainingJob(BaseModel):
         CheckpointSyncStatus | None,
         Field(description="Checkpoint sync status of the training job."),
     ] = None
+    priority: Annotated[
+        int | None,
+        Field(
+            description="Queue priority. Higher values are dequeued first. NULL is treated as 0.",
+            title="Priority",
+        ),
+    ] = 0
     user: Annotated[
         User | None, Field(description="The user who created the training job.")
     ] = None
@@ -3163,6 +4568,77 @@ class SearchTrainingJobsResponse(BaseModel):
     ]
 
 
+class LoopsRun(BaseModel):
+    id: Annotated[str, Field(description="The run ID.", title="Id")]
+    session_id: Annotated[
+        str,
+        Field(description="The session ID this run belongs to.", title="Session Id"),
+    ]
+    base_model: Annotated[
+        str,
+        Field(
+            description="The HuggingFace base model the run is fine-tuning.",
+            title="Base Model",
+        ),
+    ]
+    base_url: Annotated[str, Field(description="The run's base URL.", title="Base Url")]
+    created_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="Time the run was created in ISO 8601 format",
+            title="Created At",
+        ),
+    ]
+    sampler: Annotated[
+        LoopsSampler, Field(description="The sampler bound to this run.")
+    ]
+
+
+class ListLoopsRunsResponse(BaseModel):
+    runs: Annotated[list[LoopsRun], Field(description="List of runs.", title="Runs")]
+
+
+class CreateLoopsRunResponse(BaseModel):
+    run: LoopsRun
+
+
+class GetLoopsRunResponse(BaseModel):
+    run: Annotated[
+        LoopsRun, Field(description="The Loops run with its associated sampler.")
+    ]
+
+
+class LoopsDeploymentNodeMetrics(BaseModel):
+    node_id: Annotated[
+        str, Field(description="Identifier for the node.", title="Node Id")
+    ]
+    gpu_memory_usage_bytes: Annotated[
+        dict[str, list[TrainingJobMetric]],
+        Field(
+            description="GPU memory usage bytes per GPU rank.",
+            title="Gpu Memory Usage Bytes",
+        ),
+    ]
+    gpu_utilization: Annotated[
+        dict[str, list[TrainingJobMetric]],
+        Field(
+            description="Fractional GPU utilization per GPU rank.",
+            title="Gpu Utilization",
+        ),
+    ]
+    cpu_usage: Annotated[
+        list[TrainingJobMetric],
+        Field(description="CPU usage in cores.", title="Cpu Usage"),
+    ]
+    cpu_memory_usage_bytes: Annotated[
+        list[TrainingJobMetric],
+        Field(description="CPU memory usage bytes.", title="Cpu Memory Usage Bytes"),
+    ]
+    ephemeral_storage: Annotated[
+        StorageMetrics, Field(description="Ephemeral storage usage.")
+    ]
+
+
 class BillableResource(BaseModel):
     id: Annotated[
         str, Field(description="Unique identifier of the resource", title="Id")
@@ -3175,6 +4651,13 @@ class BillableResource(BaseModel):
     ]
     name: Annotated[
         str | None, Field(description="Name of the resource", title="Name")
+    ] = None
+    model_name: Annotated[
+        str | None,
+        Field(
+            description="Name of the parent resource (e.g., model name for model deployments, training project name for training jobs)",
+            title="Model Name",
+        ),
     ] = None
     is_deleted: Annotated[
         bool,
@@ -3307,6 +4790,109 @@ class UsageSummary(BaseModel):
     ] = None
 
 
+class EffectiveRateLimit(BaseModel):
+    type: Annotated[
+        LimitType,
+        Field(description="The type of the rate limit", examples=["TOKEN", "REQUEST"]),
+    ]
+    unit: Annotated[
+        RateLimitUnit,
+        Field(description="The unit of the rate limit", examples=["SECOND", "MINUTE"]),
+    ]
+    threshold: Annotated[
+        int,
+        Field(
+            description="The threshold for the rate limit",
+            examples=[1000, 50000],
+            ge=1,
+            title="Threshold",
+        ),
+    ]
+    source_group: Annotated[
+        str,
+        Field(
+            description="ID of the group in the hierarchy this limit is anchored to.",
+            examples=["abc123"],
+            title="Source Group",
+        ),
+    ]
+
+
+class EffectiveUsageLimit(BaseModel):
+    type: Annotated[
+        LimitType,
+        Field(description="The type of the usage limit", examples=["REQUEST", "TOKEN"]),
+    ]
+    unit: Annotated[
+        UsageLimitUnit,
+        Field(description="The unit of the usage limit", examples=["DAY"]),
+    ]
+    threshold: Annotated[
+        int,
+        Field(
+            description="The threshold for the usage limit",
+            examples=[10000000],
+            ge=1,
+            title="Threshold",
+        ),
+    ]
+    source_group: Annotated[
+        str,
+        Field(
+            description="ID of the group in the hierarchy this limit is anchored to.",
+            examples=["abc123"],
+            title="Source Group",
+        ),
+    ]
+
+
+class GroupHierarchy(BaseModel):
+    limit_enforcement: Annotated[
+        LimitEnforcement | None, Field(examples=["CASCADING", "INDEPENDENT"])
+    ] = LimitEnforcement.INDEPENDENT
+    parent_group_id: Annotated[
+        str | None, Field(examples=["abc123"], title="Parent Group Id")
+    ] = None
+
+
+class ModelConfig(BaseModel):
+    slug: Annotated[str, Field(description="Shared endpoint slug.", title="Slug")]
+    rate_limits: Annotated[list[RateLimit] | None, Field(title="Rate Limits")] = None
+    usage_limits: Annotated[list[UsageLimit] | None, Field(title="Usage Limits")] = None
+
+
+class CreateGroupRequest(BaseModel):
+    metadata: Annotated[
+        GroupMetadata, Field(description="Group identity + display metadata.")
+    ]
+    models: Annotated[
+        list[ModelConfig],
+        Field(
+            description="Per-model rate and usage limit configuration. Defines the group's complete model set. Must be non-empty.",
+            title="Models",
+        ),
+    ]
+    hierarchy: Annotated[
+        GroupHierarchy,
+        Field(
+            description="Parent linkage and limit enforcement mode. Immutable after creation."
+        ),
+    ]
+
+
+class UpdateGroupRequest(BaseModel):
+    metadata: Annotated[
+        UpdateGroupMetadata | None,
+        Field(description="Mutable group metadata.", examples=[{"name": "Acme Prod"}]),
+    ] = None
+    models: Annotated[
+        list[ModelConfig] | None,
+        Field(
+            description="Per-model rate and usage limit configuration.", title="Models"
+        ),
+    ] = None
+
+
 class PromotionSettings(BaseModel):
     redeploy_on_promotion: Annotated[
         bool | None,
@@ -3423,6 +5009,123 @@ class DockerAuth(BaseModel):
             description="Required when auth_method is REGISTRY_SECRET. Supports any Docker registry (Docker Hub, GHCR, NGC, etc.) via username:password credentials stored as a Baseten secret."
         ),
     ] = None
+
+
+class LoopsDeploymentMetrics(BaseModel):
+    inference_volume: Annotated[
+        list[TrainingJobMetric],
+        Field(
+            description="Number of inference requests per unit time (requests per second).",
+            title="Inference Volume",
+        ),
+    ]
+    concurrent_requests: Annotated[
+        list[TrainingJobMetric],
+        Field(
+            description="Number of in-progress concurrent inference requests. Source: the queue-proxy ``revision_queue_depth`` gauge on ``http-usermetric``.",
+            title="Concurrent Requests",
+        ),
+    ]
+    response_time_stats: Annotated[
+        list[ResponseTimeDatapoint],
+        Field(
+            description="Percentiles of the response time distribution.",
+            title="Response Time Stats",
+        ),
+    ]
+    inference_volume_by_status: Annotated[
+        list[InferenceVolumeByStatusDatapoint],
+        Field(
+            description="Request rate split by response code class.",
+            title="Inference Volume By Status",
+        ),
+    ]
+    gpu_memory_usage_bytes: Annotated[
+        dict[str, list[TrainingJobMetric]],
+        Field(
+            description="Leader-pod GPU memory bytes per GPU rank.",
+            title="Gpu Memory Usage Bytes",
+        ),
+    ]
+    gpu_utilization: Annotated[
+        dict[str, list[TrainingJobMetric]],
+        Field(
+            description="Leader-pod fractional GPU utilization per GPU rank.",
+            title="Gpu Utilization",
+        ),
+    ]
+    cpu_usage: Annotated[
+        list[TrainingJobMetric],
+        Field(description="Leader-pod CPU usage in cores.", title="Cpu Usage"),
+    ]
+    cpu_memory_usage_bytes: Annotated[
+        list[TrainingJobMetric],
+        Field(
+            description="Leader-pod CPU memory usage bytes.",
+            title="Cpu Memory Usage Bytes",
+        ),
+    ]
+    ephemeral_storage: Annotated[
+        StorageMetrics, Field(description="Leader-pod ephemeral storage usage.")
+    ]
+    per_node_metrics: Annotated[
+        list[LoopsDeploymentNodeMetrics],
+        Field(
+            description="Per-node compute breakdown for multinode trainer deployments.",
+            title="Per Node Metrics",
+        ),
+    ]
+
+
+class GetLoopsDeploymentMetricsResponse(BaseModel):
+    deployment_id: Annotated[
+        str, Field(description="The trainer deployment ID.", title="Deployment Id")
+    ]
+    metrics: Annotated[
+        LoopsDeploymentMetrics, Field(description="Metrics for the deployment.")
+    ]
+
+
+class EffectiveModelConfig(BaseModel):
+    slug: Annotated[str, Field(description="Shared endpoint slug.", title="Slug")]
+    rate_limits: Annotated[
+        list[EffectiveRateLimit] | None, Field(title="Rate Limits")
+    ] = None
+    usage_limits: Annotated[
+        list[EffectiveUsageLimit] | None, Field(title="Usage Limits")
+    ] = None
+
+
+class Group(BaseModel):
+    id: Annotated[
+        str, Field(description="Internal Baseten ID for the group.", title="Id")
+    ]
+    metadata: Annotated[
+        GroupMetadata, Field(description="Group identity + display metadata.")
+    ]
+    models: Annotated[list[ModelConfig] | None, Field(title="Models")] = None
+    effective_models: Annotated[
+        list[EffectiveModelConfig] | None, Field(title="Effective Models")
+    ] = None
+    hierarchy: Annotated[
+        GroupHierarchy,
+        Field(
+            description="Parent linkage and limit enforcement mode. Parent is null for root groups."
+        ),
+    ]
+    created_at: Annotated[
+        AwareDatetime,
+        Field(description="When this group was created.", title="Created At"),
+    ]
+
+
+class GroupsResponse(BaseModel):
+    items: Annotated[
+        list[Group], Field(description="Items in this page.", title="Items")
+    ]
+    pagination: Annotated[
+        PaginationResponse, Field(description="Pagination metadata for the page.")
+    ]
 
 
 class Environment(BaseModel):
@@ -3554,6 +5257,22 @@ class CreateTrainingJob(BaseModel):
                 ]
             ],
             title="Weights",
+        ),
+    ] = None
+    enable_baseten_workdir: Annotated[
+        bool | None,
+        Field(
+            description="When enabled, uses /b10/workspace as the working directory instead of the image WORKDIR.",
+            examples=[False, True],
+            title="Enable Baseten Workdir",
+        ),
+    ] = False
+    priority: Annotated[
+        int | None,
+        Field(
+            description="Queue priority. Higher values are dequeued first. Defaults to 0.",
+            examples=[0, 10, 100],
+            title="Priority",
         ),
     ] = None
 
