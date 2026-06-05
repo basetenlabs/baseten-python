@@ -30,7 +30,7 @@ def test_predict_production_sync() -> None:
     assert resp.root["result"] == 42
     assert fake.capture.method == "POST"
     assert fake.capture.path == "/production/predict"
-    assert fake.capture.headers["authorization"] == "Api-Key test-key"
+    assert fake.capture.headers["authorization"] == "Bearer test-key"
     body = json.loads(fake.capture.body)
     assert body == {"input": "hello"}
     client.close()
