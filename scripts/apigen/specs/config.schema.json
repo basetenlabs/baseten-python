@@ -180,6 +180,14 @@
           },
           "title": "Artifact References",
           "type": "array"
+        },
+        "loops_checkpoint_ids": {
+          "description": "Loops checkpoint IDs to deploy. Mutually exclusive with artifact_references.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Loops Checkpoint Ids",
+          "type": "array"
         }
       },
       "title": "CheckpointList",

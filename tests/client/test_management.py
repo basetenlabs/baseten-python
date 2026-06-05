@@ -48,7 +48,7 @@ def test_get_models_sync() -> None:
     assert resp.models[0].name == "my-model"
     assert fake.capture.method == "GET"
     assert fake.capture.path == "/v1/models"
-    assert fake.capture.headers["authorization"] == "Api-Key test-key"
+    assert fake.capture.headers["authorization"] == "Bearer test-key"
     client.close()
 
 
@@ -74,7 +74,7 @@ async def test_get_models() -> None:
     assert resp.models[0].name == "my-model"
     assert fake.capture.method == "GET"
     assert fake.capture.path == "/v1/models"
-    assert fake.capture.headers["authorization"] == "Api-Key test-key"
+    assert fake.capture.headers["authorization"] == "Bearer test-key"
     await client.close()
 
 

@@ -536,6 +536,13 @@ class CheckpointList(BaseModel):
     artifact_references: Annotated[
         list[TrainingArtifactReference] | None, Field(title="Artifact References")
     ] = None
+    loops_checkpoint_ids: Annotated[
+        list[str] | None,
+        Field(
+            description="Loops checkpoint IDs to deploy. Mutually exclusive with artifact_references.",
+            title="Loops Checkpoint Ids",
+        ),
+    ] = None
 
 
 class CheckpointRepository(BaseModel):
