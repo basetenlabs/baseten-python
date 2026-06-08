@@ -3,8 +3,6 @@ name: Docs
 on:
   push:
     branches: [main]
-  # TEMPORARY: also run on PRs to exercise the docs build/deploy. Remove before merge.
-  pull_request:
 
 permissions:
   contents: read
