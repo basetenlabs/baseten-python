@@ -19,6 +19,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "autodoc-pydantic>=2.2.0",
     # Capped at <0.56: starting in later releases (confirmed in 0.59.1),
     # complex object/scalar defaults are emitted as raw literals assigned to
     # model-typed fields (e.g. `x: Model | None = {..dict..}`, `Limit | None =
@@ -27,12 +28,13 @@ dev = [
     # these at runtime, but the literal does not match the annotation, so ty
     # rejects the generated code. No flag restores the old emission.
     "datamodel-code-generator>=0.55.0,<0.56",
+    "furo>=2025.12.19",
     "poethepoet>=0.35",
-    "pydoctor>=25.10.1",
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
     "pyyaml>=6.0",
     "ruff>=0.15.16",
+    "sphinx>=8.1.3",
     "ty>=0.0.43",
 ]
 
@@ -42,7 +44,7 @@ Issues = "https://github.com/basetenlabs/baseten-python/issues"
 
 [tool.poe.tasks]
 generate-api = "python -m scripts.apigen"
-generate-docs = "python -m scripts.docgen"
+generate-docs = "sphinx-build -j auto -b html -d .doctrees scripts/docgen _site"
 typecheck = "ty check"
 test = "pytest"
 
@@ -63,7 +65,7 @@ sequence = [
 # exclude-newer = "7 days"
 
 [tool.ty.src]
-exclude = ["scripts/e2e_test_bootstrap/"]
+exclude = ["scripts/docgen/", "scripts/e2e_test_bootstrap/"]
 
 [build-system]
 requires = ["hatchling"]

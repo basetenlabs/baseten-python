@@ -2,7 +2,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/baseten.svg)](https://pypi.org/project/baseten/)
 
-Python SDK for Baseten. See the [API documentation](https://basetenlabs.github.io/baseten-python/api/) and [usage](#usage) below.
+Python SDK for Baseten. See the [API documentation](https://basetenlabs.github.io/baseten-python/) and [usage](#usage) below.
 
 ⚠️ Under active development. Nothing should be considered stable at this time.
 

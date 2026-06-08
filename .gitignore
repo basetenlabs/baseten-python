@@ -1,5 +1,7 @@
 .pytest_cache
 .ruff_cache
 .venv
+.doctrees
 __pycache__
 _site
+scripts/docgen/api
