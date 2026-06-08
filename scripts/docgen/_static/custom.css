@@ -1,0 +1,9 @@
+/* Hide the bottom-of-page footer bar. */
+.bottom-of-page {
+  display: none;
+}
+
+/* Restore bottom spacing the hidden bar used to provide below the prev/next links. */
+.related-pages {
+  margin-bottom: 1.5rem;
+}
