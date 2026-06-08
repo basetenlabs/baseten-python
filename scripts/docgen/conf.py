@@ -37,6 +37,8 @@ autosummary_generate = True
 autosummary_imported_members = True
 autodoc_default_options = {"members": True, "show-inheritance": True}
 autodoc_typehints = "description"
+# Members are one-per-class-page, so drop the class prefix in the right-hand TOC.
+toc_object_entries_show_parents = "hide"
 
 # Render pydantic models without the inherited BaseModel boilerplate.
 autodoc_pydantic_model_show_config_summary = False
