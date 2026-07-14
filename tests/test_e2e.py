@@ -131,7 +131,7 @@ async def test_get_model_async() -> None:
 async def test_inference() -> None:
     async with async_inference_client() as client:
         result = await client.api.predict_production(
-            body=baseten.client.inferenceapi.PredictInput({"prompt": "hello"}),
+            request=baseten.client.inferenceapi.PredictInput({"prompt": "hello"}),
         )
         assert result.root is not None
 
@@ -145,7 +145,7 @@ async def test_api_key_crud() -> None:
     async with async_management_client() as client:
         try:
             created = await client.api.post_api_keys(
-                body=baseten.client.managementapi.CreateAPIKeyRequest(
+                request=baseten.client.managementapi.CreateAPIKeyRequest(
                     name=key_name,
                     type=baseten.client.managementapi.APIKeyCategory.PERSONAL,
                 ),

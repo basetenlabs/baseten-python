@@ -1,7 +1,10 @@
 """Preprocesses OpenAPI specs for code generation."""
 
+import copy
 import json
 import re
+
+from scripts.apigen.clientgen import query_request_model_name, resolve_method_names
 
 
 def preprocess_truss_config_schema(data: bytes) -> bytes:
@@ -56,6 +59,13 @@ def preprocess_spec(data: bytes) -> bytes:
     # wrapper classes.
     _hoist_component_schemas(doc)
 
+    # Synthesize a request schema per GET operation's query parameters so
+    # datamodel-code-generator emits a typed model for them (it only
+    # generates query-parameter models under the paths scope, which drags
+    # in unwanted per-operation wrappers). Injected before the V1 rename
+    # below so their $refs to enums are rewritten with everything else.
+    _inject_query_request_schemas(doc)
+
     # datamodel-code-generator generates empty BaseModel classes for
     # schemas that are bare type: object with no properties (e.g.
     # PredictInput). Adding additionalProperties makes it correctly
@@ -96,6 +106,53 @@ def _hoist_component_schemas(doc: dict) -> None:
                 continue
             schemas[name] = schema
             content["schema"] = {"$ref": f"#/components/schemas/{name}"}
+
+
+def _inject_query_request_schemas(doc: dict) -> None:
+    # Build an object schema whose properties are the operation's query
+    # parameters, named to match its client method (e.g. get_users ->
+    # GetUsersRequest). Each parameter's own schema (enum $refs, arrays,
+    # nullable wrappers, constraints) is reused verbatim so the third
+    # party types every field. GET carries only query params and every
+    # other method only a body, so this name never collides with a body.
+    schemas = doc.setdefault("components", {}).setdefault("schemas", {})
+    method_names = resolve_method_names(doc)
+
+    for path, path_item in doc.get("paths", {}).items():
+        for http_method, op in path_item.items():
+            if http_method == "parameters" or not isinstance(op, dict):
+                continue
+            query_params = [
+                p
+                for p in op.get("parameters", [])
+                if isinstance(p, dict) and p.get("in") == "query"
+            ]
+            if not query_params:
+                continue
+            if "requestBody" in op:
+                raise ValueError(
+                    f"{http_method.upper()} {path} has both a request body and "
+                    "query parameters; the client generator assumes GET carries "
+                    "only query parameters and other methods only a body"
+                )
+            name = query_request_model_name(method_names[(path, http_method)])
+            if name in schemas:
+                raise ValueError(
+                    f"injected query schema {name} collides with an existing schema"
+                )
+            properties: dict = {}
+            required: list[str] = []
+            for p in query_params:
+                schema = copy.deepcopy(p.get("schema", {}))
+                if "description" not in schema and p.get("description"):
+                    schema["description"] = p["description"]
+                properties[p["name"]] = schema
+                if p.get("required"):
+                    required.append(p["name"])
+            obj: dict = {"type": "object", "title": name, "properties": properties}
+            if required:
+                obj["required"] = required
+            schemas[name] = obj
 
 
 def _fix_bare_object_schemas(doc: dict) -> None:

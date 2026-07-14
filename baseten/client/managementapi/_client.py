@@ -63,20 +63,35 @@ from ._models import (
     Environments,
     GatewayKeyInfo,
     GetAuthCodesResponse,
+    GetBillingUsageSummaryRequest,
     GetBlobCredentialsResponse,
     GetCacheSummaryResponse,
+    GetChainsDeploymentsChainletsLogsRequest,
     GetDeploymentLogsRequest,
     GetDeploymentPatchesStateResponse,
     GetLogsResponse,
     GetLoopsCapabilitiesResponse,
+    GetLoopsCheckpointsRequest,
     GetLoopsDeploymentMetricsRequest,
     GetLoopsDeploymentMetricsResponse,
     GetLoopsDeploymentResponse,
+    GetLoopsDeploymentsLogsRequest,
     GetLoopsRunResponse,
+    GetLoopsRunsRequest,
     GetLoopsSamplerResponse,
     GetLoopsSessionResponse,
     GetLoopsUserConfigResponse,
+    GetModelApisRequest,
     GetModelMetricsResponse,
+    GetModelsDeploymentsConfigRequest,
+    GetModelsDeploymentsLogsRequest,
+    GetModelsDeploymentsMetricsRequest,
+    GetModelsDeploymentsRequest,
+    GetModelsEnvironmentsLogsRequest,
+    GetModelsEnvironmentsMetricsRequest,
+    GetModelsRequest,
+    GetTeamsModelsRequest,
+    GetTeamsRequest,
     GetTrainingGpuCapacityResponse,
     GetTrainingJobCheckpointFilesResponse,
     GetTrainingJobCheckpointsResponse,
@@ -86,6 +101,10 @@ from ._models import (
     GetTrainingJobQueueContextResponse,
     GetTrainingJobResponse,
     GetTrainingProjectResponse,
+    GetTrainingProjectsJobsCheckpointFilesRequest,
+    GetTrainingProjectsJobsLogsRequest,
+    GetTrainingProjectsJobsMetricsRequest,
+    GetUsersRequest,
     Group,
     GroupsResponse,
     InstanceTypePrices,
@@ -186,6 +205,7 @@ class _ApiRequest:
     path_fmt: str
     path_args: list[str]
     body: Any
+    query: Any
     success_code: int
     error_codes: dict[int, str] | None
 
@@ -211,6 +231,7 @@ class ApiClient:
                 path_fmt="/v1/api_keys/{}",
                 path_args=[api_key_prefix],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -225,6 +246,7 @@ class ApiClient:
                 path_fmt="/v1/chains/{}",
                 path_args=[chain_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -241,6 +263,7 @@ class ApiClient:
                 path_fmt="/v1/chains/{}/deployments/{}",
                 path_args=[chain_id, chain_deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -255,6 +278,7 @@ class ApiClient:
                 path_fmt="/v1/gateway/endpoints/{}",
                 path_args=[endpoint_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -271,6 +295,7 @@ class ApiClient:
                 path_fmt="/v1/library_listings/{}",
                 path_args=[user_defined_listing_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -287,6 +312,7 @@ class ApiClient:
                 path_fmt="/v1/library_listings/{}/versions/{}",
                 path_args=[user_defined_listing_id, version_tag],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -301,6 +327,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -317,6 +344,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/{}",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -333,6 +361,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/replicas/{}",
                 path_args=[model_id, deployment_id, replica_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -347,6 +376,7 @@ class ApiClient:
                 path_fmt="/v1/secrets/{}",
                 path_args=[secret_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -363,6 +393,7 @@ class ApiClient:
                 path_fmt="/v1/teams/{}/secrets/{}",
                 path_args=[team_id, secret_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -379,6 +410,7 @@ class ApiClient:
                 path_fmt="/v1/training_projects/{}",
                 path_args=[training_project_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -395,6 +427,7 @@ class ApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -409,12 +442,15 @@ class ApiClient:
                 path_fmt="/v1/api_keys",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def get_billing_usage_summary(self) -> UsageSummary:
+    def get_billing_usage_summary(
+        self, *, request: GetBillingUsageSummaryRequest
+    ) -> UsageSummary:
         """Gets billing usage summary for a date range"""
         return self._do_json(
             UsageSummary,
@@ -423,6 +459,7 @@ class ApiClient:
                 path_fmt="/v1/billing/usage_summary",
                 path_args=[],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -437,6 +474,7 @@ class ApiClient:
                 path_fmt="/v1/blobs/credentials/model",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -451,6 +489,7 @@ class ApiClient:
                 path_fmt="/v1/blobs/credentials/train",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -465,6 +504,7 @@ class ApiClient:
                 path_fmt="/v1/chains",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -479,6 +519,7 @@ class ApiClient:
                 path_fmt="/v1/chains/{}",
                 path_args=[chain_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -493,6 +534,7 @@ class ApiClient:
                 path_fmt="/v1/chains/{}/deployments",
                 path_args=[chain_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -509,13 +551,19 @@ class ApiClient:
                 path_fmt="/v1/chains/{}/deployments/{}",
                 path_args=[chain_id, chain_deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def get_chains_deployments_chainlets_logs(
-        self, *, chain_id: str, chain_deployment_id: str, chainlet_id: str
+        self,
+        *,
+        chain_id: str,
+        chain_deployment_id: str,
+        chainlet_id: str,
+        request: GetChainsDeploymentsChainletsLogsRequest | None = None,
     ) -> GetLogsResponse:
         """Gets the logs for a chainlet within a chain deployment"""
         return self._do_json(
@@ -525,6 +573,7 @@ class ApiClient:
                 path_fmt="/v1/chains/{}/deployments/{}/chainlets/{}/logs",
                 path_args=[chain_id, chain_deployment_id, chainlet_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -539,6 +588,7 @@ class ApiClient:
                 path_fmt="/v1/chains/{}/environments",
                 path_args=[chain_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -555,6 +605,7 @@ class ApiClient:
                 path_fmt="/v1/chains/{}/environments/{}",
                 path_args=[chain_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -569,6 +620,7 @@ class ApiClient:
                 path_fmt="/v1/environment_groups",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -583,6 +635,7 @@ class ApiClient:
                 path_fmt="/v1/environment_groups/{}",
                 path_args=[env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -597,6 +650,7 @@ class ApiClient:
                 path_fmt="/v1/gateway/endpoints",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -611,6 +665,7 @@ class ApiClient:
                 path_fmt="/v1/gateway/endpoints/{}",
                 path_args=[endpoint_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -625,6 +680,7 @@ class ApiClient:
                 path_fmt="/v1/gateway/groups",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -639,6 +695,7 @@ class ApiClient:
                 path_fmt="/v1/gateway/groups/{}/api_keys",
                 path_args=[group_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -655,6 +712,7 @@ class ApiClient:
                 path_fmt="/v1/gateway/groups/{}/api_keys/{}",
                 path_args=[group_id, api_key_prefix],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -669,6 +727,7 @@ class ApiClient:
                 path_fmt="/v1/gateway/groups/{}",
                 path_args=[group_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -683,6 +742,7 @@ class ApiClient:
                 path_fmt="/v1/instance_type_prices",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -697,6 +757,7 @@ class ApiClient:
                 path_fmt="/v1/instance_types",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -711,6 +772,7 @@ class ApiClient:
                 path_fmt="/v1/library_listings",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -727,6 +789,7 @@ class ApiClient:
                 path_fmt="/v1/library_listings/{}",
                 path_args=[user_defined_listing_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -743,6 +806,7 @@ class ApiClient:
                 path_fmt="/v1/library_listings/{}/versions",
                 path_args=[user_defined_listing_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -759,6 +823,7 @@ class ApiClient:
                 path_fmt="/v1/library_listings/{}/versions/{}",
                 path_args=[user_defined_listing_id, version_tag],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -773,12 +838,15 @@ class ApiClient:
                 path_fmt="/v1/loops/capabilities",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def get_loops_checkpoints(self) -> ListLoopsCheckpointsResponse:
+    def get_loops_checkpoints(
+        self, *, request: GetLoopsCheckpointsRequest | None = None
+    ) -> ListLoopsCheckpointsResponse:
         """Lists Loops checkpoints"""
         return self._do_json(
             ListLoopsCheckpointsResponse,
@@ -787,6 +855,7 @@ class ApiClient:
                 path_fmt="/v1/loops/checkpoints",
                 path_args=[],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -803,6 +872,7 @@ class ApiClient:
                 path_fmt="/v1/loops/checkpoints/{}/files",
                 path_args=[checkpoint_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -817,6 +887,7 @@ class ApiClient:
                 path_fmt="/v1/loops/deployments",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -833,12 +904,18 @@ class ApiClient:
                 path_fmt="/v1/loops/deployments/{}",
                 path_args=[deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def get_loops_deployments_logs(self, *, deployment_id: str) -> GetLogsResponse:
+    def get_loops_deployments_logs(
+        self,
+        *,
+        deployment_id: str,
+        request: GetLoopsDeploymentsLogsRequest | None = None,
+    ) -> GetLogsResponse:
         """Gets logs for a Loops trainer deployment"""
         return self._do_json(
             GetLogsResponse,
@@ -847,12 +924,15 @@ class ApiClient:
                 path_fmt="/v1/loops/deployments/{}/logs",
                 path_args=[deployment_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def get_loops_runs(self) -> ListLoopsRunsResponse:
+    def get_loops_runs(
+        self, *, request: GetLoopsRunsRequest | None = None
+    ) -> ListLoopsRunsResponse:
         """Lists Loops runs"""
         return self._do_json(
             ListLoopsRunsResponse,
@@ -861,6 +941,7 @@ class ApiClient:
                 path_fmt="/v1/loops/runs",
                 path_args=[],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -875,6 +956,7 @@ class ApiClient:
                 path_fmt="/v1/loops/runs/{}",
                 path_args=[run_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -889,6 +971,7 @@ class ApiClient:
                 path_fmt="/v1/loops/samplers",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -905,6 +988,7 @@ class ApiClient:
                 path_fmt="/v1/loops/samplers/{}",
                 path_args=[sampler_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -919,6 +1003,7 @@ class ApiClient:
                 path_fmt="/v1/loops/sessions/{}",
                 path_args=[session_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -933,12 +1018,15 @@ class ApiClient:
                 path_fmt="/v1/loops/user_config",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def get_model_apis(self) -> ModelAPIsResponse:
+    def get_model_apis(
+        self, *, request: GetModelApisRequest | None = None
+    ) -> ModelAPIsResponse:
         """Lists Model APIs"""
         return self._do_json(
             ModelAPIsResponse,
@@ -947,6 +1035,7 @@ class ApiClient:
                 path_fmt="/v1/model_apis",
                 path_args=[],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -961,6 +1050,7 @@ class ApiClient:
                 path_fmt="/v1/model_apis/{}",
                 path_args=[model_api_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -975,6 +1065,7 @@ class ApiClient:
                 path_fmt="/v1/model_apis/snapshots",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -991,12 +1082,13 @@ class ApiClient:
                 path_fmt="/v1/model_apis/snapshots/{}",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def get_models(self) -> Models:
+    def get_models(self, *, request: GetModelsRequest | None = None) -> Models:
         """Gets all models"""
         return self._do_json(
             Models,
@@ -1005,12 +1097,15 @@ class ApiClient:
                 path_fmt="/v1/models",
                 path_args=[],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def get_models_deployments(self, *, model_id: str) -> Deployments:
+    def get_models_deployments(
+        self, *, model_id: str, request: GetModelsDeploymentsRequest | None = None
+    ) -> Deployments:
         """Gets all deployments of a model"""
         return self._do_json(
             Deployments,
@@ -1019,13 +1114,18 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments",
                 path_args=[model_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def get_models_deployments_config(
-        self, *, model_id: str, deployment_id: str
+        self,
+        *,
+        model_id: str,
+        deployment_id: str,
+        request: GetModelsDeploymentsConfigRequest | None = None,
     ) -> DeploymentConfigResponse:
         """Gets a deployment's config"""
         return self._do_json(
@@ -1035,6 +1135,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/config",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1051,6 +1152,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/{}",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1065,6 +1167,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/development",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1081,13 +1184,18 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/download",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def get_models_deployments_logs(
-        self, *, model_id: str, deployment_id: str
+        self,
+        *,
+        model_id: str,
+        deployment_id: str,
+        request: GetModelsDeploymentsLogsRequest | None = None,
     ) -> GetLogsResponse:
         """Gets the logs for a model deployment"""
         return self._do_json(
@@ -1097,13 +1205,18 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/logs",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def get_models_deployments_metrics(
-        self, *, model_id: str, deployment_id: str
+        self,
+        *,
+        model_id: str,
+        deployment_id: str,
+        request: GetModelsDeploymentsMetricsRequest | None = None,
     ) -> GetModelMetricsResponse:
         """Gets the metrics for a model deployment"""
         return self._do_json(
@@ -1113,6 +1226,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/metrics",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1129,6 +1243,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/patches/state",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1143,6 +1258,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/production",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1157,6 +1273,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/environments",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1173,13 +1290,18 @@ class ApiClient:
                 path_fmt="/v1/models/{}/environments/{}",
                 path_args=[model_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def get_models_environments_logs(
-        self, *, model_id: str, env_name: str
+        self,
+        *,
+        model_id: str,
+        env_name: str,
+        request: GetModelsEnvironmentsLogsRequest | None = None,
     ) -> GetLogsResponse:
         """Gets the logs for a model environment"""
         return self._do_json(
@@ -1189,13 +1311,18 @@ class ApiClient:
                 path_fmt="/v1/models/{}/environments/{}/logs",
                 path_args=[model_id, env_name],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def get_models_environments_metrics(
-        self, *, model_id: str, env_name: str
+        self,
+        *,
+        model_id: str,
+        env_name: str,
+        request: GetModelsEnvironmentsMetricsRequest | None = None,
     ) -> GetModelMetricsResponse:
         """Gets the metrics for a model environment."""
         return self._do_json(
@@ -1205,6 +1332,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/environments/{}/metrics",
                 path_args=[model_id, env_name],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1219,6 +1347,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1233,12 +1362,13 @@ class ApiClient:
                 path_fmt="/v1/secrets",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def get_teams(self) -> Teams:
+    def get_teams(self, *, request: GetTeamsRequest | None = None) -> Teams:
         """Lists all teams"""
         return self._do_json(
             Teams,
@@ -1247,6 +1377,7 @@ class ApiClient:
                 path_fmt="/v1/teams",
                 path_args=[],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1261,6 +1392,7 @@ class ApiClient:
                 path_fmt="/v1/teams/{}/environment_groups",
                 path_args=[team_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1277,12 +1409,15 @@ class ApiClient:
                 path_fmt="/v1/teams/{}/environment_groups/{}",
                 path_args=[team_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def get_teams_models(self, *, team_id: str) -> Models:
+    def get_teams_models(
+        self, *, team_id: str, request: GetTeamsModelsRequest | None = None
+    ) -> Models:
         """Gets all models"""
         return self._do_json(
             Models,
@@ -1291,6 +1426,7 @@ class ApiClient:
                 path_fmt="/v1/teams/{}/models",
                 path_args=[team_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1305,6 +1441,7 @@ class ApiClient:
                 path_fmt="/v1/teams/{}/secrets",
                 path_args=[team_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1319,6 +1456,7 @@ class ApiClient:
                 path_fmt="/v1/teams/{}",
                 path_args=[team_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1333,6 +1471,7 @@ class ApiClient:
                 path_fmt="/v1/training/capacity",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1349,6 +1488,7 @@ class ApiClient:
                 path_fmt="/v1/training/jobs/{}/queue_context",
                 path_args=[training_job_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1363,6 +1503,7 @@ class ApiClient:
                 path_fmt="/v1/training_projects",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1379,6 +1520,7 @@ class ApiClient:
                 path_fmt="/v1/training_projects/{}/cache/summary",
                 path_args=[training_project_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1395,6 +1537,7 @@ class ApiClient:
                 path_fmt="/v1/training_projects/{}/jobs",
                 path_args=[training_project_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1411,13 +1554,18 @@ class ApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}/auth_codes",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def get_training_projects_jobs_checkpoint_files(
-        self, *, training_project_id: str, training_job_id: str
+        self,
+        *,
+        training_project_id: str,
+        training_job_id: str,
+        request: GetTrainingProjectsJobsCheckpointFilesRequest | None = None,
     ) -> GetTrainingJobCheckpointFilesResponse:
         """Gets training job checkpoint files"""
         return self._do_json(
@@ -1427,6 +1575,7 @@ class ApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}/checkpoint_files",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1443,6 +1592,7 @@ class ApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}/checkpoints",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1459,13 +1609,18 @@ class ApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}/download",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def get_training_projects_jobs_logs(
-        self, *, training_project_id: str, training_job_id: str
+        self,
+        *,
+        training_project_id: str,
+        training_job_id: str,
+        request: GetTrainingProjectsJobsLogsRequest | None = None,
     ) -> GetLogsResponse:
         """Gets the logs for a training job"""
         return self._do_json(
@@ -1475,13 +1630,18 @@ class ApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}/logs",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def get_training_projects_jobs_metrics(
-        self, *, training_project_id: str, training_job_id: str
+        self,
+        *,
+        training_project_id: str,
+        training_job_id: str,
+        request: GetTrainingProjectsJobsMetricsRequest | None = None,
     ) -> GetTrainingJobMetricsResponse:
         """Gets the metrics for a training job"""
         return self._do_json(
@@ -1491,6 +1651,7 @@ class ApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}/metrics",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1507,6 +1668,7 @@ class ApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1523,12 +1685,13 @@ class ApiClient:
                 path_fmt="/v1/training_projects/{}",
                 path_args=[training_project_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def get_users(self) -> UsersResponse:
+    def get_users(self, *, request: GetUsersRequest | None = None) -> UsersResponse:
         """Lists users in the workspace"""
         return self._do_json(
             UsersResponse,
@@ -1537,6 +1700,7 @@ class ApiClient:
                 path_fmt="/v1/users",
                 path_args=[],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1551,6 +1715,7 @@ class ApiClient:
                 path_fmt="/v1/users/me",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1565,13 +1730,14 @@ class ApiClient:
                 path_fmt="/v1/users/{}",
                 path_args=[user_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def patch_chains_environments(
-        self, *, chain_id: str, env_name: str, body: UpdateChainEnvironmentRequest
+        self, *, chain_id: str, env_name: str, request: UpdateChainEnvironmentRequest
     ) -> UpdateChainEnvironmentResponse:
         """Updates a chain environment's settings"""
         return self._do_json(
@@ -1580,7 +1746,8 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/chains/{}/environments/{}",
                 path_args=[chain_id, env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1591,7 +1758,7 @@ class ApiClient:
         *,
         chain_id: str,
         env_name: str,
-        body: UpdateChainletEnvironmentAutoscalingSettingsRequest,
+        request: UpdateChainletEnvironmentAutoscalingSettingsRequest,
     ) -> UpdateAutoscalingSettingsResponse:
         """Updates a chainlet environment's autoscaling settings"""
         return self._do_json(
@@ -1600,14 +1767,15 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/chains/{}/environments/{}/chainlet_settings/autoscaling_settings",
                 path_args=[chain_id, env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def patch_environment_groups(
-        self, *, env_name: str, body: UpdateEnvironmentGroupRequest
+        self, *, env_name: str, request: UpdateEnvironmentGroupRequest
     ) -> EnvironmentGroup:
         """Updates an environment group's restriction settings"""
         return self._do_json(
@@ -1616,14 +1784,15 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/environment_groups/{}",
                 path_args=[env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def patch_gateway_endpoints(
-        self, *, endpoint_id: str, body: UpdateEndpointRequest
+        self, *, endpoint_id: str, request: UpdateEndpointRequest
     ) -> Endpoint:
         """Updates a Gateway endpoint"""
         return self._do_json(
@@ -1632,13 +1801,16 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/gateway/endpoints/{}",
                 path_args=[endpoint_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def patch_gateway_groups(self, *, group_id: str, body: UpdateGroupRequest) -> Group:
+    def patch_gateway_groups(
+        self, *, group_id: str, request: UpdateGroupRequest
+    ) -> Group:
         """Updates a group"""
         return self._do_json(
             Group,
@@ -1646,14 +1818,15 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/gateway/groups/{}",
                 path_args=[group_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def patch_library_listings(
-        self, *, user_defined_listing_id: str, body: UpdateLibraryListingRequest
+        self, *, user_defined_listing_id: str, request: UpdateLibraryListingRequest
     ) -> LibraryListing:
         """Updates a library listing"""
         return self._do_json(
@@ -1662,7 +1835,8 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/library_listings/{}",
                 path_args=[user_defined_listing_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1673,7 +1847,7 @@ class ApiClient:
         *,
         user_defined_listing_id: str,
         version_tag: str,
-        body: UpdateLibraryListingVersionRequest,
+        request: UpdateLibraryListingVersionRequest,
     ) -> LibraryListingVersion:
         """Updates a library listing version"""
         return self._do_json(
@@ -1682,14 +1856,15 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/library_listings/{}/versions/{}",
                 path_args=[user_defined_listing_id, version_tag],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def patch_loops_user_config(
-        self, *, body: PatchLoopsUserConfigRequest
+        self, *, request: PatchLoopsUserConfigRequest
     ) -> PatchLoopsUserConfigResponse:
         """Patches the caller's Loops user config"""
         return self._do_json(
@@ -1698,14 +1873,15 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/loops/user_config",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def patch_models_deployments_autoscaling_settings(
-        self, *, model_id: str, deployment_id: str, body: UpdateAutoscalingSettings
+        self, *, model_id: str, deployment_id: str, request: UpdateAutoscalingSettings
     ) -> UpdateAutoscalingSettingsResponse:
         """Updates a deployment's autoscaling settings"""
         return self._do_json(
@@ -1714,14 +1890,15 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/models/{}/deployments/{}/autoscaling_settings",
                 path_args=[model_id, deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def patch_models_deployments_development_autoscaling_settings(
-        self, *, model_id: str, body: UpdateAutoscalingSettings
+        self, *, model_id: str, request: UpdateAutoscalingSettings
     ) -> UpdateAutoscalingSettingsResponse:
         """Updates a development deployment's autoscaling settings"""
         return self._do_json(
@@ -1730,14 +1907,15 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/models/{}/deployments/development/autoscaling_settings",
                 path_args=[model_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def patch_models_deployments_production_autoscaling_settings(
-        self, *, model_id: str, body: UpdateAutoscalingSettings
+        self, *, model_id: str, request: UpdateAutoscalingSettings
     ) -> UpdateAutoscalingSettingsResponse:
         """Updates a production deployment's autoscaling settings"""
         return self._do_json(
@@ -1746,14 +1924,15 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/models/{}/deployments/production/autoscaling_settings",
                 path_args=[model_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def patch_models_environments(
-        self, *, model_id: str, env_name: str, body: UpdateEnvironmentRequest
+        self, *, model_id: str, env_name: str, request: UpdateEnvironmentRequest
     ) -> UpdateAutoscalingSettingsResponse:
         """Updates an environment's settings"""
         return self._do_json(
@@ -1762,14 +1941,15 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/models/{}/environments/{}",
                 path_args=[model_id, env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def patch_teams_environment_groups(
-        self, *, team_id: str, env_name: str, body: UpdateEnvironmentGroupRequest
+        self, *, team_id: str, env_name: str, request: UpdateEnvironmentGroupRequest
     ) -> EnvironmentGroup:
         """Updates an environment group's restriction settings"""
         return self._do_json(
@@ -1778,14 +1958,15 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/teams/{}/environment_groups/{}",
                 path_args=[team_id, env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def patch_training_capacity(
-        self, *, body: PatchTeamTrainingGpuCapacityRequest
+        self, *, request: PatchTeamTrainingGpuCapacityRequest
     ) -> PatchTeamTrainingGpuCapacityResponse:
         """Sets a team's training GPU capacity"""
         return self._do_json(
@@ -1794,7 +1975,8 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/training/capacity",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1805,7 +1987,7 @@ class ApiClient:
         *,
         training_project_id: str,
         training_job_id: str,
-        body: UpdateTrainingJobRequest,
+        request: UpdateTrainingJobRequest,
     ) -> UpdateTrainingJobResponse:
         """Updates a training job"""
         return self._do_json(
@@ -1814,7 +1996,8 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/training_projects/{}/jobs/{}",
                 path_args=[training_project_id, training_job_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1826,7 +2009,7 @@ class ApiClient:
         training_project_id: str,
         training_job_id: str,
         session_id: str,
-        body: PatchInteractiveSessionRequest,
+        request: PatchInteractiveSessionRequest,
     ) -> PatchInteractiveSessionResponse:
         """Patches an interactive session"""
         return self._do_json(
@@ -1835,13 +2018,14 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/training_projects/{}/jobs/{}/interactive_sessions/{}",
                 path_args=[training_project_id, training_job_id, session_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def post_api_keys(self, *, body: CreateAPIKeyRequest) -> APIKey:
+    def post_api_keys(self, *, request: CreateAPIKeyRequest) -> APIKey:
         """Creates an API key"""
         return self._do_json(
             APIKey,
@@ -1849,7 +2033,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/api_keys",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1866,13 +2051,14 @@ class ApiClient:
                 path_fmt="/v1/chains/{}/deployments/{}/deactivate",
                 path_args=[chain_id, chain_deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_chains_environments(
-        self, *, chain_id: str, body: CreateChainEnvironmentRequest
+        self, *, chain_id: str, request: CreateChainEnvironmentRequest
     ) -> ChainEnvironment:
         """Creates a chain environment"""
         return self._do_json(
@@ -1881,7 +2067,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/chains/{}/environments",
                 path_args=[chain_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1892,7 +2079,7 @@ class ApiClient:
         *,
         chain_id: str,
         env_name: str,
-        body: UpdateChainletEnvironmentInstanceTypeRequest,
+        request: UpdateChainletEnvironmentInstanceTypeRequest,
     ) -> UpdateChainletEnvironmentInstanceTypeResponse:
         """Updates a chainlet environment's instance type settings"""
         return self._do_json(
@@ -1901,14 +2088,15 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/chains/{}/environments/{}/chainlet_settings/instance_types/update",
                 path_args=[chain_id, env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_chains_environments_promote(
-        self, *, chain_id: str, env_name: str, body: PromoteToChainEnvironmentRequest
+        self, *, chain_id: str, env_name: str, request: PromoteToChainEnvironmentRequest
     ) -> ChainDeployment:
         """Promotes a chain deployment to an environment"""
         return self._do_json(
@@ -1917,13 +2105,14 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/chains/{}/environments/{}/promote",
                 path_args=[chain_id, env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def post_gateway_endpoints(self, *, body: CreateEndpointRequest) -> Endpoint:
+    def post_gateway_endpoints(self, *, request: CreateEndpointRequest) -> Endpoint:
         """Creates a Gateway endpoint"""
         return self._do_json(
             Endpoint,
@@ -1931,13 +2120,14 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/gateway/endpoints",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def post_gateway_groups(self, *, body: CreateGroupRequest) -> Group:
+    def post_gateway_groups(self, *, request: CreateGroupRequest) -> Group:
         """Creates a group"""
         return self._do_json(
             Group,
@@ -1945,14 +2135,15 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/gateway/groups",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_gateway_groups_api_keys(
-        self, *, group_id: str, body: CreateApiKeyForGroupRequest
+        self, *, group_id: str, request: CreateApiKeyForGroupRequest
     ) -> CreateApiKeyForGroupResponse:
         """Creates an API key for a group"""
         return self._do_json(
@@ -1961,14 +2152,15 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/gateway/groups/{}/api_keys",
                 path_args=[group_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_gateway_groups_api_keys_register(
-        self, *, group_id: str, body: RegisterAPIKeyRequest
+        self, *, group_id: str, request: RegisterAPIKeyRequest
     ) -> RegisterAPIKeyResponse:
         """Registers an API key for a group"""
         return self._do_json(
@@ -1977,14 +2169,15 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/gateway/groups/{}/api_keys/register",
                 path_args=[group_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_library_listings(
-        self, *, body: CreateLibraryListingRequest
+        self, *, request: CreateLibraryListingRequest
     ) -> LibraryListing:
         """Creates a new library listing"""
         return self._do_json(
@@ -1993,14 +2186,18 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/library_listings",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_library_listings_versions(
-        self, *, user_defined_listing_id: str, body: CreateLibraryListingVersionRequest
+        self,
+        *,
+        user_defined_listing_id: str,
+        request: CreateLibraryListingVersionRequest,
     ) -> LibraryListingVersion:
         """Creates a new library listing version"""
         return self._do_json(
@@ -2009,13 +2206,14 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/library_listings/{}/versions",
                 path_args=[user_defined_listing_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def post_llm_models(self, *, body: CreateLLMModelRequest) -> LLMModelHandle:
+    def post_llm_models(self, *, request: CreateLLMModelRequest) -> LLMModelHandle:
         """Creates a new BIS-LLM deployment"""
         return self._do_json(
             LLMModelHandle,
@@ -2023,14 +2221,15 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/llm_models",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_llm_models_deployments(
-        self, *, model_id: str, body: CreateLLMModelVersionRequest
+        self, *, model_id: str, request: CreateLLMModelVersionRequest
     ) -> LLMModelHandle:
         """Creates a new BIS-LLM deployment version"""
         return self._do_json(
@@ -2039,14 +2238,15 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/llm_models/{}/deployments",
                 path_args=[model_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_loops_checkpoints_validate(
-        self, *, body: ValidateLoopsCheckpointRequest
+        self, *, request: ValidateLoopsCheckpointRequest
     ) -> ValidateLoopsCheckpointResponse:
         """Validates a Loops checkpoint bt:// URI"""
         return self._do_json(
@@ -2055,7 +2255,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/loops/checkpoints/validate",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2072,13 +2273,14 @@ class ApiClient:
                 path_fmt="/v1/loops/deployments/{}/deactivate",
                 path_args=[deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_loops_deployments_metrics(
-        self, *, deployment_id: str, body: GetLoopsDeploymentMetricsRequest
+        self, *, deployment_id: str, request: GetLoopsDeploymentMetricsRequest
     ) -> GetLoopsDeploymentMetricsResponse:
         """Gets metrics for a Loops trainer deployment"""
         return self._do_json(
@@ -2087,13 +2289,16 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/loops/deployments/{}/metrics",
                 path_args=[deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def post_loops_runs(self, *, body: CreateLoopsRunRequest) -> CreateLoopsRunResponse:
+    def post_loops_runs(
+        self, *, request: CreateLoopsRunRequest
+    ) -> CreateLoopsRunResponse:
         """Creates a Loops run"""
         return self._do_json(
             CreateLoopsRunResponse,
@@ -2101,14 +2306,15 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/loops/runs",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_loops_samplers(
-        self, *, body: CreateLoopsSamplerRequest
+        self, *, request: CreateLoopsSamplerRequest
     ) -> CreateLoopsSamplerResponse:
         """Creates a Loops sampler"""
         return self._do_json(
@@ -2117,7 +2323,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/loops/samplers",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2132,13 +2339,14 @@ class ApiClient:
                 path_fmt="/v1/loops/sessions",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_model_apis_snapshots(
-        self, *, body: CreateModelWeightSnapshotRequest
+        self, *, request: CreateModelWeightSnapshotRequest
     ) -> ModelWeightSnapshot:
         """Creates a model weight snapshot"""
         return self._do_json(
@@ -2147,14 +2355,15 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/model_apis/snapshots",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_model_apis_snapshots_model_id(
-        self, *, model_id: str, body: CreateModelWeightSnapshotRequest
+        self, *, model_id: str, request: CreateModelWeightSnapshotRequest
     ) -> ModelWeightSnapshot:
         """Creates a model weight snapshot"""
         return self._do_json(
@@ -2163,13 +2372,14 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/model_apis/snapshots/{}",
                 path_args=[model_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def post_models(self, *, body: CreateModelRequest) -> CreatedModelDeployment:
+    def post_models(self, *, request: CreateModelRequest) -> CreatedModelDeployment:
         """Creates a new model from a source"""
         return self._do_json(
             CreatedModelDeployment,
@@ -2177,14 +2387,15 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/models",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_models_deployments(
-        self, *, model_id: str, body: CreateModelDeploymentRequest
+        self, *, model_id: str, request: CreateModelDeploymentRequest
     ) -> CreatedModelDeployment:
         """Adds a new deployment to a model"""
         return self._do_json(
@@ -2193,7 +2404,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/deployments",
                 path_args=[model_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2210,6 +2422,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/activate",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2226,6 +2439,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/deactivate",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2242,6 +2456,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/development/activate",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2258,13 +2473,14 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/development/deactivate",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_models_deployments_development_promote(
-        self, *, model_id: str, body: PromoteRequest
+        self, *, model_id: str, request: PromoteRequest
     ) -> Deployment:
         """Promotes a development deployment to production"""
         return self._do_json(
@@ -2273,7 +2489,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/deployments/development/promote",
                 path_args=[model_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2290,13 +2507,14 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/development/retry",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_models_deployments_logs(
-        self, *, model_id: str, deployment_id: str, body: GetDeploymentLogsRequest
+        self, *, model_id: str, deployment_id: str, request: GetDeploymentLogsRequest
     ) -> GetLogsResponse:
         """Gets the logs for a model deployment (deprecated; use GET)"""
         return self._do_json(
@@ -2305,14 +2523,19 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/deployments/{}/logs",
                 path_args=[model_id, deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_models_deployments_patches(
-        self, *, model_id: str, deployment_id: str, body: CreateDeploymentPatchRequest
+        self,
+        *,
+        model_id: str,
+        deployment_id: str,
+        request: CreateDeploymentPatchRequest,
     ) -> CreateDeploymentPatchResponse:
         """Stages a patch against a development deployment"""
         return self._do_json(
@@ -2321,14 +2544,19 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/deployments/{}/patches",
                 path_args=[model_id, deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_models_deployments_patches_sync(
-        self, *, model_id: str, deployment_id: str, body: SyncDeploymentPatchesRequest
+        self,
+        *,
+        model_id: str,
+        deployment_id: str,
+        request: SyncDeploymentPatchesRequest,
     ) -> SyncDeploymentPatchesResponse:
         """Syncs staged patches to a development deployment"""
         return self._do_json(
@@ -2337,7 +2565,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/deployments/{}/patches/sync",
                 path_args=[model_id, deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2354,6 +2583,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/production/activate",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2370,6 +2600,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/production/deactivate",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2386,13 +2617,14 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/production/retry",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_models_deployments_promote(
-        self, *, model_id: str, deployment_id: str, body: PromoteRequest
+        self, *, model_id: str, deployment_id: str, request: PromoteRequest
     ) -> Deployment:
         """Promotes a deployment to production"""
         return self._do_json(
@@ -2401,7 +2633,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/deployments/{}/promote",
                 path_args=[model_id, deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2418,13 +2651,14 @@ class ApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/retry",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_models_deployments_ssh_sign(
-        self, *, model_id: str, deployment_id: str, body: SignSSHCertificateRequest
+        self, *, model_id: str, deployment_id: str, request: SignSSHCertificateRequest
     ) -> SignSSHCertificateResponse:
         """Signs an SSH certificate for an inference model"""
         return self._do_json(
@@ -2433,14 +2667,15 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/deployments/{}/ssh/sign",
                 path_args=[model_id, deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_models_environments(
-        self, *, model_id: str, body: CreateEnvironmentRequest
+        self, *, model_id: str, request: CreateEnvironmentRequest
     ) -> Environment:
         """Creates an environment"""
         return self._do_json(
@@ -2449,7 +2684,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/environments",
                 path_args=[model_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2466,6 +2702,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/environments/{}/activate",
                 path_args=[model_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2482,6 +2719,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/environments/{}/cancel_promotion",
                 path_args=[model_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2498,6 +2736,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/environments/{}/deactivate",
                 path_args=[model_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2514,6 +2753,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/environments/{}/force_cancel_promotion",
                 path_args=[model_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2530,6 +2770,7 @@ class ApiClient:
                 path_fmt="/v1/models/{}/environments/{}/force_roll_forward_promotion",
                 path_args=[model_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2546,13 +2787,14 @@ class ApiClient:
                 path_fmt="/v1/models/{}/environments/{}/pause_promotion",
                 path_args=[model_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_models_environments_promote(
-        self, *, model_id: str, env_name: str, body: PromoteToEnvironmentRequest
+        self, *, model_id: str, env_name: str, request: PromoteToEnvironmentRequest
     ) -> Deployment:
         """Promotes a deployment to an environment"""
         return self._do_json(
@@ -2561,7 +2803,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/environments/{}/promote",
                 path_args=[model_id, env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2578,13 +2821,14 @@ class ApiClient:
                 path_fmt="/v1/models/{}/environments/{}/resume_promotion",
                 path_args=[model_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_prepare_model_upload(
-        self, *, body: PrepareModelUploadRequest
+        self, *, request: PrepareModelUploadRequest
     ) -> PrepareModelUploadResponse:
         """Validates a model push payload and issues upload credentials"""
         return self._do_json(
@@ -2593,13 +2837,14 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/prepare_model_upload",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def post_secrets(self, *, body: UpsertSecretRequest) -> Secret:
+    def post_secrets(self, *, request: UpsertSecretRequest) -> Secret:
         """Upserts a secret"""
         return self._do_json(
             Secret,
@@ -2607,13 +2852,16 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/secrets",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def post_teams_api_keys(self, *, team_id: str, body: CreateAPIKeyRequest) -> APIKey:
+    def post_teams_api_keys(
+        self, *, team_id: str, request: CreateAPIKeyRequest
+    ) -> APIKey:
         """Creates a team API key"""
         return self._do_json(
             APIKey,
@@ -2621,14 +2869,15 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/teams/{}/api_keys",
                 path_args=[team_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_teams_llm_models(
-        self, *, team_id: str, body: CreateLLMModelRequest
+        self, *, team_id: str, request: CreateLLMModelRequest
     ) -> LLMModelHandle:
         """Creates a new BIS-LLM deployment"""
         return self._do_json(
@@ -2637,14 +2886,15 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/teams/{}/llm_models",
                 path_args=[team_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_teams_models(
-        self, *, team_id: str, body: CreateModelRequest
+        self, *, team_id: str, request: CreateModelRequest
     ) -> CreatedModelDeployment:
         """Creates a new model from a source"""
         return self._do_json(
@@ -2653,13 +2903,16 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/teams/{}/models",
                 path_args=[team_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def post_teams_secrets(self, *, team_id: str, body: UpsertSecretRequest) -> Secret:
+    def post_teams_secrets(
+        self, *, team_id: str, request: UpsertSecretRequest
+    ) -> Secret:
         """Upserts a secret in a team"""
         return self._do_json(
             Secret,
@@ -2667,14 +2920,15 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/teams/{}/secrets",
                 path_args=[team_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_teams_training_projects(
-        self, *, team_id: str, body: UpsertTrainingProjectRequest
+        self, *, team_id: str, request: UpsertTrainingProjectRequest
     ) -> UpsertTrainingProjectResponse:
         """Upserts a training project in a specific team"""
         return self._do_json(
@@ -2683,14 +2937,15 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/teams/{}/training_projects",
                 path_args=[team_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_training_jobs_search(
-        self, *, body: SearchTrainingJobsRequest
+        self, *, request: SearchTrainingJobsRequest
     ) -> SearchTrainingJobsResponse:
         """Searches training jobs"""
         return self._do_json(
@@ -2699,14 +2954,15 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/training_jobs/search",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_training_projects(
-        self, *, body: UpsertTrainingProjectRequest
+        self, *, request: UpsertTrainingProjectRequest
     ) -> UpsertTrainingProjectResponse:
         """Upserts a training project"""
         return self._do_json(
@@ -2715,14 +2971,15 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/training_projects",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     def post_training_projects_jobs(
-        self, *, training_project_id: str, body: CreateTrainingJobRequest
+        self, *, training_project_id: str, request: CreateTrainingJobRequest
     ) -> CreateTrainingJobResponse:
         """Creates a training job"""
         return self._do_json(
@@ -2731,7 +2988,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/training_projects/{}/jobs",
                 path_args=[training_project_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2742,7 +3000,7 @@ class ApiClient:
         *,
         training_project_id: str,
         training_job_id: str,
-        body: GetTrainingJobLogsRequest,
+        request: GetTrainingJobLogsRequest,
     ) -> GetLogsResponse:
         """Gets the logs for a training job (deprecated; use GET)"""
         return self._do_json(
@@ -2751,7 +3009,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/training_projects/{}/jobs/{}/logs",
                 path_args=[training_project_id, training_job_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2762,7 +3021,7 @@ class ApiClient:
         *,
         training_project_id: str,
         training_job_id: str,
-        body: GetTrainingJobMetricsRequest,
+        request: GetTrainingJobMetricsRequest,
     ) -> GetTrainingJobMetricsResponse:
         """Gets the metrics for a training job (deprecated; use GET)"""
         return self._do_json(
@@ -2771,7 +3030,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/training_projects/{}/jobs/{}/metrics",
                 path_args=[training_project_id, training_job_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2788,6 +3048,7 @@ class ApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}/recreate",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2798,7 +3059,7 @@ class ApiClient:
         *,
         training_project_id: str,
         training_job_id: str,
-        body: SignSSHCertificateRequest,
+        request: SignSSHCertificateRequest,
     ) -> SignSSHCertificateResponse:
         """Signs an SSH certificate for a training job"""
         return self._do_json(
@@ -2807,7 +3068,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/training_projects/{}/jobs/{}/ssh/sign",
                 path_args=[training_project_id, training_job_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2818,7 +3080,7 @@ class ApiClient:
         *,
         training_project_id: str,
         training_job_id: str,
-        body: StopTrainingJobRequest,
+        request: StopTrainingJobRequest,
     ) -> StopTrainingJobResponse:
         """Stops a training job"""
         return self._do_json(
@@ -2827,7 +3089,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/training_projects/{}/jobs/{}/stop",
                 path_args=[training_project_id, training_job_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2840,10 +3103,25 @@ class ApiClient:
         json_body = None
         if request.body is not None:
             if isinstance(request.body, BaseModel):
-                json_body = request.body.model_dump(mode="json")
+                # Only fields the caller set are sent, so unset fields fall
+                # back to the server default rather than being reset here.
+                # An explicit None is kept, since null can mean "clear".
+                json_body = request.body.model_dump(mode="json", exclude_unset=True)
             else:
                 json_body = request.body
-        response = self._http_client.request(request.method, path, json=json_body)
+        params = None
+        if request.query is not None:
+            if isinstance(request.query, BaseModel):
+                # As above, plus dropping None: a null query parameter is
+                # meaningless and would otherwise serialize as an empty string.
+                params = request.query.model_dump(
+                    mode="json", exclude_unset=True, exclude_none=True
+                )
+            else:
+                params = request.query
+        response = self._http_client.request(
+            request.method, path, json=json_body, params=params
+        )
         if response.status_code != request.success_code:
             raise ResponseError(status_code=response.status_code, body=response.text)
         return response
@@ -2879,6 +3157,7 @@ class AsyncApiClient:
                 path_fmt="/v1/api_keys/{}",
                 path_args=[api_key_prefix],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2893,6 +3172,7 @@ class AsyncApiClient:
                 path_fmt="/v1/chains/{}",
                 path_args=[chain_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2909,6 +3189,7 @@ class AsyncApiClient:
                 path_fmt="/v1/chains/{}/deployments/{}",
                 path_args=[chain_id, chain_deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2923,6 +3204,7 @@ class AsyncApiClient:
                 path_fmt="/v1/gateway/endpoints/{}",
                 path_args=[endpoint_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2939,6 +3221,7 @@ class AsyncApiClient:
                 path_fmt="/v1/library_listings/{}",
                 path_args=[user_defined_listing_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2955,6 +3238,7 @@ class AsyncApiClient:
                 path_fmt="/v1/library_listings/{}/versions/{}",
                 path_args=[user_defined_listing_id, version_tag],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2969,6 +3253,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -2985,6 +3270,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/{}",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3001,6 +3287,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/replicas/{}",
                 path_args=[model_id, deployment_id, replica_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3015,6 +3302,7 @@ class AsyncApiClient:
                 path_fmt="/v1/secrets/{}",
                 path_args=[secret_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3031,6 +3319,7 @@ class AsyncApiClient:
                 path_fmt="/v1/teams/{}/secrets/{}",
                 path_args=[team_id, secret_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3047,6 +3336,7 @@ class AsyncApiClient:
                 path_fmt="/v1/training_projects/{}",
                 path_args=[training_project_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3063,6 +3353,7 @@ class AsyncApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3077,12 +3368,15 @@ class AsyncApiClient:
                 path_fmt="/v1/api_keys",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    async def get_billing_usage_summary(self) -> UsageSummary:
+    async def get_billing_usage_summary(
+        self, *, request: GetBillingUsageSummaryRequest
+    ) -> UsageSummary:
         """Gets billing usage summary for a date range"""
         return await self._do_json(
             UsageSummary,
@@ -3091,6 +3385,7 @@ class AsyncApiClient:
                 path_fmt="/v1/billing/usage_summary",
                 path_args=[],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3105,6 +3400,7 @@ class AsyncApiClient:
                 path_fmt="/v1/blobs/credentials/model",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3119,6 +3415,7 @@ class AsyncApiClient:
                 path_fmt="/v1/blobs/credentials/train",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3133,6 +3430,7 @@ class AsyncApiClient:
                 path_fmt="/v1/chains",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3147,6 +3445,7 @@ class AsyncApiClient:
                 path_fmt="/v1/chains/{}",
                 path_args=[chain_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3161,6 +3460,7 @@ class AsyncApiClient:
                 path_fmt="/v1/chains/{}/deployments",
                 path_args=[chain_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3177,13 +3477,19 @@ class AsyncApiClient:
                 path_fmt="/v1/chains/{}/deployments/{}",
                 path_args=[chain_id, chain_deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def get_chains_deployments_chainlets_logs(
-        self, *, chain_id: str, chain_deployment_id: str, chainlet_id: str
+        self,
+        *,
+        chain_id: str,
+        chain_deployment_id: str,
+        chainlet_id: str,
+        request: GetChainsDeploymentsChainletsLogsRequest | None = None,
     ) -> GetLogsResponse:
         """Gets the logs for a chainlet within a chain deployment"""
         return await self._do_json(
@@ -3193,6 +3499,7 @@ class AsyncApiClient:
                 path_fmt="/v1/chains/{}/deployments/{}/chainlets/{}/logs",
                 path_args=[chain_id, chain_deployment_id, chainlet_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3207,6 +3514,7 @@ class AsyncApiClient:
                 path_fmt="/v1/chains/{}/environments",
                 path_args=[chain_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3223,6 +3531,7 @@ class AsyncApiClient:
                 path_fmt="/v1/chains/{}/environments/{}",
                 path_args=[chain_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3237,6 +3546,7 @@ class AsyncApiClient:
                 path_fmt="/v1/environment_groups",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3253,6 +3563,7 @@ class AsyncApiClient:
                 path_fmt="/v1/environment_groups/{}",
                 path_args=[env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3267,6 +3578,7 @@ class AsyncApiClient:
                 path_fmt="/v1/gateway/endpoints",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3281,6 +3593,7 @@ class AsyncApiClient:
                 path_fmt="/v1/gateway/endpoints/{}",
                 path_args=[endpoint_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3295,6 +3608,7 @@ class AsyncApiClient:
                 path_fmt="/v1/gateway/groups",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3311,6 +3625,7 @@ class AsyncApiClient:
                 path_fmt="/v1/gateway/groups/{}/api_keys",
                 path_args=[group_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3327,6 +3642,7 @@ class AsyncApiClient:
                 path_fmt="/v1/gateway/groups/{}/api_keys/{}",
                 path_args=[group_id, api_key_prefix],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3341,6 +3657,7 @@ class AsyncApiClient:
                 path_fmt="/v1/gateway/groups/{}",
                 path_args=[group_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3355,6 +3672,7 @@ class AsyncApiClient:
                 path_fmt="/v1/instance_type_prices",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3369,6 +3687,7 @@ class AsyncApiClient:
                 path_fmt="/v1/instance_types",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3383,6 +3702,7 @@ class AsyncApiClient:
                 path_fmt="/v1/library_listings",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3399,6 +3719,7 @@ class AsyncApiClient:
                 path_fmt="/v1/library_listings/{}",
                 path_args=[user_defined_listing_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3415,6 +3736,7 @@ class AsyncApiClient:
                 path_fmt="/v1/library_listings/{}/versions",
                 path_args=[user_defined_listing_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3431,6 +3753,7 @@ class AsyncApiClient:
                 path_fmt="/v1/library_listings/{}/versions/{}",
                 path_args=[user_defined_listing_id, version_tag],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3445,12 +3768,15 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/capabilities",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    async def get_loops_checkpoints(self) -> ListLoopsCheckpointsResponse:
+    async def get_loops_checkpoints(
+        self, *, request: GetLoopsCheckpointsRequest | None = None
+    ) -> ListLoopsCheckpointsResponse:
         """Lists Loops checkpoints"""
         return await self._do_json(
             ListLoopsCheckpointsResponse,
@@ -3459,6 +3785,7 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/checkpoints",
                 path_args=[],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3475,6 +3802,7 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/checkpoints/{}/files",
                 path_args=[checkpoint_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3489,6 +3817,7 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/deployments",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3505,13 +3834,17 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/deployments/{}",
                 path_args=[deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def get_loops_deployments_logs(
-        self, *, deployment_id: str
+        self,
+        *,
+        deployment_id: str,
+        request: GetLoopsDeploymentsLogsRequest | None = None,
     ) -> GetLogsResponse:
         """Gets logs for a Loops trainer deployment"""
         return await self._do_json(
@@ -3521,12 +3854,15 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/deployments/{}/logs",
                 path_args=[deployment_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    async def get_loops_runs(self) -> ListLoopsRunsResponse:
+    async def get_loops_runs(
+        self, *, request: GetLoopsRunsRequest | None = None
+    ) -> ListLoopsRunsResponse:
         """Lists Loops runs"""
         return await self._do_json(
             ListLoopsRunsResponse,
@@ -3535,6 +3871,7 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/runs",
                 path_args=[],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3549,6 +3886,7 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/runs/{}",
                 path_args=[run_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3563,6 +3901,7 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/samplers",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3579,6 +3918,7 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/samplers/{}",
                 path_args=[sampler_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3593,6 +3933,7 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/sessions/{}",
                 path_args=[session_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3607,12 +3948,15 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/user_config",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    async def get_model_apis(self) -> ModelAPIsResponse:
+    async def get_model_apis(
+        self, *, request: GetModelApisRequest | None = None
+    ) -> ModelAPIsResponse:
         """Lists Model APIs"""
         return await self._do_json(
             ModelAPIsResponse,
@@ -3621,6 +3965,7 @@ class AsyncApiClient:
                 path_fmt="/v1/model_apis",
                 path_args=[],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3635,6 +3980,7 @@ class AsyncApiClient:
                 path_fmt="/v1/model_apis/{}",
                 path_args=[model_api_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3649,6 +3995,7 @@ class AsyncApiClient:
                 path_fmt="/v1/model_apis/snapshots",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3665,12 +4012,13 @@ class AsyncApiClient:
                 path_fmt="/v1/model_apis/snapshots/{}",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    async def get_models(self) -> Models:
+    async def get_models(self, *, request: GetModelsRequest | None = None) -> Models:
         """Gets all models"""
         return await self._do_json(
             Models,
@@ -3679,12 +4027,15 @@ class AsyncApiClient:
                 path_fmt="/v1/models",
                 path_args=[],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    async def get_models_deployments(self, *, model_id: str) -> Deployments:
+    async def get_models_deployments(
+        self, *, model_id: str, request: GetModelsDeploymentsRequest | None = None
+    ) -> Deployments:
         """Gets all deployments of a model"""
         return await self._do_json(
             Deployments,
@@ -3693,13 +4044,18 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments",
                 path_args=[model_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def get_models_deployments_config(
-        self, *, model_id: str, deployment_id: str
+        self,
+        *,
+        model_id: str,
+        deployment_id: str,
+        request: GetModelsDeploymentsConfigRequest | None = None,
     ) -> DeploymentConfigResponse:
         """Gets a deployment's config"""
         return await self._do_json(
@@ -3709,6 +4065,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/config",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3725,6 +4082,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/{}",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3739,6 +4097,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/development",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3755,13 +4114,18 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/download",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def get_models_deployments_logs(
-        self, *, model_id: str, deployment_id: str
+        self,
+        *,
+        model_id: str,
+        deployment_id: str,
+        request: GetModelsDeploymentsLogsRequest | None = None,
     ) -> GetLogsResponse:
         """Gets the logs for a model deployment"""
         return await self._do_json(
@@ -3771,13 +4135,18 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/logs",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def get_models_deployments_metrics(
-        self, *, model_id: str, deployment_id: str
+        self,
+        *,
+        model_id: str,
+        deployment_id: str,
+        request: GetModelsDeploymentsMetricsRequest | None = None,
     ) -> GetModelMetricsResponse:
         """Gets the metrics for a model deployment"""
         return await self._do_json(
@@ -3787,6 +4156,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/metrics",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3803,6 +4173,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/patches/state",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3817,6 +4188,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/production",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3831,6 +4203,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/environments",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3847,13 +4220,18 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/environments/{}",
                 path_args=[model_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def get_models_environments_logs(
-        self, *, model_id: str, env_name: str
+        self,
+        *,
+        model_id: str,
+        env_name: str,
+        request: GetModelsEnvironmentsLogsRequest | None = None,
     ) -> GetLogsResponse:
         """Gets the logs for a model environment"""
         return await self._do_json(
@@ -3863,13 +4241,18 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/environments/{}/logs",
                 path_args=[model_id, env_name],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def get_models_environments_metrics(
-        self, *, model_id: str, env_name: str
+        self,
+        *,
+        model_id: str,
+        env_name: str,
+        request: GetModelsEnvironmentsMetricsRequest | None = None,
     ) -> GetModelMetricsResponse:
         """Gets the metrics for a model environment."""
         return await self._do_json(
@@ -3879,6 +4262,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/environments/{}/metrics",
                 path_args=[model_id, env_name],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3893,6 +4277,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3907,12 +4292,13 @@ class AsyncApiClient:
                 path_fmt="/v1/secrets",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    async def get_teams(self) -> Teams:
+    async def get_teams(self, *, request: GetTeamsRequest | None = None) -> Teams:
         """Lists all teams"""
         return await self._do_json(
             Teams,
@@ -3921,6 +4307,7 @@ class AsyncApiClient:
                 path_fmt="/v1/teams",
                 path_args=[],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3935,6 +4322,7 @@ class AsyncApiClient:
                 path_fmt="/v1/teams/{}/environment_groups",
                 path_args=[team_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3951,12 +4339,15 @@ class AsyncApiClient:
                 path_fmt="/v1/teams/{}/environment_groups/{}",
                 path_args=[team_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    async def get_teams_models(self, *, team_id: str) -> Models:
+    async def get_teams_models(
+        self, *, team_id: str, request: GetTeamsModelsRequest | None = None
+    ) -> Models:
         """Gets all models"""
         return await self._do_json(
             Models,
@@ -3965,6 +4356,7 @@ class AsyncApiClient:
                 path_fmt="/v1/teams/{}/models",
                 path_args=[team_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3979,6 +4371,7 @@ class AsyncApiClient:
                 path_fmt="/v1/teams/{}/secrets",
                 path_args=[team_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3993,6 +4386,7 @@ class AsyncApiClient:
                 path_fmt="/v1/teams/{}",
                 path_args=[team_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4007,6 +4401,7 @@ class AsyncApiClient:
                 path_fmt="/v1/training/capacity",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4023,6 +4418,7 @@ class AsyncApiClient:
                 path_fmt="/v1/training/jobs/{}/queue_context",
                 path_args=[training_job_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4037,6 +4433,7 @@ class AsyncApiClient:
                 path_fmt="/v1/training_projects",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4053,6 +4450,7 @@ class AsyncApiClient:
                 path_fmt="/v1/training_projects/{}/cache/summary",
                 path_args=[training_project_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4069,6 +4467,7 @@ class AsyncApiClient:
                 path_fmt="/v1/training_projects/{}/jobs",
                 path_args=[training_project_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4085,13 +4484,18 @@ class AsyncApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}/auth_codes",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def get_training_projects_jobs_checkpoint_files(
-        self, *, training_project_id: str, training_job_id: str
+        self,
+        *,
+        training_project_id: str,
+        training_job_id: str,
+        request: GetTrainingProjectsJobsCheckpointFilesRequest | None = None,
     ) -> GetTrainingJobCheckpointFilesResponse:
         """Gets training job checkpoint files"""
         return await self._do_json(
@@ -4101,6 +4505,7 @@ class AsyncApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}/checkpoint_files",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4117,6 +4522,7 @@ class AsyncApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}/checkpoints",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4133,13 +4539,18 @@ class AsyncApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}/download",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def get_training_projects_jobs_logs(
-        self, *, training_project_id: str, training_job_id: str
+        self,
+        *,
+        training_project_id: str,
+        training_job_id: str,
+        request: GetTrainingProjectsJobsLogsRequest | None = None,
     ) -> GetLogsResponse:
         """Gets the logs for a training job"""
         return await self._do_json(
@@ -4149,13 +4560,18 @@ class AsyncApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}/logs",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def get_training_projects_jobs_metrics(
-        self, *, training_project_id: str, training_job_id: str
+        self,
+        *,
+        training_project_id: str,
+        training_job_id: str,
+        request: GetTrainingProjectsJobsMetricsRequest | None = None,
     ) -> GetTrainingJobMetricsResponse:
         """Gets the metrics for a training job"""
         return await self._do_json(
@@ -4165,6 +4581,7 @@ class AsyncApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}/metrics",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4181,6 +4598,7 @@ class AsyncApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4197,12 +4615,15 @@ class AsyncApiClient:
                 path_fmt="/v1/training_projects/{}",
                 path_args=[training_project_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    async def get_users(self) -> UsersResponse:
+    async def get_users(
+        self, *, request: GetUsersRequest | None = None
+    ) -> UsersResponse:
         """Lists users in the workspace"""
         return await self._do_json(
             UsersResponse,
@@ -4211,6 +4632,7 @@ class AsyncApiClient:
                 path_fmt="/v1/users",
                 path_args=[],
                 body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4225,6 +4647,7 @@ class AsyncApiClient:
                 path_fmt="/v1/users/me",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4239,13 +4662,14 @@ class AsyncApiClient:
                 path_fmt="/v1/users/{}",
                 path_args=[user_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def patch_chains_environments(
-        self, *, chain_id: str, env_name: str, body: UpdateChainEnvironmentRequest
+        self, *, chain_id: str, env_name: str, request: UpdateChainEnvironmentRequest
     ) -> UpdateChainEnvironmentResponse:
         """Updates a chain environment's settings"""
         return await self._do_json(
@@ -4254,7 +4678,8 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/chains/{}/environments/{}",
                 path_args=[chain_id, env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4265,7 +4690,7 @@ class AsyncApiClient:
         *,
         chain_id: str,
         env_name: str,
-        body: UpdateChainletEnvironmentAutoscalingSettingsRequest,
+        request: UpdateChainletEnvironmentAutoscalingSettingsRequest,
     ) -> UpdateAutoscalingSettingsResponse:
         """Updates a chainlet environment's autoscaling settings"""
         return await self._do_json(
@@ -4274,14 +4699,15 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/chains/{}/environments/{}/chainlet_settings/autoscaling_settings",
                 path_args=[chain_id, env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def patch_environment_groups(
-        self, *, env_name: str, body: UpdateEnvironmentGroupRequest
+        self, *, env_name: str, request: UpdateEnvironmentGroupRequest
     ) -> EnvironmentGroup:
         """Updates an environment group's restriction settings"""
         return await self._do_json(
@@ -4290,14 +4716,15 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/environment_groups/{}",
                 path_args=[env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def patch_gateway_endpoints(
-        self, *, endpoint_id: str, body: UpdateEndpointRequest
+        self, *, endpoint_id: str, request: UpdateEndpointRequest
     ) -> Endpoint:
         """Updates a Gateway endpoint"""
         return await self._do_json(
@@ -4306,14 +4733,15 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/gateway/endpoints/{}",
                 path_args=[endpoint_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def patch_gateway_groups(
-        self, *, group_id: str, body: UpdateGroupRequest
+        self, *, group_id: str, request: UpdateGroupRequest
     ) -> Group:
         """Updates a group"""
         return await self._do_json(
@@ -4322,14 +4750,15 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/gateway/groups/{}",
                 path_args=[group_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def patch_library_listings(
-        self, *, user_defined_listing_id: str, body: UpdateLibraryListingRequest
+        self, *, user_defined_listing_id: str, request: UpdateLibraryListingRequest
     ) -> LibraryListing:
         """Updates a library listing"""
         return await self._do_json(
@@ -4338,7 +4767,8 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/library_listings/{}",
                 path_args=[user_defined_listing_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4349,7 +4779,7 @@ class AsyncApiClient:
         *,
         user_defined_listing_id: str,
         version_tag: str,
-        body: UpdateLibraryListingVersionRequest,
+        request: UpdateLibraryListingVersionRequest,
     ) -> LibraryListingVersion:
         """Updates a library listing version"""
         return await self._do_json(
@@ -4358,14 +4788,15 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/library_listings/{}/versions/{}",
                 path_args=[user_defined_listing_id, version_tag],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def patch_loops_user_config(
-        self, *, body: PatchLoopsUserConfigRequest
+        self, *, request: PatchLoopsUserConfigRequest
     ) -> PatchLoopsUserConfigResponse:
         """Patches the caller's Loops user config"""
         return await self._do_json(
@@ -4374,14 +4805,15 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/loops/user_config",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def patch_models_deployments_autoscaling_settings(
-        self, *, model_id: str, deployment_id: str, body: UpdateAutoscalingSettings
+        self, *, model_id: str, deployment_id: str, request: UpdateAutoscalingSettings
     ) -> UpdateAutoscalingSettingsResponse:
         """Updates a deployment's autoscaling settings"""
         return await self._do_json(
@@ -4390,14 +4822,15 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/models/{}/deployments/{}/autoscaling_settings",
                 path_args=[model_id, deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def patch_models_deployments_development_autoscaling_settings(
-        self, *, model_id: str, body: UpdateAutoscalingSettings
+        self, *, model_id: str, request: UpdateAutoscalingSettings
     ) -> UpdateAutoscalingSettingsResponse:
         """Updates a development deployment's autoscaling settings"""
         return await self._do_json(
@@ -4406,14 +4839,15 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/models/{}/deployments/development/autoscaling_settings",
                 path_args=[model_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def patch_models_deployments_production_autoscaling_settings(
-        self, *, model_id: str, body: UpdateAutoscalingSettings
+        self, *, model_id: str, request: UpdateAutoscalingSettings
     ) -> UpdateAutoscalingSettingsResponse:
         """Updates a production deployment's autoscaling settings"""
         return await self._do_json(
@@ -4422,14 +4856,15 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/models/{}/deployments/production/autoscaling_settings",
                 path_args=[model_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def patch_models_environments(
-        self, *, model_id: str, env_name: str, body: UpdateEnvironmentRequest
+        self, *, model_id: str, env_name: str, request: UpdateEnvironmentRequest
     ) -> UpdateAutoscalingSettingsResponse:
         """Updates an environment's settings"""
         return await self._do_json(
@@ -4438,14 +4873,15 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/models/{}/environments/{}",
                 path_args=[model_id, env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def patch_teams_environment_groups(
-        self, *, team_id: str, env_name: str, body: UpdateEnvironmentGroupRequest
+        self, *, team_id: str, env_name: str, request: UpdateEnvironmentGroupRequest
     ) -> EnvironmentGroup:
         """Updates an environment group's restriction settings"""
         return await self._do_json(
@@ -4454,14 +4890,15 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/teams/{}/environment_groups/{}",
                 path_args=[team_id, env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def patch_training_capacity(
-        self, *, body: PatchTeamTrainingGpuCapacityRequest
+        self, *, request: PatchTeamTrainingGpuCapacityRequest
     ) -> PatchTeamTrainingGpuCapacityResponse:
         """Sets a team's training GPU capacity"""
         return await self._do_json(
@@ -4470,7 +4907,8 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/training/capacity",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4481,7 +4919,7 @@ class AsyncApiClient:
         *,
         training_project_id: str,
         training_job_id: str,
-        body: UpdateTrainingJobRequest,
+        request: UpdateTrainingJobRequest,
     ) -> UpdateTrainingJobResponse:
         """Updates a training job"""
         return await self._do_json(
@@ -4490,7 +4928,8 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/training_projects/{}/jobs/{}",
                 path_args=[training_project_id, training_job_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4502,7 +4941,7 @@ class AsyncApiClient:
         training_project_id: str,
         training_job_id: str,
         session_id: str,
-        body: PatchInteractiveSessionRequest,
+        request: PatchInteractiveSessionRequest,
     ) -> PatchInteractiveSessionResponse:
         """Patches an interactive session"""
         return await self._do_json(
@@ -4511,13 +4950,14 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/training_projects/{}/jobs/{}/interactive_sessions/{}",
                 path_args=[training_project_id, training_job_id, session_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    async def post_api_keys(self, *, body: CreateAPIKeyRequest) -> APIKey:
+    async def post_api_keys(self, *, request: CreateAPIKeyRequest) -> APIKey:
         """Creates an API key"""
         return await self._do_json(
             APIKey,
@@ -4525,7 +4965,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/api_keys",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4542,13 +4983,14 @@ class AsyncApiClient:
                 path_fmt="/v1/chains/{}/deployments/{}/deactivate",
                 path_args=[chain_id, chain_deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_chains_environments(
-        self, *, chain_id: str, body: CreateChainEnvironmentRequest
+        self, *, chain_id: str, request: CreateChainEnvironmentRequest
     ) -> ChainEnvironment:
         """Creates a chain environment"""
         return await self._do_json(
@@ -4557,7 +4999,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/chains/{}/environments",
                 path_args=[chain_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4568,7 +5011,7 @@ class AsyncApiClient:
         *,
         chain_id: str,
         env_name: str,
-        body: UpdateChainletEnvironmentInstanceTypeRequest,
+        request: UpdateChainletEnvironmentInstanceTypeRequest,
     ) -> UpdateChainletEnvironmentInstanceTypeResponse:
         """Updates a chainlet environment's instance type settings"""
         return await self._do_json(
@@ -4577,14 +5020,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/chains/{}/environments/{}/chainlet_settings/instance_types/update",
                 path_args=[chain_id, env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_chains_environments_promote(
-        self, *, chain_id: str, env_name: str, body: PromoteToChainEnvironmentRequest
+        self, *, chain_id: str, env_name: str, request: PromoteToChainEnvironmentRequest
     ) -> ChainDeployment:
         """Promotes a chain deployment to an environment"""
         return await self._do_json(
@@ -4593,13 +5037,16 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/chains/{}/environments/{}/promote",
                 path_args=[chain_id, env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    async def post_gateway_endpoints(self, *, body: CreateEndpointRequest) -> Endpoint:
+    async def post_gateway_endpoints(
+        self, *, request: CreateEndpointRequest
+    ) -> Endpoint:
         """Creates a Gateway endpoint"""
         return await self._do_json(
             Endpoint,
@@ -4607,13 +5054,14 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/gateway/endpoints",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    async def post_gateway_groups(self, *, body: CreateGroupRequest) -> Group:
+    async def post_gateway_groups(self, *, request: CreateGroupRequest) -> Group:
         """Creates a group"""
         return await self._do_json(
             Group,
@@ -4621,14 +5069,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/gateway/groups",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_gateway_groups_api_keys(
-        self, *, group_id: str, body: CreateApiKeyForGroupRequest
+        self, *, group_id: str, request: CreateApiKeyForGroupRequest
     ) -> CreateApiKeyForGroupResponse:
         """Creates an API key for a group"""
         return await self._do_json(
@@ -4637,14 +5086,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/gateway/groups/{}/api_keys",
                 path_args=[group_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_gateway_groups_api_keys_register(
-        self, *, group_id: str, body: RegisterAPIKeyRequest
+        self, *, group_id: str, request: RegisterAPIKeyRequest
     ) -> RegisterAPIKeyResponse:
         """Registers an API key for a group"""
         return await self._do_json(
@@ -4653,14 +5103,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/gateway/groups/{}/api_keys/register",
                 path_args=[group_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_library_listings(
-        self, *, body: CreateLibraryListingRequest
+        self, *, request: CreateLibraryListingRequest
     ) -> LibraryListing:
         """Creates a new library listing"""
         return await self._do_json(
@@ -4669,14 +5120,18 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/library_listings",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_library_listings_versions(
-        self, *, user_defined_listing_id: str, body: CreateLibraryListingVersionRequest
+        self,
+        *,
+        user_defined_listing_id: str,
+        request: CreateLibraryListingVersionRequest,
     ) -> LibraryListingVersion:
         """Creates a new library listing version"""
         return await self._do_json(
@@ -4685,13 +5140,16 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/library_listings/{}/versions",
                 path_args=[user_defined_listing_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    async def post_llm_models(self, *, body: CreateLLMModelRequest) -> LLMModelHandle:
+    async def post_llm_models(
+        self, *, request: CreateLLMModelRequest
+    ) -> LLMModelHandle:
         """Creates a new BIS-LLM deployment"""
         return await self._do_json(
             LLMModelHandle,
@@ -4699,14 +5157,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/llm_models",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_llm_models_deployments(
-        self, *, model_id: str, body: CreateLLMModelVersionRequest
+        self, *, model_id: str, request: CreateLLMModelVersionRequest
     ) -> LLMModelHandle:
         """Creates a new BIS-LLM deployment version"""
         return await self._do_json(
@@ -4715,14 +5174,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/llm_models/{}/deployments",
                 path_args=[model_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_loops_checkpoints_validate(
-        self, *, body: ValidateLoopsCheckpointRequest
+        self, *, request: ValidateLoopsCheckpointRequest
     ) -> ValidateLoopsCheckpointResponse:
         """Validates a Loops checkpoint bt:// URI"""
         return await self._do_json(
@@ -4731,7 +5191,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/loops/checkpoints/validate",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4748,13 +5209,14 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/deployments/{}/deactivate",
                 path_args=[deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_loops_deployments_metrics(
-        self, *, deployment_id: str, body: GetLoopsDeploymentMetricsRequest
+        self, *, deployment_id: str, request: GetLoopsDeploymentMetricsRequest
     ) -> GetLoopsDeploymentMetricsResponse:
         """Gets metrics for a Loops trainer deployment"""
         return await self._do_json(
@@ -4763,14 +5225,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/loops/deployments/{}/metrics",
                 path_args=[deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_loops_runs(
-        self, *, body: CreateLoopsRunRequest
+        self, *, request: CreateLoopsRunRequest
     ) -> CreateLoopsRunResponse:
         """Creates a Loops run"""
         return await self._do_json(
@@ -4779,14 +5242,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/loops/runs",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_loops_samplers(
-        self, *, body: CreateLoopsSamplerRequest
+        self, *, request: CreateLoopsSamplerRequest
     ) -> CreateLoopsSamplerResponse:
         """Creates a Loops sampler"""
         return await self._do_json(
@@ -4795,7 +5259,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/loops/samplers",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4810,13 +5275,14 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/sessions",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_model_apis_snapshots(
-        self, *, body: CreateModelWeightSnapshotRequest
+        self, *, request: CreateModelWeightSnapshotRequest
     ) -> ModelWeightSnapshot:
         """Creates a model weight snapshot"""
         return await self._do_json(
@@ -4825,14 +5291,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/model_apis/snapshots",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_model_apis_snapshots_model_id(
-        self, *, model_id: str, body: CreateModelWeightSnapshotRequest
+        self, *, model_id: str, request: CreateModelWeightSnapshotRequest
     ) -> ModelWeightSnapshot:
         """Creates a model weight snapshot"""
         return await self._do_json(
@@ -4841,13 +5308,16 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/model_apis/snapshots/{}",
                 path_args=[model_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    async def post_models(self, *, body: CreateModelRequest) -> CreatedModelDeployment:
+    async def post_models(
+        self, *, request: CreateModelRequest
+    ) -> CreatedModelDeployment:
         """Creates a new model from a source"""
         return await self._do_json(
             CreatedModelDeployment,
@@ -4855,14 +5325,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/models",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_models_deployments(
-        self, *, model_id: str, body: CreateModelDeploymentRequest
+        self, *, model_id: str, request: CreateModelDeploymentRequest
     ) -> CreatedModelDeployment:
         """Adds a new deployment to a model"""
         return await self._do_json(
@@ -4871,7 +5342,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/deployments",
                 path_args=[model_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4888,6 +5360,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/activate",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4904,6 +5377,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/deactivate",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4920,6 +5394,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/development/activate",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4936,13 +5411,14 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/development/deactivate",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_models_deployments_development_promote(
-        self, *, model_id: str, body: PromoteRequest
+        self, *, model_id: str, request: PromoteRequest
     ) -> Deployment:
         """Promotes a development deployment to production"""
         return await self._do_json(
@@ -4951,7 +5427,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/deployments/development/promote",
                 path_args=[model_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4968,13 +5445,14 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/development/retry",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_models_deployments_logs(
-        self, *, model_id: str, deployment_id: str, body: GetDeploymentLogsRequest
+        self, *, model_id: str, deployment_id: str, request: GetDeploymentLogsRequest
     ) -> GetLogsResponse:
         """Gets the logs for a model deployment (deprecated; use GET)"""
         return await self._do_json(
@@ -4983,14 +5461,19 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/deployments/{}/logs",
                 path_args=[model_id, deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_models_deployments_patches(
-        self, *, model_id: str, deployment_id: str, body: CreateDeploymentPatchRequest
+        self,
+        *,
+        model_id: str,
+        deployment_id: str,
+        request: CreateDeploymentPatchRequest,
     ) -> CreateDeploymentPatchResponse:
         """Stages a patch against a development deployment"""
         return await self._do_json(
@@ -4999,14 +5482,19 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/deployments/{}/patches",
                 path_args=[model_id, deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_models_deployments_patches_sync(
-        self, *, model_id: str, deployment_id: str, body: SyncDeploymentPatchesRequest
+        self,
+        *,
+        model_id: str,
+        deployment_id: str,
+        request: SyncDeploymentPatchesRequest,
     ) -> SyncDeploymentPatchesResponse:
         """Syncs staged patches to a development deployment"""
         return await self._do_json(
@@ -5015,7 +5503,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/deployments/{}/patches/sync",
                 path_args=[model_id, deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -5032,6 +5521,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/production/activate",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -5048,6 +5538,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/production/deactivate",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -5064,13 +5555,14 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/production/retry",
                 path_args=[model_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_models_deployments_promote(
-        self, *, model_id: str, deployment_id: str, body: PromoteRequest
+        self, *, model_id: str, deployment_id: str, request: PromoteRequest
     ) -> Deployment:
         """Promotes a deployment to production"""
         return await self._do_json(
@@ -5079,7 +5571,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/deployments/{}/promote",
                 path_args=[model_id, deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -5096,13 +5589,14 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/deployments/{}/retry",
                 path_args=[model_id, deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_models_deployments_ssh_sign(
-        self, *, model_id: str, deployment_id: str, body: SignSSHCertificateRequest
+        self, *, model_id: str, deployment_id: str, request: SignSSHCertificateRequest
     ) -> SignSSHCertificateResponse:
         """Signs an SSH certificate for an inference model"""
         return await self._do_json(
@@ -5111,14 +5605,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/deployments/{}/ssh/sign",
                 path_args=[model_id, deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_models_environments(
-        self, *, model_id: str, body: CreateEnvironmentRequest
+        self, *, model_id: str, request: CreateEnvironmentRequest
     ) -> Environment:
         """Creates an environment"""
         return await self._do_json(
@@ -5127,7 +5622,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/environments",
                 path_args=[model_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -5144,6 +5640,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/environments/{}/activate",
                 path_args=[model_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -5160,6 +5657,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/environments/{}/cancel_promotion",
                 path_args=[model_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -5176,6 +5674,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/environments/{}/deactivate",
                 path_args=[model_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -5192,6 +5691,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/environments/{}/force_cancel_promotion",
                 path_args=[model_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -5208,6 +5708,7 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/environments/{}/force_roll_forward_promotion",
                 path_args=[model_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -5224,13 +5725,14 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/environments/{}/pause_promotion",
                 path_args=[model_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_models_environments_promote(
-        self, *, model_id: str, env_name: str, body: PromoteToEnvironmentRequest
+        self, *, model_id: str, env_name: str, request: PromoteToEnvironmentRequest
     ) -> Deployment:
         """Promotes a deployment to an environment"""
         return await self._do_json(
@@ -5239,7 +5741,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/models/{}/environments/{}/promote",
                 path_args=[model_id, env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -5256,13 +5759,14 @@ class AsyncApiClient:
                 path_fmt="/v1/models/{}/environments/{}/resume_promotion",
                 path_args=[model_id, env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_prepare_model_upload(
-        self, *, body: PrepareModelUploadRequest
+        self, *, request: PrepareModelUploadRequest
     ) -> PrepareModelUploadResponse:
         """Validates a model push payload and issues upload credentials"""
         return await self._do_json(
@@ -5271,13 +5775,14 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/prepare_model_upload",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    async def post_secrets(self, *, body: UpsertSecretRequest) -> Secret:
+    async def post_secrets(self, *, request: UpsertSecretRequest) -> Secret:
         """Upserts a secret"""
         return await self._do_json(
             Secret,
@@ -5285,14 +5790,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/secrets",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_teams_api_keys(
-        self, *, team_id: str, body: CreateAPIKeyRequest
+        self, *, team_id: str, request: CreateAPIKeyRequest
     ) -> APIKey:
         """Creates a team API key"""
         return await self._do_json(
@@ -5301,14 +5807,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/teams/{}/api_keys",
                 path_args=[team_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_teams_llm_models(
-        self, *, team_id: str, body: CreateLLMModelRequest
+        self, *, team_id: str, request: CreateLLMModelRequest
     ) -> LLMModelHandle:
         """Creates a new BIS-LLM deployment"""
         return await self._do_json(
@@ -5317,14 +5824,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/teams/{}/llm_models",
                 path_args=[team_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_teams_models(
-        self, *, team_id: str, body: CreateModelRequest
+        self, *, team_id: str, request: CreateModelRequest
     ) -> CreatedModelDeployment:
         """Creates a new model from a source"""
         return await self._do_json(
@@ -5333,14 +5841,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/teams/{}/models",
                 path_args=[team_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_teams_secrets(
-        self, *, team_id: str, body: UpsertSecretRequest
+        self, *, team_id: str, request: UpsertSecretRequest
     ) -> Secret:
         """Upserts a secret in a team"""
         return await self._do_json(
@@ -5349,14 +5858,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/teams/{}/secrets",
                 path_args=[team_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_teams_training_projects(
-        self, *, team_id: str, body: UpsertTrainingProjectRequest
+        self, *, team_id: str, request: UpsertTrainingProjectRequest
     ) -> UpsertTrainingProjectResponse:
         """Upserts a training project in a specific team"""
         return await self._do_json(
@@ -5365,14 +5875,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/teams/{}/training_projects",
                 path_args=[team_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_training_jobs_search(
-        self, *, body: SearchTrainingJobsRequest
+        self, *, request: SearchTrainingJobsRequest
     ) -> SearchTrainingJobsResponse:
         """Searches training jobs"""
         return await self._do_json(
@@ -5381,14 +5892,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/training_jobs/search",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_training_projects(
-        self, *, body: UpsertTrainingProjectRequest
+        self, *, request: UpsertTrainingProjectRequest
     ) -> UpsertTrainingProjectResponse:
         """Upserts a training project"""
         return await self._do_json(
@@ -5397,14 +5909,15 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/training_projects",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
     async def post_training_projects_jobs(
-        self, *, training_project_id: str, body: CreateTrainingJobRequest
+        self, *, training_project_id: str, request: CreateTrainingJobRequest
     ) -> CreateTrainingJobResponse:
         """Creates a training job"""
         return await self._do_json(
@@ -5413,7 +5926,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/training_projects/{}/jobs",
                 path_args=[training_project_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -5424,7 +5938,7 @@ class AsyncApiClient:
         *,
         training_project_id: str,
         training_job_id: str,
-        body: GetTrainingJobLogsRequest,
+        request: GetTrainingJobLogsRequest,
     ) -> GetLogsResponse:
         """Gets the logs for a training job (deprecated; use GET)"""
         return await self._do_json(
@@ -5433,7 +5947,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/training_projects/{}/jobs/{}/logs",
                 path_args=[training_project_id, training_job_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -5444,7 +5959,7 @@ class AsyncApiClient:
         *,
         training_project_id: str,
         training_job_id: str,
-        body: GetTrainingJobMetricsRequest,
+        request: GetTrainingJobMetricsRequest,
     ) -> GetTrainingJobMetricsResponse:
         """Gets the metrics for a training job (deprecated; use GET)"""
         return await self._do_json(
@@ -5453,7 +5968,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/training_projects/{}/jobs/{}/metrics",
                 path_args=[training_project_id, training_job_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -5470,6 +5986,7 @@ class AsyncApiClient:
                 path_fmt="/v1/training_projects/{}/jobs/{}/recreate",
                 path_args=[training_project_id, training_job_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -5480,7 +5997,7 @@ class AsyncApiClient:
         *,
         training_project_id: str,
         training_job_id: str,
-        body: SignSSHCertificateRequest,
+        request: SignSSHCertificateRequest,
     ) -> SignSSHCertificateResponse:
         """Signs an SSH certificate for a training job"""
         return await self._do_json(
@@ -5489,7 +6006,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/training_projects/{}/jobs/{}/ssh/sign",
                 path_args=[training_project_id, training_job_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -5500,7 +6018,7 @@ class AsyncApiClient:
         *,
         training_project_id: str,
         training_job_id: str,
-        body: StopTrainingJobRequest,
+        request: StopTrainingJobRequest,
     ) -> StopTrainingJobResponse:
         """Stops a training job"""
         return await self._do_json(
@@ -5509,7 +6027,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/training_projects/{}/jobs/{}/stop",
                 path_args=[training_project_id, training_job_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -5522,10 +6041,25 @@ class AsyncApiClient:
         json_body = None
         if request.body is not None:
             if isinstance(request.body, BaseModel):
-                json_body = request.body.model_dump(mode="json")
+                # Only fields the caller set are sent, so unset fields fall
+                # back to the server default rather than being reset here.
+                # An explicit None is kept, since null can mean "clear".
+                json_body = request.body.model_dump(mode="json", exclude_unset=True)
             else:
                 json_body = request.body
-        response = await self._http_client.request(request.method, path, json=json_body)
+        params = None
+        if request.query is not None:
+            if isinstance(request.query, BaseModel):
+                # As above, plus dropping None: a null query parameter is
+                # meaningless and would otherwise serialize as an empty string.
+                params = request.query.model_dump(
+                    mode="json", exclude_unset=True, exclude_none=True
+                )
+            else:
+                params = request.query
+        response = await self._http_client.request(
+            request.method, path, json=json_body, params=params
+        )
         if response.status_code != request.success_code:
             raise ResponseError(status_code=response.status_code, body=response.text)
         return response

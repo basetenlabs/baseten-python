@@ -280,6 +280,263 @@ class GatewayProvider(Enum):
     OPENAI_COMPATIBLE = "OPENAI_COMPATIBLE"
 
 
+class GetTeamsRequest(BaseModel):
+    name: Annotated[
+        str | None,
+        Field(
+            description="When set, returns only the team with this exact name, if any.",
+            title="Name",
+        ),
+    ] = None
+
+
+class GetModelsRequest(BaseModel):
+    name: Annotated[
+        str | None,
+        Field(
+            description="When set, returns only models with this exact name, if any. On a team-scoped route this matches at most one model; on the org-wide route it may match models in multiple teams, since names are unique only within a team.",
+            title="Name",
+        ),
+    ] = None
+
+
+class GetTeamsModelsRequest(BaseModel):
+    name: Annotated[
+        str | None,
+        Field(
+            description="When set, returns only models with this exact name, if any. On a team-scoped route this matches at most one model; on the org-wide route it may match models in multiple teams, since names are unique only within a team.",
+            title="Name",
+        ),
+    ] = None
+
+
+class GetModelsDeploymentsRequest(BaseModel):
+    name: Annotated[
+        str | None,
+        Field(
+            description="When set, returns only the deployment with this exact name, if any.",
+            title="Name",
+        ),
+    ] = None
+
+
+class GetModelsDeploymentsConfigRequest(BaseModel):
+    output_format: Annotated[
+        DeploymentConfigOutputFormat | None,
+        Field(
+            description="'raw': verbatim config.yaml with comments (not available for deployments created before 2026-04-30). 'parsed': dict with server-side defaults applied (always available). 'both': both fields populated."
+        ),
+    ] = DeploymentConfigOutputFormat.both
+
+
+class Limit(RootModel[int]):
+    root: Annotated[
+        int,
+        Field(
+            description="Limit of logs to fetch in a single request",
+            ge=1,
+            le=1000,
+            title="Limit",
+        ),
+    ] = 500
+
+
+class Replica(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="Only return logs emitted by this replica (5-char short ID).",
+            max_length=256,
+            title="Replica",
+        ),
+    ] = None
+
+
+class RequestId(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="Only return logs tagged with this inference request ID.",
+            max_length=256,
+            title="Request Id",
+        ),
+    ] = None
+
+
+class Component(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="Only return logs from this component.",
+            max_length=256,
+            title="Component",
+        ),
+    ] = None
+
+
+class SearchPattern(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="RE2 regular expression matched against the log message. Prefer `includes` and `excludes` for plain substring matches.",
+            max_length=256,
+            title="Search Pattern",
+        ),
+    ] = None
+
+
+class GetTrainingProjectsJobsMetricsRequest(BaseModel):
+    end_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch millis timestamp to end fetching metrics",
+            title="End Epoch Millis",
+        ),
+    ] = None
+    start_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch millis timestamp to start fetching metrics.",
+            title="Start Epoch Millis",
+        ),
+    ] = None
+    step_seconds: Annotated[
+        int | None,
+        Field(
+            description="Resolution of the returned series, in seconds. When omitted, a step is derived from the time range so large windows return fewer points.",
+            title="Step Seconds",
+        ),
+    ] = None
+
+
+class GetTrainingProjectsJobsCheckpointFilesRequest(BaseModel):
+    page_size: Annotated[
+        int | None,
+        Field(
+            description="Max files per page (default 1000).", ge=1, title="Page Size"
+        ),
+    ] = 1000
+    page_token: Annotated[
+        int | None,
+        Field(
+            description="Offset into the file list (default 0).",
+            ge=0,
+            title="Page Token",
+        ),
+    ] = 0
+
+
+class GetLoopsRunsRequest(BaseModel):
+    run_id: Annotated[
+        str | None,
+        Field(description="Filter by run ID.", examples=["k4q95w5"], title="Run Id"),
+    ] = None
+    base_model: Annotated[
+        str | None,
+        Field(
+            description="Filter runs by base model name.",
+            examples=["Qwen/Qwen3-8B"],
+            title="Base Model",
+        ),
+    ] = None
+
+
+class GetLoopsCheckpointsRequest(BaseModel):
+    run_id: Annotated[
+        str | None,
+        Field(
+            description="Filter by run ID. Returns all checkpoints saved by the run.",
+            examples=["k4q95w5"],
+            title="Run Id",
+        ),
+    ] = None
+    base_model: Annotated[
+        str | None,
+        Field(
+            description="Filter by base model. Returns checkpoints across the caller's runs of this base model.",
+            examples=["Qwen/Qwen3-8B"],
+            title="Base Model",
+        ),
+    ] = None
+    checkpoint_path: Annotated[
+        str | None,
+        Field(
+            description="bt:// URI of a Loops checkpoint. Form: bt://loops:<run_id>/(weights|sampler_weights)/<checkpoint_name>.",
+            examples=["bt://loops:k4q95w5/sampler_weights/step-100"],
+            title="Checkpoint Path",
+        ),
+    ] = None
+
+
+class GetModelApisRequest(BaseModel):
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor returned by a previous page. Omit to fetch the first page.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        int | None,
+        Field(
+            description="Maximum number of items to return.",
+            ge=1,
+            le=1000,
+            title="Limit",
+        ),
+    ] = 100
+    added_only: Annotated[
+        bool | None,
+        Field(
+            description="When true, restrict the result to Model APIs the workspace has added. Defaults to the full visible catalog.",
+            title="Added Only",
+        ),
+    ] = False
+
+
+class GetBillingUsageSummaryRequest(BaseModel):
+    start_date: Annotated[
+        AwareDatetime,
+        Field(
+            description="Start date (ISO 8601, UTC). Earliest queryable: 2026-01-01.",
+            title="Start Date",
+        ),
+    ]
+    end_date: Annotated[
+        AwareDatetime,
+        Field(
+            description="End date in ISO 8601 format (UTC). Date range cannot exceed 31 days.",
+            title="End Date",
+        ),
+    ]
+
+
+class GetUsersRequest(BaseModel):
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor returned by a previous page. Omit to fetch the first page.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        int | None,
+        Field(
+            description="Maximum number of items to return.",
+            ge=1,
+            le=1000,
+            title="Limit",
+        ),
+    ] = 100
+    email: Annotated[
+        str | None,
+        Field(
+            description="When set, returns only users with this exact email, if any.",
+            title="Email",
+        ),
+    ] = None
+
+
 class Secret(BaseModel):
     id: Annotated[
         str,
@@ -1222,62 +1479,6 @@ class GetLogsResponse(BaseModel):
 class SortOrder(Enum):
     asc = "asc"
     desc = "desc"
-
-
-class Limit(RootModel[int]):
-    root: Annotated[
-        int,
-        Field(
-            description="Limit of logs to fetch in a single request",
-            ge=1,
-            le=1000,
-            title="Limit",
-        ),
-    ] = 500
-
-
-class Replica(RootModel[str]):
-    root: Annotated[
-        str | None,
-        Field(
-            description="Only return logs emitted by this replica (5-char short ID).",
-            max_length=256,
-            title="Replica",
-        ),
-    ] = None
-
-
-class RequestId(RootModel[str]):
-    root: Annotated[
-        str | None,
-        Field(
-            description="Only return logs tagged with this inference request ID.",
-            max_length=256,
-            title="Request Id",
-        ),
-    ] = None
-
-
-class Component(RootModel[str]):
-    root: Annotated[
-        str | None,
-        Field(
-            description="Only return logs from this component.",
-            max_length=256,
-            title="Component",
-        ),
-    ] = None
-
-
-class SearchPattern(RootModel[str]):
-    root: Annotated[
-        str | None,
-        Field(
-            description="RE2 regular expression matched against the log message. Prefer `includes` and `excludes` for plain substring matches.",
-            max_length=256,
-            title="Search Pattern",
-        ),
-    ] = None
 
 
 class GetDeploymentLogsRequest(BaseModel):
@@ -5129,6 +5330,359 @@ class LoadCheckpointConfig(BaseModel):
     checkpoints: Annotated[
         list[Checkpoints] | None,
         Field(description="List of checkpoint configurations", title="Checkpoints"),
+    ] = None
+
+
+class GetModelsDeploymentsLogsRequest(BaseModel):
+    start_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.",
+            title="Start Epoch Millis",
+        ),
+    ] = None
+    end_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch milliseconds at which to stop fetching logs. Defaults to the current time.",
+            title="End Epoch Millis",
+        ),
+    ] = None
+    direction: Annotated[SortOrder | None, Field(description="Sort order for logs")] = (
+        None
+    )
+    limit: Annotated[
+        Limit | None,
+        Field(
+            default_factory=lambda: Limit(500),
+            description="Limit of logs to fetch in a single request",
+            title="Limit",
+        ),
+    ]
+    min_level: Annotated[
+        LogLevel | None,
+        Field(
+            description="Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level."
+        ),
+    ] = None
+    replica: Annotated[
+        Replica | None,
+        Field(
+            description="Only return logs emitted by this replica (5-char short ID).",
+            title="Replica",
+        ),
+    ] = None
+    request_id: Annotated[
+        RequestId | None,
+        Field(
+            description="Only return logs tagged with this inference request ID.",
+            title="Request Id",
+        ),
+    ] = None
+    component: Annotated[
+        Component | None,
+        Field(description="Only return logs from this component.", title="Component"),
+    ] = None
+    search_pattern: Annotated[
+        SearchPattern | None,
+        Field(
+            description="RE2 regular expression matched against the log message. Prefer `includes` and `excludes` for plain substring matches.",
+            title="Search Pattern",
+        ),
+    ] = None
+    includes: Annotated[
+        list[str] | None,
+        Field(
+            description="Case-sensitive substrings that must all appear in the log message.",
+            max_length=8,
+            title="Includes",
+        ),
+    ] = None
+    excludes: Annotated[
+        list[str] | None,
+        Field(
+            description="Case-sensitive substrings; lines containing any of these are dropped.",
+            max_length=8,
+            title="Excludes",
+        ),
+    ] = None
+
+
+class GetModelsDeploymentsMetricsRequest(BaseModel):
+    mode: Annotated[
+        ModelMetricMode | None,
+        Field(
+            description="'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration."
+        ),
+    ] = ModelMetricMode.CURRENT
+    start_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch millis timestamp to start fetching metrics. Defaults to one hour before the end.",
+            title="Start Epoch Millis",
+        ),
+    ] = None
+    end_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch millis timestamp to end fetching metrics. Defaults to the current time. The window between start and end must not exceed 7 days.",
+            title="End Epoch Millis",
+        ),
+    ] = None
+    metrics: Annotated[
+        list[str] | None,
+        Field(
+            description="Names of the metrics to return; see https://docs.baseten.co/observability/export-metrics/supported-metrics for the available names. When omitted, a default set is returned: baseten_replicas_active, baseten_inference_requests_total, and baseten_end_to_end_response_time_seconds. Unknown names are rejected; valid names that do not apply are omitted from the response.",
+            title="Metrics",
+        ),
+    ] = None
+
+
+class GetModelsEnvironmentsLogsRequest(BaseModel):
+    start_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.",
+            title="Start Epoch Millis",
+        ),
+    ] = None
+    end_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch milliseconds at which to stop fetching logs. Defaults to the current time.",
+            title="End Epoch Millis",
+        ),
+    ] = None
+    direction: Annotated[SortOrder | None, Field(description="Sort order for logs")] = (
+        None
+    )
+    limit: Annotated[
+        Limit | None,
+        Field(
+            default_factory=lambda: Limit(500),
+            description="Limit of logs to fetch in a single request",
+            title="Limit",
+        ),
+    ]
+    min_level: Annotated[
+        LogLevel | None,
+        Field(
+            description="Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level."
+        ),
+    ] = None
+    replica: Annotated[
+        Replica | None,
+        Field(
+            description="Only return logs emitted by this replica (5-char short ID).",
+            title="Replica",
+        ),
+    ] = None
+    request_id: Annotated[
+        RequestId | None,
+        Field(
+            description="Only return logs tagged with this inference request ID.",
+            title="Request Id",
+        ),
+    ] = None
+    component: Annotated[
+        Component | None,
+        Field(description="Only return logs from this component.", title="Component"),
+    ] = None
+    search_pattern: Annotated[
+        SearchPattern | None,
+        Field(
+            description="RE2 regular expression matched against the log message. Prefer `includes` and `excludes` for plain substring matches.",
+            title="Search Pattern",
+        ),
+    ] = None
+    includes: Annotated[
+        list[str] | None,
+        Field(
+            description="Case-sensitive substrings that must all appear in the log message.",
+            max_length=8,
+            title="Includes",
+        ),
+    ] = None
+    excludes: Annotated[
+        list[str] | None,
+        Field(
+            description="Case-sensitive substrings; lines containing any of these are dropped.",
+            max_length=8,
+            title="Excludes",
+        ),
+    ] = None
+
+
+class GetModelsEnvironmentsMetricsRequest(BaseModel):
+    mode: Annotated[
+        ModelMetricMode | None,
+        Field(
+            description="'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration."
+        ),
+    ] = ModelMetricMode.CURRENT
+    start_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch millis timestamp to start fetching metrics. Defaults to one hour before the end.",
+            title="Start Epoch Millis",
+        ),
+    ] = None
+    end_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch millis timestamp to end fetching metrics. Defaults to the current time. The window between start and end must not exceed 7 days.",
+            title="End Epoch Millis",
+        ),
+    ] = None
+    metrics: Annotated[
+        list[str] | None,
+        Field(
+            description="Names of the metrics to return; see https://docs.baseten.co/observability/export-metrics/supported-metrics for the available names. When omitted, a default set is returned: baseten_replicas_active, baseten_inference_requests_total, and baseten_end_to_end_response_time_seconds. Unknown names are rejected; valid names that do not apply are omitted from the response.",
+            title="Metrics",
+        ),
+    ] = None
+
+
+class GetChainsDeploymentsChainletsLogsRequest(BaseModel):
+    start_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.",
+            title="Start Epoch Millis",
+        ),
+    ] = None
+    end_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch milliseconds at which to stop fetching logs. Defaults to the current time.",
+            title="End Epoch Millis",
+        ),
+    ] = None
+    direction: Annotated[SortOrder | None, Field(description="Sort order for logs")] = (
+        None
+    )
+    limit: Annotated[
+        Limit | None,
+        Field(
+            default_factory=lambda: Limit(500),
+            description="Limit of logs to fetch in a single request",
+            title="Limit",
+        ),
+    ]
+    min_level: Annotated[
+        LogLevel | None,
+        Field(
+            description="Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level."
+        ),
+    ] = None
+    replica: Annotated[
+        Replica | None,
+        Field(
+            description="Only return logs emitted by this replica (5-char short ID).",
+            title="Replica",
+        ),
+    ] = None
+    request_id: Annotated[
+        RequestId | None,
+        Field(
+            description="Only return logs tagged with this inference request ID.",
+            title="Request Id",
+        ),
+    ] = None
+    component: Annotated[
+        Component | None,
+        Field(description="Only return logs from this component.", title="Component"),
+    ] = None
+    search_pattern: Annotated[
+        SearchPattern | None,
+        Field(
+            description="RE2 regular expression matched against the log message. Prefer `includes` and `excludes` for plain substring matches.",
+            title="Search Pattern",
+        ),
+    ] = None
+    includes: Annotated[
+        list[str] | None,
+        Field(
+            description="Case-sensitive substrings that must all appear in the log message.",
+            max_length=8,
+            title="Includes",
+        ),
+    ] = None
+    excludes: Annotated[
+        list[str] | None,
+        Field(
+            description="Case-sensitive substrings; lines containing any of these are dropped.",
+            max_length=8,
+            title="Excludes",
+        ),
+    ] = None
+
+
+class GetTrainingProjectsJobsLogsRequest(BaseModel):
+    start_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.",
+            title="Start Epoch Millis",
+        ),
+    ] = None
+    end_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch milliseconds at which to stop fetching logs. Defaults to the current time.",
+            title="End Epoch Millis",
+        ),
+    ] = None
+    direction: Annotated[SortOrder | None, Field(description="Sort order for logs")] = (
+        None
+    )
+    limit: Annotated[
+        Limit | None,
+        Field(
+            default_factory=lambda: Limit(500),
+            description="Limit of logs to fetch in a single request",
+            title="Limit",
+        ),
+    ]
+    min_level: Annotated[
+        LogLevel | None,
+        Field(
+            description="Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level."
+        ),
+    ] = None
+
+
+class GetLoopsDeploymentsLogsRequest(BaseModel):
+    start_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.",
+            title="Start Epoch Millis",
+        ),
+    ] = None
+    end_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch milliseconds at which to stop fetching logs. Defaults to the current time.",
+            title="End Epoch Millis",
+        ),
+    ] = None
+    direction: Annotated[SortOrder | None, Field(description="Sort order for logs")] = (
+        None
+    )
+    limit: Annotated[
+        Limit | None,
+        Field(
+            default_factory=lambda: Limit(500),
+            description="Limit of logs to fetch in a single request",
+            title="Limit",
+        ),
+    ]
+    min_level: Annotated[
+        LogLevel | None,
+        Field(
+            description="Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level."
+        ),
     ] = None
 
 
