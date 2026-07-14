@@ -20,6 +20,7 @@ MINIMAL_MODEL = {
 }
 
 MINIMAL_SECRET = {
+    "id": "sec123",
     "name": "MY_SECRET",
     "created_at": "2024-01-01T00:00:00Z",
     "team_name": "my-team",

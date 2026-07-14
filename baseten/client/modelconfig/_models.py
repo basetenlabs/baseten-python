@@ -102,6 +102,28 @@ class DockerServer(BaseModel):
     ] = None
 
 
+class EgressRestrictions(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    ip_allow_list: Annotated[
+        list[str] | None,
+        Field(
+            description="Allowed outbound IPv4 addresses or CIDR ranges. Use null or [] alongside an equally restrictive fqdn_allow_list to block all egress.",
+            examples=[["1.1.1.1", "8.8.8.8/32"]],
+            title="Ip Allow List",
+        ),
+    ] = None
+    fqdn_allow_list: Annotated[
+        list[str] | None,
+        Field(
+            description="Allowed outbound fully-qualified domain names. Supports wildcards: '*' may appear anywhere in a label.",
+            examples=[["*.baseten.co", "huggingface.co"]],
+            title="Fqdn Allow List",
+        ),
+    ] = None
+
+
 class ExternalDataItem(BaseModel):
     model_config = ConfigDict(
         extra="allow",
@@ -690,6 +712,12 @@ class Runtime(BaseModel):
     ] = None
     health_checks: HealthChecks | None = None
     remote_ssh: RemoteSSH | None = None
+    egress_restrictions: Annotated[
+        EgressRestrictions | None,
+        Field(
+            description="Egress network restrictions for the model version. When unset, all egress is allowed (default)."
+        ),
+    ] = None
     truss_server_version_override: Annotated[
         str | None,
         Field(
@@ -752,7 +780,7 @@ class WeightsSource(BaseModel):
     source: Annotated[
         str,
         Field(
-            description="URI with scheme prefix. Use hf://, s3://, gs://, azure://, r2://, or https://. For HuggingFace, use @revision suffix (e.g., hf://owner/repo@main).",
+            description="URI with scheme prefix. Use hf://, s3://, gs://, azure://, r2://, cw://, or https://. For HuggingFace, use @revision suffix (e.g., hf://owner/repo@main).",
             min_length=1,
             title="Source",
         ),

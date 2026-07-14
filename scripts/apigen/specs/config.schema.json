@@ -426,6 +426,58 @@
       "title": "DockerServer",
       "type": "object"
     },
+    "EgressRestrictions": {
+      "additionalProperties": true,
+      "description": "Egress network restrictions for a model version.\n\nSetting both ``ip_allow_list`` and ``fqdn_allow_list`` to ``null`` or\n``[]`` blocks all outbound network egress. Omitting the\n``egress_restrictions`` block (or setting it to ``null``) preserves the\ndefault behavior of allowing all egress.",
+      "properties": {
+        "ip_allow_list": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Allowed outbound IPv4 addresses or CIDR ranges. Use null or [] alongside an equally restrictive fqdn_allow_list to block all egress.",
+          "examples": [
+            [
+              "1.1.1.1",
+              "8.8.8.8/32"
+            ]
+          ],
+          "title": "Ip Allow List"
+        },
+        "fqdn_allow_list": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Allowed outbound fully-qualified domain names. Supports wildcards: '*' may appear anywhere in a label.",
+          "examples": [
+            [
+              "*.baseten.co",
+              "huggingface.co"
+            ]
+          ],
+          "title": "Fqdn Allow List"
+        }
+      },
+      "title": "EgressRestrictions",
+      "type": "object"
+    },
     "ExternalData": {
       "description": "[Experimental] External data is data that is not contained in the Truss folder.\n\nTypically, this will be data stored remotely. This data is guaranteed to be made\navailable under the data directory of the truss.",
       "items": {
@@ -893,6 +945,18 @@
         },
         "remote_ssh": {
           "$ref": "#/$defs/RemoteSSH"
+        },
+        "egress_restrictions": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EgressRestrictions"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Egress network restrictions for the model version. When unset, all egress is allowed (default)."
         },
         "truss_server_version_override": {
           "anyOf": [
@@ -1784,10 +1848,10 @@
     },
     "WeightsSource": {
       "additionalProperties": true,
-      "description": "Configuration for a weights source in the new weights API.\n\nUses a URI-based `source` field with a required scheme prefix:\n- hf:// -> HuggingFace (e.g., \"hf://meta-llama/Llama-2-7b\" or \"hf://meta-llama/Llama-2-7b@main\")\n- s3:// -> AWS S3 (e.g., \"s3://bucket/path\")\n- gs:// -> Google Cloud Storage (e.g., \"gs://bucket/path\")\n- azure:// -> Azure Blob Storage (e.g., \"azure://account/container/path\")\n- r2:// -> CloudFlare R2 Storage (e.g., \"r2://account_id.bucket/path\")\n- https:// -> Direct URL download (e.g., \"https://example.com/model.bin\")\n\nFor HuggingFace sources, you can specify a revision (branch, tag, or commit SHA)\nusing the @{rev} suffix: \"hf://owner/repo@revision\"\n\nAuthentication can be specified either:\n- Using the `auth` section (required for OIDC):\n    auth:\n      auth_method: AWS_OIDC\n      aws_oidc_role_arn: <role_arn>\n      aws_oidc_region: <region>\n- Using `auth_secret_name` at the top level (or in the `auth` section)",
+      "description": "Configuration for a weights source in the new weights API.\n\nUses a URI-based `source` field with a required scheme prefix:\n- hf:// -> HuggingFace (e.g., \"hf://meta-llama/Llama-2-7b\" or \"hf://meta-llama/Llama-2-7b@main\")\n- s3:// -> AWS S3 (e.g., \"s3://bucket/path\")\n- gs:// -> Google Cloud Storage (e.g., \"gs://bucket/path\")\n- azure:// -> Azure Blob Storage (e.g., \"azure://account/container/path\")\n- r2:// -> CloudFlare R2 Storage (e.g., \"r2://account_id.bucket/path\")\n- cw:// -> CoreWeave AI Object Storage (e.g., \"cw://bucket/path\")\n- https:// -> Direct URL download (e.g., \"https://example.com/model.bin\")\n\nFor HuggingFace sources, you can specify a revision (branch, tag, or commit SHA)\nusing the @{rev} suffix: \"hf://owner/repo@revision\"\n\nAuthentication can be specified either:\n- Using the `auth` section (required for OIDC):\n    auth:\n      auth_method: AWS_OIDC\n      aws_oidc_role_arn: <role_arn>\n      aws_oidc_region: <region>\n- Using `auth_secret_name` at the top level (or in the `auth` section)",
       "properties": {
         "source": {
-          "description": "URI with scheme prefix. Use hf://, s3://, gs://, azure://, r2://, or https://. For HuggingFace, use @revision suffix (e.g., hf://owner/repo@main).",
+          "description": "URI with scheme prefix. Use hf://, s3://, gs://, azure://, r2://, cw://, or https://. For HuggingFace, use @revision suffix (e.g., hf://owner/repo@main).",
           "minLength": 1,
           "title": "Source",
           "type": "string"

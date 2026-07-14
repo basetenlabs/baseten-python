@@ -18,8 +18,8 @@ import re
 # https://github.com/koxudaxi/datamodel-code-generator/issues/2027 (closed
 # but the issue persists for this shape in 0.55.0).
 _ROOT_MODEL_BLOCK = re.compile(
-    r"(class \w+\(RootModel\[(?P<wrapped>[^\]]+)\]\):\n"
-    r"    root: )(?P<rest>.+?)(?P<eq> = None\n)",
+    r"(class \w+\(RootModel\[(?P<wrapped>[^\n]+?)\]\):\n"
+    r"    root: )(?P<rest>(?:(?!\nclass ).)+?)(?P<eq> = None\n)",
     re.DOTALL,
 )
 
