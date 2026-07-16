@@ -20,6 +20,7 @@ MINIMAL_MODEL = {
 }
 
 MINIMAL_SECRET = {
+    "id": "sec123",
     "name": "MY_SECRET",
     "created_at": "2024-01-01T00:00:00Z",
     "team_name": "my-team",
@@ -78,6 +79,32 @@ async def test_get_models() -> None:
     await client.close()
 
 
+def test_get_with_query_params() -> None:
+    fake = FakeTransport(200, {"items": [], "pagination": {"has_more": False}})
+    client = make_sync_client(fake)
+
+    client.api.get_model_apis(
+        request=baseten.client.managementapi.GetModelApisRequest(added_only=True)
+    )
+
+    path, _, query = fake.capture.path.partition("?")
+    assert path == "/v1/model_apis"
+    # The set field serializes, the bool as a lowercase literal. Fields the
+    # caller left unset are dropped so the server applies its own defaults,
+    # even `limit`, which has a non-None default on the model.
+    assert query == "added_only=true"
+    client.close()
+
+
+def test_get_query_params_omitted_when_absent() -> None:
+    fake = FakeTransport(200, {"items": [], "pagination": {"has_more": False}})
+    client = make_sync_client(fake)
+
+    client.api.get_model_apis()
+    assert fake.capture.path == "/v1/model_apis"
+    client.close()
+
+
 @pytest.mark.asyncio
 async def test_path_params_escaped() -> None:
     fake = FakeTransport(200, MINIMAL_MODEL)
@@ -94,7 +121,7 @@ async def test_post_with_body() -> None:
     client = make_async_client(fake)
 
     resp = await client.api.post_secrets(
-        body=baseten.client.managementapi.UpsertSecretRequest(
+        request=baseten.client.managementapi.UpsertSecretRequest(
             name="MY_SECRET",
             value="s3cret",
         ),

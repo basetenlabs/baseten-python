@@ -56,6 +56,7 @@ class _ApiRequest:
     path_fmt: str
     path_args: list[str]
     body: Any
+    query: Any
     success_code: int
     error_codes: dict[int, str] | None
 
@@ -73,7 +74,7 @@ class ApiClient:
         self._http_client = http_client
 
     def async_predict(
-        self, *, env_name: str, body: AsyncPredictRequest
+        self, *, env_name: str, request: AsyncPredictRequest
     ) -> AsyncPredictOutput:
         """Asynchronously call a named environment of a model."""
         return self._do_json(
@@ -82,7 +83,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/environments/{}/async_predict",
                 path_args=[env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -95,7 +97,7 @@ class ApiClient:
         )
 
     def async_predict_deployment(
-        self, *, deployment_id: str, body: AsyncPredictRequest
+        self, *, deployment_id: str, request: AsyncPredictRequest
     ) -> AsyncPredictOutput:
         """Asynchronously call a specific deployment of a model."""
         return self._do_json(
@@ -104,7 +106,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/deployment/{}/async_predict",
                 path_args=[deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -117,7 +120,7 @@ class ApiClient:
         )
 
     def async_predict_development(
-        self, *, body: AsyncPredictRequest
+        self, *, request: AsyncPredictRequest
     ) -> AsyncPredictOutput:
         """Asynchronously call the development deployment of a model."""
         return self._do_json(
@@ -126,7 +129,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/development/async_predict",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -139,7 +143,7 @@ class ApiClient:
         )
 
     def async_predict_production(
-        self, *, body: AsyncPredictRequest
+        self, *, request: AsyncPredictRequest
     ) -> AsyncPredictOutput:
         """Asynchronously call the production environment of a model."""
         return self._do_json(
@@ -148,7 +152,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/production/async_predict",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -161,7 +166,7 @@ class ApiClient:
         )
 
     def async_predict_regional(
-        self, *, body: AsyncPredictRequest
+        self, *, request: AsyncPredictRequest
     ) -> AsyncPredictOutput:
         """Asynchronously call a regional environment of a model."""
         return self._do_json(
@@ -170,7 +175,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/async_predict",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -183,7 +189,7 @@ class ApiClient:
         )
 
     def async_run_remote(
-        self, *, env_name: str, body: AsyncRunRemoteInput
+        self, *, env_name: str, request: AsyncRunRemoteInput
     ) -> AsyncRunRemoteOutput:
         """Asynchronously call a named environment of a chain."""
         return self._do_json(
@@ -192,7 +198,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/environments/{}/async_run_remote",
                 path_args=[env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -204,7 +211,7 @@ class ApiClient:
         )
 
     def async_run_remote_deployment(
-        self, *, deployment_id: str, body: AsyncRunRemoteInput
+        self, *, deployment_id: str, request: AsyncRunRemoteInput
     ) -> AsyncRunRemoteOutput:
         """Asynchronously call a specific deployment of a chain."""
         return self._do_json(
@@ -213,7 +220,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/deployment/{}/async_run_remote",
                 path_args=[deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -225,7 +233,7 @@ class ApiClient:
         )
 
     def async_run_remote_development(
-        self, *, body: AsyncRunRemoteInput
+        self, *, request: AsyncRunRemoteInput
     ) -> AsyncRunRemoteOutput:
         """Asynchronously call the development deployment of a chain."""
         return self._do_json(
@@ -234,7 +242,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/development/async_run_remote",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -246,7 +255,7 @@ class ApiClient:
         )
 
     def async_run_remote_production(
-        self, *, body: AsyncRunRemoteInput
+        self, *, request: AsyncRunRemoteInput
     ) -> AsyncRunRemoteOutput:
         """Asynchronously call the production environment of a chain."""
         return self._do_json(
@@ -255,7 +264,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/production/async_run_remote",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -267,7 +277,7 @@ class ApiClient:
         )
 
     def async_run_remote_regional(
-        self, *, body: AsyncRunRemoteInput
+        self, *, request: AsyncRunRemoteInput
     ) -> AsyncRunRemoteOutput:
         """Asynchronously call a regional environment of a chain."""
         return self._do_json(
@@ -276,7 +286,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/async_run_remote",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -296,6 +307,7 @@ class ApiClient:
                 path_fmt="/async_request/{}",
                 path_args=[request_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
@@ -310,6 +322,7 @@ class ApiClient:
                 path_fmt="/environments/{}/async_queue_status",
                 path_args=[env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
@@ -326,6 +339,7 @@ class ApiClient:
                 path_fmt="/deployment/{}/async_queue_status",
                 path_args=[deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
@@ -340,6 +354,7 @@ class ApiClient:
                 path_fmt="/development/async_queue_status",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
@@ -354,6 +369,7 @@ class ApiClient:
                 path_fmt="/production/async_queue_status",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
@@ -368,6 +384,7 @@ class ApiClient:
                 path_fmt="/async_queue_status",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
@@ -384,12 +401,13 @@ class ApiClient:
                 path_fmt="/async_request/{}",
                 path_args=[request_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
         )
 
-    def predict(self, *, env_name: str, body: PredictInput) -> PredictOutput:
+    def predict(self, *, env_name: str, request: PredictInput) -> PredictOutput:
         """Call the model deployment associated with a specified environment."""
         return self._do_json(
             PredictOutput,
@@ -397,7 +415,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/environments/{}/predict",
                 path_args=[env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -411,7 +430,7 @@ class ApiClient:
         )
 
     def predict_deployment(
-        self, *, deployment_id: str, body: PredictInput
+        self, *, deployment_id: str, request: PredictInput
     ) -> PredictOutput:
         """Call a specific deployment of a model by deployment ID."""
         return self._do_json(
@@ -420,7 +439,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/deployment/{}/predict",
                 path_args=[deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -433,7 +453,7 @@ class ApiClient:
             ),
         )
 
-    def predict_development(self, *, body: PredictInput) -> PredictOutput:
+    def predict_development(self, *, request: PredictInput) -> PredictOutput:
         """Call the development deployment of a model."""
         return self._do_json(
             PredictOutput,
@@ -441,7 +461,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/development/predict",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -454,7 +475,7 @@ class ApiClient:
             ),
         )
 
-    def predict_production(self, *, body: PredictInput) -> PredictOutput:
+    def predict_production(self, *, request: PredictInput) -> PredictOutput:
         """Call the production environment of a model."""
         return self._do_json(
             PredictOutput,
@@ -462,7 +483,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/production/predict",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -475,7 +497,7 @@ class ApiClient:
             ),
         )
 
-    def predict_regional(self, *, body: PredictInput) -> PredictOutput:
+    def predict_regional(self, *, request: PredictInput) -> PredictOutput:
         """Call a regional environment of a model."""
         return self._do_json(
             PredictOutput,
@@ -483,7 +505,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/predict",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -496,7 +519,7 @@ class ApiClient:
             ),
         )
 
-    def run_remote(self, *, env_name: str, body: RunRemoteInput) -> RunRemoteOutput:
+    def run_remote(self, *, env_name: str, request: RunRemoteInput) -> RunRemoteOutput:
         """Call the chain deployment associated with a specified environment."""
         return self._do_json(
             RunRemoteOutput,
@@ -504,7 +527,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/environments/{}/run_remote",
                 path_args=[env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -518,7 +542,7 @@ class ApiClient:
         )
 
     def run_remote_deployment(
-        self, *, deployment_id: str, body: RunRemoteInput
+        self, *, deployment_id: str, request: RunRemoteInput
     ) -> RunRemoteOutput:
         """Call a specific chain deployment by deployment ID."""
         return self._do_json(
@@ -527,7 +551,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/deployment/{}/run_remote",
                 path_args=[deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -540,7 +565,7 @@ class ApiClient:
             ),
         )
 
-    def run_remote_development(self, *, body: RunRemoteInput) -> RunRemoteOutput:
+    def run_remote_development(self, *, request: RunRemoteInput) -> RunRemoteOutput:
         """Call the development deployment of a chain."""
         return self._do_json(
             RunRemoteOutput,
@@ -548,7 +573,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/development/run_remote",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -561,7 +587,7 @@ class ApiClient:
             ),
         )
 
-    def run_remote_production(self, *, body: RunRemoteInput) -> RunRemoteOutput:
+    def run_remote_production(self, *, request: RunRemoteInput) -> RunRemoteOutput:
         """Call the production environment of a chain."""
         return self._do_json(
             RunRemoteOutput,
@@ -569,7 +595,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/production/run_remote",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -582,7 +609,7 @@ class ApiClient:
             ),
         )
 
-    def run_remote_regional(self, *, body: RunRemoteInput) -> RunRemoteOutput:
+    def run_remote_regional(self, *, request: RunRemoteInput) -> RunRemoteOutput:
         """Call a regional environment of a chain."""
         return self._do_json(
             RunRemoteOutput,
@@ -590,7 +617,8 @@ class ApiClient:
                 method="POST",
                 path_fmt="/run_remote",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -611,6 +639,7 @@ class ApiClient:
                 path_fmt="/environments/{}/wake",
                 path_args=[env_name],
                 body=None,
+                query=None,
                 success_code=202,
                 error_codes={401: "ErrorResponse"},
             )
@@ -624,6 +653,7 @@ class ApiClient:
                 path_fmt="/deployment/{}/wake",
                 path_args=[deployment_id],
                 body=None,
+                query=None,
                 success_code=202,
                 error_codes={401: "ErrorResponse"},
             )
@@ -637,6 +667,7 @@ class ApiClient:
                 path_fmt="/development/wake",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=202,
                 error_codes={401: "ErrorResponse"},
             )
@@ -650,6 +681,7 @@ class ApiClient:
                 path_fmt="/production/wake",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=202,
                 error_codes={401: "ErrorResponse"},
             )
@@ -663,6 +695,7 @@ class ApiClient:
                 path_fmt="/wake",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=202,
                 error_codes={401: "ErrorResponse"},
             )
@@ -675,10 +708,25 @@ class ApiClient:
         json_body = None
         if request.body is not None:
             if isinstance(request.body, BaseModel):
-                json_body = request.body.model_dump(mode="json")
+                # Only fields the caller set are sent, so unset fields fall
+                # back to the server default rather than being reset here.
+                # An explicit None is kept, since null can mean "clear".
+                json_body = request.body.model_dump(mode="json", exclude_unset=True)
             else:
                 json_body = request.body
-        response = self._http_client.request(request.method, path, json=json_body)
+        params = None
+        if request.query is not None:
+            if isinstance(request.query, BaseModel):
+                # As above, plus dropping None: a null query parameter is
+                # meaningless and would otherwise serialize as an empty string.
+                params = request.query.model_dump(
+                    mode="json", exclude_unset=True, exclude_none=True
+                )
+            else:
+                params = request.query
+        response = self._http_client.request(
+            request.method, path, json=json_body, params=params
+        )
         if response.status_code != request.success_code:
             if request.error_codes and response.status_code in request.error_codes:
                 error_name = request.error_codes[response.status_code]
@@ -723,7 +771,7 @@ class AsyncApiClient:
         self._http_client = http_client
 
     async def async_predict(
-        self, *, env_name: str, body: AsyncPredictRequest
+        self, *, env_name: str, request: AsyncPredictRequest
     ) -> AsyncPredictOutput:
         """Asynchronously call a named environment of a model."""
         return await self._do_json(
@@ -732,7 +780,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/environments/{}/async_predict",
                 path_args=[env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -745,7 +794,7 @@ class AsyncApiClient:
         )
 
     async def async_predict_deployment(
-        self, *, deployment_id: str, body: AsyncPredictRequest
+        self, *, deployment_id: str, request: AsyncPredictRequest
     ) -> AsyncPredictOutput:
         """Asynchronously call a specific deployment of a model."""
         return await self._do_json(
@@ -754,7 +803,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/deployment/{}/async_predict",
                 path_args=[deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -767,7 +817,7 @@ class AsyncApiClient:
         )
 
     async def async_predict_development(
-        self, *, body: AsyncPredictRequest
+        self, *, request: AsyncPredictRequest
     ) -> AsyncPredictOutput:
         """Asynchronously call the development deployment of a model."""
         return await self._do_json(
@@ -776,7 +826,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/development/async_predict",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -789,7 +840,7 @@ class AsyncApiClient:
         )
 
     async def async_predict_production(
-        self, *, body: AsyncPredictRequest
+        self, *, request: AsyncPredictRequest
     ) -> AsyncPredictOutput:
         """Asynchronously call the production environment of a model."""
         return await self._do_json(
@@ -798,7 +849,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/production/async_predict",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -811,7 +863,7 @@ class AsyncApiClient:
         )
 
     async def async_predict_regional(
-        self, *, body: AsyncPredictRequest
+        self, *, request: AsyncPredictRequest
     ) -> AsyncPredictOutput:
         """Asynchronously call a regional environment of a model."""
         return await self._do_json(
@@ -820,7 +872,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/async_predict",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -833,7 +886,7 @@ class AsyncApiClient:
         )
 
     async def async_run_remote(
-        self, *, env_name: str, body: AsyncRunRemoteInput
+        self, *, env_name: str, request: AsyncRunRemoteInput
     ) -> AsyncRunRemoteOutput:
         """Asynchronously call a named environment of a chain."""
         return await self._do_json(
@@ -842,7 +895,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/environments/{}/async_run_remote",
                 path_args=[env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -854,7 +908,7 @@ class AsyncApiClient:
         )
 
     async def async_run_remote_deployment(
-        self, *, deployment_id: str, body: AsyncRunRemoteInput
+        self, *, deployment_id: str, request: AsyncRunRemoteInput
     ) -> AsyncRunRemoteOutput:
         """Asynchronously call a specific deployment of a chain."""
         return await self._do_json(
@@ -863,7 +917,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/deployment/{}/async_run_remote",
                 path_args=[deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -875,7 +930,7 @@ class AsyncApiClient:
         )
 
     async def async_run_remote_development(
-        self, *, body: AsyncRunRemoteInput
+        self, *, request: AsyncRunRemoteInput
     ) -> AsyncRunRemoteOutput:
         """Asynchronously call the development deployment of a chain."""
         return await self._do_json(
@@ -884,7 +939,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/development/async_run_remote",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -896,7 +952,7 @@ class AsyncApiClient:
         )
 
     async def async_run_remote_production(
-        self, *, body: AsyncRunRemoteInput
+        self, *, request: AsyncRunRemoteInput
     ) -> AsyncRunRemoteOutput:
         """Asynchronously call the production environment of a chain."""
         return await self._do_json(
@@ -905,7 +961,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/production/async_run_remote",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -917,7 +974,7 @@ class AsyncApiClient:
         )
 
     async def async_run_remote_regional(
-        self, *, body: AsyncRunRemoteInput
+        self, *, request: AsyncRunRemoteInput
     ) -> AsyncRunRemoteOutput:
         """Asynchronously call a regional environment of a chain."""
         return await self._do_json(
@@ -926,7 +983,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/async_run_remote",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=201,
                 error_codes={
                     400: "ErrorResponse",
@@ -948,6 +1006,7 @@ class AsyncApiClient:
                 path_fmt="/async_request/{}",
                 path_args=[request_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
@@ -964,6 +1023,7 @@ class AsyncApiClient:
                 path_fmt="/environments/{}/async_queue_status",
                 path_args=[env_name],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
@@ -980,6 +1040,7 @@ class AsyncApiClient:
                 path_fmt="/deployment/{}/async_queue_status",
                 path_args=[deployment_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
@@ -994,6 +1055,7 @@ class AsyncApiClient:
                 path_fmt="/development/async_queue_status",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
@@ -1008,6 +1070,7 @@ class AsyncApiClient:
                 path_fmt="/production/async_queue_status",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
@@ -1022,6 +1085,7 @@ class AsyncApiClient:
                 path_fmt="/async_queue_status",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
@@ -1038,12 +1102,13 @@ class AsyncApiClient:
                 path_fmt="/async_request/{}",
                 path_args=[request_id],
                 body=None,
+                query=None,
                 success_code=200,
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
         )
 
-    async def predict(self, *, env_name: str, body: PredictInput) -> PredictOutput:
+    async def predict(self, *, env_name: str, request: PredictInput) -> PredictOutput:
         """Call the model deployment associated with a specified environment."""
         return await self._do_json(
             PredictOutput,
@@ -1051,7 +1116,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/environments/{}/predict",
                 path_args=[env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -1065,7 +1131,7 @@ class AsyncApiClient:
         )
 
     async def predict_deployment(
-        self, *, deployment_id: str, body: PredictInput
+        self, *, deployment_id: str, request: PredictInput
     ) -> PredictOutput:
         """Call a specific deployment of a model by deployment ID."""
         return await self._do_json(
@@ -1074,7 +1140,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/deployment/{}/predict",
                 path_args=[deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -1087,7 +1154,7 @@ class AsyncApiClient:
             ),
         )
 
-    async def predict_development(self, *, body: PredictInput) -> PredictOutput:
+    async def predict_development(self, *, request: PredictInput) -> PredictOutput:
         """Call the development deployment of a model."""
         return await self._do_json(
             PredictOutput,
@@ -1095,7 +1162,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/development/predict",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -1108,7 +1176,7 @@ class AsyncApiClient:
             ),
         )
 
-    async def predict_production(self, *, body: PredictInput) -> PredictOutput:
+    async def predict_production(self, *, request: PredictInput) -> PredictOutput:
         """Call the production environment of a model."""
         return await self._do_json(
             PredictOutput,
@@ -1116,7 +1184,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/production/predict",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -1129,7 +1198,7 @@ class AsyncApiClient:
             ),
         )
 
-    async def predict_regional(self, *, body: PredictInput) -> PredictOutput:
+    async def predict_regional(self, *, request: PredictInput) -> PredictOutput:
         """Call a regional environment of a model."""
         return await self._do_json(
             PredictOutput,
@@ -1137,7 +1206,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/predict",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -1151,7 +1221,7 @@ class AsyncApiClient:
         )
 
     async def run_remote(
-        self, *, env_name: str, body: RunRemoteInput
+        self, *, env_name: str, request: RunRemoteInput
     ) -> RunRemoteOutput:
         """Call the chain deployment associated with a specified environment."""
         return await self._do_json(
@@ -1160,7 +1230,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/environments/{}/run_remote",
                 path_args=[env_name],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -1174,7 +1245,7 @@ class AsyncApiClient:
         )
 
     async def run_remote_deployment(
-        self, *, deployment_id: str, body: RunRemoteInput
+        self, *, deployment_id: str, request: RunRemoteInput
     ) -> RunRemoteOutput:
         """Call a specific chain deployment by deployment ID."""
         return await self._do_json(
@@ -1183,7 +1254,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/deployment/{}/run_remote",
                 path_args=[deployment_id],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -1196,7 +1268,9 @@ class AsyncApiClient:
             ),
         )
 
-    async def run_remote_development(self, *, body: RunRemoteInput) -> RunRemoteOutput:
+    async def run_remote_development(
+        self, *, request: RunRemoteInput
+    ) -> RunRemoteOutput:
         """Call the development deployment of a chain."""
         return await self._do_json(
             RunRemoteOutput,
@@ -1204,7 +1278,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/development/run_remote",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -1217,7 +1292,9 @@ class AsyncApiClient:
             ),
         )
 
-    async def run_remote_production(self, *, body: RunRemoteInput) -> RunRemoteOutput:
+    async def run_remote_production(
+        self, *, request: RunRemoteInput
+    ) -> RunRemoteOutput:
         """Call the production environment of a chain."""
         return await self._do_json(
             RunRemoteOutput,
@@ -1225,7 +1302,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/production/run_remote",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -1238,7 +1316,7 @@ class AsyncApiClient:
             ),
         )
 
-    async def run_remote_regional(self, *, body: RunRemoteInput) -> RunRemoteOutput:
+    async def run_remote_regional(self, *, request: RunRemoteInput) -> RunRemoteOutput:
         """Call a regional environment of a chain."""
         return await self._do_json(
             RunRemoteOutput,
@@ -1246,7 +1324,8 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/run_remote",
                 path_args=[],
-                body=body,
+                body=request,
+                query=None,
                 success_code=200,
                 error_codes={
                     400: "ErrorResponse",
@@ -1267,6 +1346,7 @@ class AsyncApiClient:
                 path_fmt="/environments/{}/wake",
                 path_args=[env_name],
                 body=None,
+                query=None,
                 success_code=202,
                 error_codes={401: "ErrorResponse"},
             )
@@ -1280,6 +1360,7 @@ class AsyncApiClient:
                 path_fmt="/deployment/{}/wake",
                 path_args=[deployment_id],
                 body=None,
+                query=None,
                 success_code=202,
                 error_codes={401: "ErrorResponse"},
             )
@@ -1293,6 +1374,7 @@ class AsyncApiClient:
                 path_fmt="/development/wake",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=202,
                 error_codes={401: "ErrorResponse"},
             )
@@ -1306,6 +1388,7 @@ class AsyncApiClient:
                 path_fmt="/production/wake",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=202,
                 error_codes={401: "ErrorResponse"},
             )
@@ -1319,6 +1402,7 @@ class AsyncApiClient:
                 path_fmt="/wake",
                 path_args=[],
                 body=None,
+                query=None,
                 success_code=202,
                 error_codes={401: "ErrorResponse"},
             )
@@ -1331,10 +1415,25 @@ class AsyncApiClient:
         json_body = None
         if request.body is not None:
             if isinstance(request.body, BaseModel):
-                json_body = request.body.model_dump(mode="json")
+                # Only fields the caller set are sent, so unset fields fall
+                # back to the server default rather than being reset here.
+                # An explicit None is kept, since null can mean "clear".
+                json_body = request.body.model_dump(mode="json", exclude_unset=True)
             else:
                 json_body = request.body
-        response = await self._http_client.request(request.method, path, json=json_body)
+        params = None
+        if request.query is not None:
+            if isinstance(request.query, BaseModel):
+                # As above, plus dropping None: a null query parameter is
+                # meaningless and would otherwise serialize as an empty string.
+                params = request.query.model_dump(
+                    mode="json", exclude_unset=True, exclude_none=True
+                )
+            else:
+                params = request.query
+        response = await self._http_client.request(
+            request.method, path, json=json_body, params=params
+        )
         if response.status_code != request.success_code:
             if request.error_codes and response.status_code in request.error_codes:
                 error_name = request.error_codes[response.status_code]

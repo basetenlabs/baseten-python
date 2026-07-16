@@ -26,12 +26,19 @@ class _Operation:
     success_code: int
     error_codes: dict[int, str] | None
     summary: str
+    query_ref: str
+    query_required: bool
 
 
-def _extract_operations(spec: dict) -> list[_Operation]:
+def resolve_method_names(spec: dict) -> dict[tuple[str, str], str]:
+    """Map each (path, http_method) to its resolved client method name.
+
+    Names are derived from the method and path, using a trailing path
+    parameter only where needed to disambiguate collisions. Shared with
+    preprocessing so injected query-parameter schemas can be named to
+    match their operation's method.
+    """
     paths = spec.get("paths", {})
-
-    # Collect raw operation data with short names (all params stripped).
     raw: list[tuple[str, str, dict]] = []
     short_names: dict[str, int] = {}
     for path, path_item in paths.items():
@@ -44,8 +51,7 @@ def _extract_operations(spec: dict) -> list[_Operation]:
             )
             short_names[name] = short_names.get(name, 0) + 1
 
-    # Build operations, using trailing param only where needed to disambiguate.
-    ops: list[_Operation] = []
+    result: dict[tuple[str, str], str] = {}
     for path, http_method, op_data in raw:
         short = _derive_method_name(
             http_method, path, op_data, keep_trailing_param=False
@@ -56,20 +62,52 @@ def _extract_operations(spec: dict) -> list[_Operation]:
             )
         else:
             name = short
-        ops.append(
-            _Operation(
-                name=name,
-                http_method=http_method.upper(),
-                path=path,
-                path_params=_PATH_PARAM_RE.findall(path),
-                has_body="requestBody" in op_data,
-                req_body_ref=_body_schema_ref(spec, op_data),
-                resp_ref=_response_schema_ref(spec, op_data),
-                success_code=_extract_success_code(op_data, http_method, path),
-                error_codes=_error_code_map(spec, op_data),
-                summary=op_data.get("summary", ""),
+        result[(path, http_method)] = name
+    return result
+
+
+def query_request_model_name(method_name: str) -> str:
+    """Model name for an operation's injected query-parameter schema."""
+    return _snake_to_pascal(method_name) + "Request"
+
+
+def _snake_to_pascal(s: str) -> str:
+    return "".join(part.capitalize() for part in s.split("_"))
+
+
+def _extract_operations(spec: dict) -> list[_Operation]:
+    paths = spec.get("paths", {})
+    names = resolve_method_names(spec)
+
+    ops: list[_Operation] = []
+    for path, path_item in paths.items():
+        for http_method, op_data in path_item.items():
+            if http_method == "parameters" or not isinstance(op_data, dict):
+                continue
+            name = names[(path, http_method)]
+            query_params = [
+                p
+                for p in op_data.get("parameters", [])
+                if isinstance(p, dict) and p.get("in") == "query"
+            ]
+            query_ref = query_request_model_name(name) if query_params else ""
+            query_required = any(p.get("required") for p in query_params)
+            ops.append(
+                _Operation(
+                    name=name,
+                    http_method=http_method.upper(),
+                    path=path,
+                    path_params=_PATH_PARAM_RE.findall(path),
+                    has_body="requestBody" in op_data,
+                    req_body_ref=_body_schema_ref(spec, op_data),
+                    resp_ref=_response_schema_ref(spec, op_data),
+                    success_code=_extract_success_code(op_data, http_method, path),
+                    error_codes=_error_code_map(spec, op_data),
+                    summary=op_data.get("summary", ""),
+                    query_ref=query_ref,
+                    query_required=query_required,
+                )
             )
-        )
     ops.sort(key=lambda o: o.name)
     return ops
 
@@ -189,6 +227,8 @@ def _render_client(ops: list[_Operation]) -> str:
     for op in ops:
         if op.req_body_ref:
             model_imports.add(op.req_body_ref)
+        if op.query_ref:
+            model_imports.add(op.query_ref)
         if op.resp_ref:
             model_imports.add(op.resp_ref)
         for ref in (op.error_codes or {}).values():
@@ -255,6 +295,7 @@ class _ApiRequest:
     path_fmt: str
     path_args: list[str]
     body: Any
+    query: Any
     success_code: int
     error_codes: dict[int, str] | None
 """
@@ -325,10 +366,23 @@ class {cls}:
         json_body = None
         if request.body is not None:
             if isinstance(request.body, BaseModel):
-                json_body = request.body.model_dump(mode="json")
+                # Only fields the caller set are sent, so unset fields fall
+                # back to the server default rather than being reset here.
+                # An explicit None is kept, since null can mean "clear".
+                json_body = request.body.model_dump(mode="json", exclude_unset=True)
             else:
                 json_body = request.body
-        response = {aw}self._http_client.request(request.method, path, json=json_body)
+        params = None
+        if request.query is not None:
+            if isinstance(request.query, BaseModel):
+                # As above, plus dropping None: a null query parameter is
+                # meaningless and would otherwise serialize as an empty string.
+                params = request.query.model_dump(
+                    mode="json", exclude_unset=True, exclude_none=True
+                )
+            else:
+                params = request.query
+        response = {aw}self._http_client.request(request.method, path, json=json_body, params=params)
         if response.status_code != request.success_code:
 {error_dispatch}\
             raise ResponseError(status_code=response.status_code, body=response.text)
@@ -358,18 +412,36 @@ def _render_method(op: _Operation, *, is_async: bool) -> str:
     adef = "async def" if is_async else "def"
     aw = "await " if is_async else ""
 
+    # An operation carries at most one input model: a request body (any
+    # method other than GET) or query parameters (GET only). Both surface
+    # as a single keyword-only `request` argument. Query requests with no
+    # required fields are optional so callers can omit them entirely; body
+    # requests are always required so an empty body still sends `{}`.
+    if op.query_ref:
+        input_type = op.query_ref
+        input_required = op.query_required
+    elif op.has_body:
+        input_type = op.req_body_ref if op.req_body_ref else "Any"
+        input_required = True
+    else:
+        input_type = ""
+        input_required = False
+
     params = ["self"]
-    if op.path_params or op.has_body:
+    if op.path_params or input_type:
         params.append("*")
     for p in op.path_params:
         params.append(f"{p}: str")
-    if op.has_body:
-        body_type = op.req_body_ref if op.req_body_ref else "Any"
-        params.append(f"body: {body_type}")
+    if input_type:
+        if input_required:
+            params.append(f"request: {input_type}")
+        else:
+            params.append(f"request: {input_type} | None = None")
 
     ret = f" -> {op.resp_ref}" if op.resp_ref else " -> None"
     path_args = f"[{', '.join(op.path_params)}]" if op.path_params else "[]"
-    body_arg = "body" if op.has_body else "None"
+    body_arg = "request" if (input_type and not op.query_ref) else "None"
+    query_arg = "request" if op.query_ref else "None"
 
     if op.error_codes:
         codes = sorted(op.error_codes.items())
@@ -383,6 +455,7 @@ def _render_method(op: _Operation, *, is_async: bool) -> str:
         f"path_fmt={_path_fmt(op.path)!r}, "
         f"path_args={path_args}, "
         f"body={body_arg}, "
+        f"query={query_arg}, "
         f"success_code={op.success_code}, "
         f"error_codes={error_expr})"
     )
