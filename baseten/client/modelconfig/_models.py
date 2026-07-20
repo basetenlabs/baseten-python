@@ -218,6 +218,19 @@ class ModelServer(Enum):
     TRT_LLM = "TRT_LLM"
 
 
+class OIDC(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    enabled: Annotated[
+        bool | None,
+        Field(
+            description="If true, mounts an OIDC bearer token for your model to access at runtime.",
+            title="Enabled",
+        ),
+    ] = None
+
+
 class RemoteSSH(BaseModel):
     model_config = ConfigDict(
         extra="allow",
@@ -711,6 +724,12 @@ class Runtime(BaseModel):
         ),
     ] = None
     health_checks: HealthChecks | None = None
+    oidc: Annotated[
+        OIDC | None,
+        Field(
+            description="Configuration for runtime-mounting of an OIDC bearer token."
+        ),
+    ] = None
     remote_ssh: RemoteSSH | None = None
     egress_restrictions: Annotated[
         EgressRestrictions | None,
