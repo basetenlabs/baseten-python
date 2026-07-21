@@ -4,7 +4,7 @@
 
 Python SDK for Baseten. See the [API documentation](https://basetenlabs.github.io/baseten-python/) and [usage](#usage) below.
 
-⚠️ SDK may change incompatibility between releases until the SDK reaches 1.0.
+⚠️ SDK may change in incompatible ways between releases until the SDK reaches 1.0.
 
 ## Install
 
