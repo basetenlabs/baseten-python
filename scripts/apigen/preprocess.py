@@ -59,6 +59,11 @@ def preprocess_spec(data: bytes) -> bytes:
     # wrapper classes.
     _hoist_component_schemas(doc)
 
+    # Prune before injecting: enums used only by inline query parameters stay
+    # reachable through the operations, orphaned request/response models are
+    # dropped, and the query schemas we add next are never at risk.
+    _prune_unused_schemas(doc)
+
     # Synthesize a request schema per GET operation's query parameters so
     # datamodel-code-generator emits a typed model for them (it only
     # generates query-parameter models under the paths scope, which drags
@@ -106,6 +111,62 @@ def _hoist_component_schemas(doc: dict) -> None:
                 continue
             schemas[name] = schema
             content["schema"] = {"$ref": f"#/components/schemas/{name}"}
+
+
+def _prune_unused_schemas(doc: dict) -> None:
+    # Remove component schemas not reachable from any operation. Reachability
+    # roots are every schema $ref outside components/schemas (paths and the
+    # other component sections); each reachable schema's own $refs are then
+    # followed transitively.
+    components = doc.get("components", {})
+    schemas = components.get("schemas", {})
+
+    roots: set[str] = set()
+    _collect_schema_refs(doc.get("paths", {}), roots)
+    for section, value in components.items():
+        if section != "schemas":
+            _collect_schema_refs(value, roots)
+
+    reachable: set[str] = set()
+    queue = [name for name in roots if name in schemas]
+    while queue:
+        name = queue.pop()
+        if name in reachable:
+            continue
+        reachable.add(name)
+        refs: set[str] = set()
+        _collect_schema_refs(schemas[name], refs)
+        for ref in refs:
+            if ref not in reachable and ref in schemas:
+                queue.append(ref)
+
+    for name in list(schemas):
+        if name not in reachable:
+            del schemas[name]
+
+
+def _collect_schema_refs(node: object, out: set[str]) -> None:
+    if isinstance(node, dict):
+        ref = node.get("$ref")  # ty: ignore[invalid-argument-type]
+        if isinstance(ref, str):
+            m = _REF_PATTERN.fullmatch(ref)
+            if m:
+                out.add(m.group(1))
+        # Discriminator mapping values are schema refs but not under a $ref key.
+        disc = node.get("discriminator")  # ty: ignore[invalid-argument-type]
+        if isinstance(disc, dict):
+            mapping = disc.get("mapping")
+            if isinstance(mapping, dict):
+                for value in mapping.values():
+                    if isinstance(value, str):
+                        m = _REF_PATTERN.fullmatch(value)
+                        if m:
+                            out.add(m.group(1))
+        for child in node.values():
+            _collect_schema_refs(child, out)
+    elif isinstance(node, list):
+        for child in node:
+            _collect_schema_refs(child, out)
 
 
 def _inject_query_request_schemas(doc: dict) -> None:

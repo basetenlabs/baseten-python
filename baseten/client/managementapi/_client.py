@@ -62,10 +62,12 @@ from ._models import (
     EnvironmentGroups,
     Environments,
     GatewayKeyInfo,
+    GetAuditLogsRequest,
     GetAuthCodesResponse,
     GetBillingUsageSummaryRequest,
     GetBlobCredentialsResponse,
     GetCacheSummaryResponse,
+    GetChainsAuditLogsRequest,
     GetChainsDeploymentsChainletsLogsRequest,
     GetDeploymentLogsRequest,
     GetDeploymentPatchesStateResponse,
@@ -83,6 +85,7 @@ from ._models import (
     GetLoopsUserConfigResponse,
     GetModelApisRequest,
     GetModelMetricsResponse,
+    GetModelsAuditLogsRequest,
     GetModelsDeploymentsConfigRequest,
     GetModelsDeploymentsLogsRequest,
     GetModelsDeploymentsMetricsRequest,
@@ -117,6 +120,7 @@ from ._models import (
     LibraryListingVersionTombstone,
     LibraryListingVersions,
     LibraryListings,
+    ListAuditLogsResponse,
     ListLoopsCheckpointsResponse,
     ListLoopsDeploymentsResponse,
     ListLoopsRunsResponse,
@@ -448,6 +452,23 @@ class ApiClient:
             ),
         )
 
+    def get_audit_logs(
+        self, *, request: GetAuditLogsRequest | None = None
+    ) -> ListAuditLogsResponse:
+        """Gets the audit log for the workspace"""
+        return self._do_json(
+            ListAuditLogsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/audit_logs",
+                path_args=[],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     def get_billing_usage_summary(
         self, *, request: GetBillingUsageSummaryRequest
     ) -> UsageSummary:
@@ -505,6 +526,23 @@ class ApiClient:
                 path_args=[],
                 body=None,
                 query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    def get_chains_audit_logs(
+        self, *, chain_id: str, request: GetChainsAuditLogsRequest | None = None
+    ) -> ListAuditLogsResponse:
+        """Gets the audit log for a chain"""
+        return self._do_json(
+            ListAuditLogsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/chains/{}/audit_logs",
+                path_args=[chain_id],
+                body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1096,6 +1134,23 @@ class ApiClient:
                 method="GET",
                 path_fmt="/v1/models",
                 path_args=[],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    def get_models_audit_logs(
+        self, *, model_id: str, request: GetModelsAuditLogsRequest | None = None
+    ) -> ListAuditLogsResponse:
+        """Gets the audit log for a model"""
+        return self._do_json(
+            ListAuditLogsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/models/{}/audit_logs",
+                path_args=[model_id],
                 body=None,
                 query=request,
                 success_code=200,
@@ -3374,6 +3429,23 @@ class AsyncApiClient:
             ),
         )
 
+    async def get_audit_logs(
+        self, *, request: GetAuditLogsRequest | None = None
+    ) -> ListAuditLogsResponse:
+        """Gets the audit log for the workspace"""
+        return await self._do_json(
+            ListAuditLogsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/audit_logs",
+                path_args=[],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     async def get_billing_usage_summary(
         self, *, request: GetBillingUsageSummaryRequest
     ) -> UsageSummary:
@@ -3431,6 +3503,23 @@ class AsyncApiClient:
                 path_args=[],
                 body=None,
                 query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    async def get_chains_audit_logs(
+        self, *, chain_id: str, request: GetChainsAuditLogsRequest | None = None
+    ) -> ListAuditLogsResponse:
+        """Gets the audit log for a chain"""
+        return await self._do_json(
+            ListAuditLogsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/chains/{}/audit_logs",
+                path_args=[chain_id],
+                body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4026,6 +4115,23 @@ class AsyncApiClient:
                 method="GET",
                 path_fmt="/v1/models",
                 path_args=[],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    async def get_models_audit_logs(
+        self, *, model_id: str, request: GetModelsAuditLogsRequest | None = None
+    ) -> ListAuditLogsResponse:
+        """Gets the audit log for a model"""
+        return await self._do_json(
+            ListAuditLogsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/models/{}/audit_logs",
+                path_args=[model_id],
                 body=None,
                 query=request,
                 success_code=200,

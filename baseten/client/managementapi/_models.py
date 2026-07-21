@@ -664,16 +664,6 @@ class Teams(BaseModel):
     teams: Annotated[list[Team], Field(description="A list of teams", title="Teams")]
 
 
-class TeamsRequest(BaseModel):
-    name: Annotated[
-        str | None,
-        Field(
-            description="When set, returns only the team with this exact name, if any.",
-            title="Name",
-        ),
-    ] = None
-
-
 class InstanceType(BaseModel):
     id: Annotated[
         str, Field(description="Identifier string for the instance type", title="Id")
@@ -896,25 +886,785 @@ class AWSCredentials(BaseModel):
 class PrepareModelUploadResponse(BaseModel):
     creds: Annotated[
         AWSCredentials | None,
-        Field(description="STS credentials to upload the model archive."),
+        Field(
+            description="STS credentials to upload the model archive. Null when no archive upload is required."
+        ),
     ] = None
     s3_bucket: Annotated[
         str | None,
         Field(
-            description="S3 bucket the credentials are scoped to.", title="S3 Bucket"
+            description="S3 bucket the credentials are scoped to. Null when no archive upload is required.",
+            title="S3 Bucket",
         ),
     ] = None
     s3_key: Annotated[
         str | None,
         Field(
-            description="S3 key the credentials are scoped to. Pass this to `POST /v1/models` (in the `model_archive` source) once the upload completes.",
+            description="S3 key the credentials are scoped to. Pass this to `POST /v1/models` (in the `model_archive` source) once the upload completes. Null when no archive upload is required.",
             title="S3 Key",
         ),
     ] = None
     s3_region: Annotated[
         str | None,
-        Field(description="AWS region the S3 bucket resides in.", title="S3 Region"),
+        Field(
+            description="AWS region the S3 bucket resides in. Null when no archive upload is required.",
+            title="S3 Region",
+        ),
     ] = None
+
+
+class AuditLogActorType(Enum):
+    USER = "USER"
+    API_KEY = "API_KEY"
+    BASETEN_USER = "BASETEN_USER"
+    BASETEN_SYSTEM = "BASETEN_SYSTEM"
+    TOMBSTONE_USER = "TOMBSTONE_USER"
+
+
+class AuditLogActor(BaseModel):
+    type: Annotated[
+        AuditLogActorType, Field(description="Kind of actor that performed the action.")
+    ]
+    email: Annotated[
+        str | None,
+        Field(
+            description="Email of the acting user, when the actor is a user.",
+            title="Email",
+        ),
+    ] = None
+    api_key_prefix: Annotated[
+        str | None,
+        Field(
+            description="Prefix of the acting API key, when the actor is an API key.",
+            title="Api Key Prefix",
+        ),
+    ] = None
+
+
+class AuditLogApiKeyType(Enum):
+    PERSONAL = "PERSONAL"
+    CREATOR_SERVICE_ACCOUNT = "CREATOR_SERVICE_ACCOUNT"
+    INVOKE_ALL_MODELS_SERVICE_ACCOUNT = "INVOKE_ALL_MODELS_SERVICE_ACCOUNT"
+    INVOKE_ALLOWED_MODELS_SERVICE_ACCOUNT = "INVOKE_ALLOWED_MODELS_SERVICE_ACCOUNT"
+    INVOKE_SCOPED_ENVS_AND_MODELS_SERVICE_ACCOUNT = (
+        "INVOKE_SCOPED_ENVS_AND_MODELS_SERVICE_ACCOUNT"
+    )
+    EXPORT_METRICS_ALL_MODELS_SERVICE_ACCOUNT = (
+        "EXPORT_METRICS_ALL_MODELS_SERVICE_ACCOUNT"
+    )
+    EXPORT_METRICS_ALLOWED_MODELS_SERVICE_ACCOUNT = (
+        "EXPORT_METRICS_ALLOWED_MODELS_SERVICE_ACCOUNT"
+    )
+    INVOKE_ALL_SHARED_ENDPOINTS_SERVICE_ACCOUNT = (
+        "INVOKE_ALL_SHARED_ENDPOINTS_SERVICE_ACCOUNT"
+    )
+    INVOKE_ALLOWED_SHARED_ENDPOINTS_SERVICE_ACCOUNT = (
+        "INVOKE_ALLOWED_SHARED_ENDPOINTS_SERVICE_ACCOUNT"
+    )
+
+
+class AuditLogEventApiKeyCreated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[Literal["API_KEY_CREATED"], Field(title="Event Type")]
+    api_key_id: Annotated[str, Field(title="Api Key Id")]
+    api_key_type: AuditLogApiKeyType
+    prefix: Annotated[str, Field(title="Prefix")]
+
+
+class AuditLogEventApiKeyDeleted(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[Literal["API_KEY_DELETED"], Field(title="Event Type")]
+    api_key_id: Annotated[str, Field(title="Api Key Id")]
+    api_key_type: AuditLogApiKeyType
+    prefix: Annotated[str, Field(title="Prefix")]
+
+
+class AuditLogEventAutoscalingSettings(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    min_replica: Annotated[int, Field(title="Min Replica")]
+    max_replica: Annotated[int, Field(title="Max Replica")]
+    concurrency_target: Annotated[int, Field(title="Concurrency Target")]
+    autoscaling_window: Annotated[int | None, Field(title="Autoscaling Window")]
+    scale_down_delay: Annotated[int | None, Field(title="Scale Down Delay")]
+    target_utilization_percentage: Annotated[
+        int | None, Field(title="Target Utilization Percentage")
+    ]
+    target_in_flight_tokens: Annotated[
+        int | None, Field(title="Target In Flight Tokens")
+    ]
+    max_scale_down_rate: Annotated[float | None, Field(title="Max Scale Down Rate")]
+
+
+class AuditLogEventChainDeleted(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[Literal["CHAIN_DELETED"], Field(title="Event Type")]
+    chain_id: Annotated[str, Field(title="Chain Id")]
+    chain_name: Annotated[str, Field(title="Chain Name")]
+    chain_deployment_name: Annotated[str | None, Field(title="Chain Deployment Name")]
+
+
+class AuditLogEventChainDeployed(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[Literal["CHAIN_DEPLOYED"], Field(title="Event Type")]
+    chain_id: Annotated[str, Field(title="Chain Id")]
+    chain_name: Annotated[str, Field(title="Chain Name")]
+    chain_deployment_id: Annotated[str, Field(title="Chain Deployment Id")]
+    chain_deployment_name: Annotated[str | None, Field(title="Chain Deployment Name")]
+    is_primary: Annotated[bool, Field(title="Is Primary")]
+    publish: Annotated[bool, Field(title="Publish")]
+
+
+class AuditLogEventChainDeploymentActivated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["CHAIN_DEPLOYMENT_ACTIVATED"], Field(title="Event Type")
+    ]
+    chain_id: Annotated[str, Field(title="Chain Id")]
+    chain_name: Annotated[str, Field(title="Chain Name")]
+    chain_deployment_id: Annotated[str, Field(title="Chain Deployment Id")]
+    chain_deployment_name: Annotated[str | None, Field(title="Chain Deployment Name")]
+
+
+class AuditLogEventChainDeploymentDeactivated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["CHAIN_DEPLOYMENT_DEACTIVATED"], Field(title="Event Type")
+    ]
+    chain_id: Annotated[str, Field(title="Chain Id")]
+    chain_name: Annotated[str, Field(title="Chain Name")]
+    chain_deployment_id: Annotated[str, Field(title="Chain Deployment Id")]
+    chain_deployment_name: Annotated[str | None, Field(title="Chain Deployment Name")]
+
+
+class AuditLogEventChainDeploymentDeleted(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["CHAIN_DEPLOYMENT_DELETED"], Field(title="Event Type")
+    ]
+    chain_id: Annotated[str, Field(title="Chain Id")]
+    chain_name: Annotated[str, Field(title="Chain Name")]
+    chain_deployment_id: Annotated[str, Field(title="Chain Deployment Id")]
+    deployment_name: Annotated[str | None, Field(title="Deployment Name")]
+
+
+class AuditLogEventChainDeploymentPromoted(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["CHAIN_DEPLOYMENT_PROMOTED"], Field(title="Event Type")
+    ]
+    chain_id: Annotated[str, Field(title="Chain Id")]
+    chain_name: Annotated[str, Field(title="Chain Name")]
+    chain_deployment_id: Annotated[str, Field(title="Chain Deployment Id")]
+    chain_deployment_name: Annotated[str | None, Field(title="Chain Deployment Name")]
+    environment_name: Annotated[str | None, Field(title="Environment Name")]
+    environment_id: Annotated[str | None, Field(title="Environment Id")]
+
+
+class AuditLogEventChainEnvironmentCreated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["CHAIN_ENVIRONMENT_CREATED"], Field(title="Event Type")
+    ]
+    chain_id: Annotated[str, Field(title="Chain Id")]
+    chain_name: Annotated[str, Field(title="Chain Name")]
+    environment_name: Annotated[str, Field(title="Environment Name")]
+    redeploy_on_promotion: Annotated[bool | None, Field(title="Redeploy On Promotion")]
+    ramp_up_while_promoting: Annotated[
+        bool | None, Field(title="Ramp Up While Promoting")
+    ]
+    ramp_up_duration_seconds: Annotated[
+        int | None, Field(title="Ramp Up Duration Seconds")
+    ]
+
+
+class AuditLogEventChainEnvironmentUpdated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["CHAIN_ENVIRONMENT_UPDATED"], Field(title="Event Type")
+    ]
+    chain_id: Annotated[str, Field(title="Chain Id")]
+    chain_name: Annotated[str, Field(title="Chain Name")]
+    environment_name: Annotated[str, Field(title="Environment Name")]
+    redeploy_on_promotion: Annotated[bool | None, Field(title="Redeploy On Promotion")]
+    ramp_up_while_promoting: Annotated[
+        bool | None, Field(title="Ramp Up While Promoting")
+    ]
+    ramp_up_duration_seconds: Annotated[
+        int | None, Field(title="Ramp Up Duration Seconds")
+    ]
+
+
+class AuditLogEventChainletAutoscalingSettingsChanged(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    min_replica: Annotated[int, Field(title="Min Replica")]
+    max_replica: Annotated[int, Field(title="Max Replica")]
+    concurrency_target: Annotated[int, Field(title="Concurrency Target")]
+    autoscaling_window: Annotated[int | None, Field(title="Autoscaling Window")]
+    scale_down_delay: Annotated[int | None, Field(title="Scale Down Delay")]
+    target_utilization_percentage: Annotated[
+        int | None, Field(title="Target Utilization Percentage")
+    ]
+    target_in_flight_tokens: Annotated[
+        int | None, Field(title="Target In Flight Tokens")
+    ]
+    max_scale_down_rate: Annotated[float | None, Field(title="Max Scale Down Rate")]
+    event_type: Annotated[
+        Literal["CHAINLET_AUTOSCALING_SETTINGS_CHANGED"], Field(title="Event Type")
+    ]
+    chain_id: Annotated[str, Field(title="Chain Id")]
+    chain_name: Annotated[str, Field(title="Chain Name")]
+    chain_deployment_id: Annotated[str, Field(title="Chain Deployment Id")]
+    chain_deployment_name: Annotated[str | None, Field(title="Chain Deployment Name")]
+    chainlet_name: Annotated[str, Field(title="Chainlet Name")]
+    chainlet_id: Annotated[str, Field(title="Chainlet Id")]
+    previous_settings: AuditLogEventAutoscalingSettings | None
+
+
+class AuditLogEventChainletInstanceTypeChanged(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["CHAINLET_INSTANCE_TYPE_CHANGED"], Field(title="Event Type")
+    ]
+    chain_id: Annotated[str, Field(title="Chain Id")]
+    chain_name: Annotated[str, Field(title="Chain Name")]
+    chain_deployment_id: Annotated[str, Field(title="Chain Deployment Id")]
+    chain_deployment_name: Annotated[str | None, Field(title="Chain Deployment Name")]
+    chainlet_name: Annotated[str, Field(title="Chainlet Name")]
+    chainlet_id: Annotated[str, Field(title="Chainlet Id")]
+    instance_type_name: Annotated[str, Field(title="Instance Type Name")]
+
+
+class AuditLogEventDirectoryGroupRoleUpdated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["DIRECTORY_GROUP_ROLE_UPDATED"], Field(title="Event Type")
+    ]
+    directory_group_id: Annotated[str, Field(title="Directory Group Id")]
+    directory_group_name: Annotated[str, Field(title="Directory Group Name")]
+    new_role_name: Annotated[str, Field(title="New Role Name")]
+    team_id: Annotated[str | None, Field(title="Team Id")]
+    team_name: Annotated[str | None, Field(title="Team Name")]
+
+
+class AuditLogEventEnvironmentCreated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    min_replica: Annotated[int, Field(title="Min Replica")]
+    max_replica: Annotated[int, Field(title="Max Replica")]
+    concurrency_target: Annotated[int, Field(title="Concurrency Target")]
+    autoscaling_window: Annotated[int | None, Field(title="Autoscaling Window")]
+    scale_down_delay: Annotated[int | None, Field(title="Scale Down Delay")]
+    target_utilization_percentage: Annotated[
+        int | None, Field(title="Target Utilization Percentage")
+    ]
+    target_in_flight_tokens: Annotated[
+        int | None, Field(title="Target In Flight Tokens")
+    ]
+    max_scale_down_rate: Annotated[float | None, Field(title="Max Scale Down Rate")]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    environment_name: Annotated[str, Field(title="Environment Name")]
+    deployment_type: Annotated[str | None, Field(title="Deployment Type")]
+    redeploy_on_promotion: Annotated[bool | None, Field(title="Redeploy On Promotion")]
+    ramp_up_while_promoting: Annotated[
+        bool | None, Field(title="Ramp Up While Promoting")
+    ]
+    ramp_up_duration_seconds: Annotated[
+        int | None, Field(title="Ramp Up Duration Seconds")
+    ]
+    ramp_up_step_size: Annotated[int | None, Field(title="Ramp Up Step Size")]
+    rolling_deploy: Annotated[bool | None, Field(title="Rolling Deploy")]
+    rolling_deploy_strategy: Annotated[
+        str | None, Field(title="Rolling Deploy Strategy")
+    ]
+    max_unavailable_percent: Annotated[
+        int | None, Field(title="Max Unavailable Percent")
+    ]
+    max_surge_percent: Annotated[int | None, Field(title="Max Surge Percent")]
+    stabilization_time_seconds: Annotated[
+        int | None, Field(title="Stabilization Time Seconds")
+    ]
+    replica_overhead_percent: Annotated[
+        int | None, Field(title="Replica Overhead Percent")
+    ]
+    promotion_cleanup_strategy: Annotated[
+        str | None, Field(title="Promotion Cleanup Strategy")
+    ]
+    event_type: Annotated[Literal["ENVIRONMENT_CREATED"], Field(title="Event Type")]
+
+
+class AuditLogEventEnvironmentDeleted(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[Literal["ENVIRONMENT_DELETED"], Field(title="Event Type")]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    environment_name: Annotated[str, Field(title="Environment Name")]
+
+
+class AuditLogEventEnvironmentUpdated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    min_replica: Annotated[int, Field(title="Min Replica")]
+    max_replica: Annotated[int, Field(title="Max Replica")]
+    concurrency_target: Annotated[int, Field(title="Concurrency Target")]
+    autoscaling_window: Annotated[int | None, Field(title="Autoscaling Window")]
+    scale_down_delay: Annotated[int | None, Field(title="Scale Down Delay")]
+    target_utilization_percentage: Annotated[
+        int | None, Field(title="Target Utilization Percentage")
+    ]
+    target_in_flight_tokens: Annotated[
+        int | None, Field(title="Target In Flight Tokens")
+    ]
+    max_scale_down_rate: Annotated[float | None, Field(title="Max Scale Down Rate")]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    environment_name: Annotated[str, Field(title="Environment Name")]
+    deployment_type: Annotated[str | None, Field(title="Deployment Type")]
+    redeploy_on_promotion: Annotated[bool | None, Field(title="Redeploy On Promotion")]
+    ramp_up_while_promoting: Annotated[
+        bool | None, Field(title="Ramp Up While Promoting")
+    ]
+    ramp_up_duration_seconds: Annotated[
+        int | None, Field(title="Ramp Up Duration Seconds")
+    ]
+    ramp_up_step_size: Annotated[int | None, Field(title="Ramp Up Step Size")]
+    rolling_deploy: Annotated[bool | None, Field(title="Rolling Deploy")]
+    rolling_deploy_strategy: Annotated[
+        str | None, Field(title="Rolling Deploy Strategy")
+    ]
+    max_unavailable_percent: Annotated[
+        int | None, Field(title="Max Unavailable Percent")
+    ]
+    max_surge_percent: Annotated[int | None, Field(title="Max Surge Percent")]
+    stabilization_time_seconds: Annotated[
+        int | None, Field(title="Stabilization Time Seconds")
+    ]
+    replica_overhead_percent: Annotated[
+        int | None, Field(title="Replica Overhead Percent")
+    ]
+    promotion_cleanup_strategy: Annotated[
+        str | None, Field(title="Promotion Cleanup Strategy")
+    ]
+    event_type: Annotated[Literal["ENVIRONMENT_UPDATED"], Field(title="Event Type")]
+    previous_settings: AuditLogEventAutoscalingSettings | None
+
+
+class AuditLogEventGatewayEndpointCreated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["GATEWAY_ENDPOINT_CREATED"], Field(title="Event Type")
+    ]
+    gateway_endpoint_id: Annotated[str, Field(title="Gateway Endpoint Id")]
+    slug: Annotated[str, Field(title="Slug")]
+
+
+class AuditLogEventGatewayEndpointDeleted(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["GATEWAY_ENDPOINT_DELETED"], Field(title="Event Type")
+    ]
+    gateway_endpoint_id: Annotated[str, Field(title="Gateway Endpoint Id")]
+    slug: Annotated[str, Field(title="Slug")]
+
+
+class AuditLogEventGatewayEndpointUpdated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["GATEWAY_ENDPOINT_UPDATED"], Field(title="Event Type")
+    ]
+    gateway_endpoint_id: Annotated[str, Field(title="Gateway Endpoint Id")]
+    slug: Annotated[str, Field(title="Slug")]
+    previous_slug: Annotated[str | None, Field(title="Previous Slug")]
+
+
+class AuditLogEventModelDeleted(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[Literal["MODEL_DELETED"], Field(title="Event Type")]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+
+
+class AuditLogEventModelDeployed(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[Literal["MODEL_DEPLOYED"], Field(title="Event Type")]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    deployment_id: Annotated[str, Field(title="Deployment Id")]
+    deployment_name: Annotated[str, Field(title="Deployment Name")]
+    scale_previous_to_zero: Annotated[bool, Field(title="Scale Previous To Zero")]
+    trusted: Annotated[bool, Field(title="Trusted")]
+    publish: Annotated[bool, Field(title="Publish")]
+    environment_name: Annotated[str | None, Field(title="Environment Name")]
+
+
+class AuditLogEventModelDeploymentActivated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["MODEL_DEPLOYMENT_ACTIVATED"], Field(title="Event Type")
+    ]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    deployment_id: Annotated[str, Field(title="Deployment Id")]
+    deployment_name: Annotated[str, Field(title="Deployment Name")]
+
+
+class AuditLogEventModelDeploymentAutoscalingSettingsChanged(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    min_replica: Annotated[int, Field(title="Min Replica")]
+    max_replica: Annotated[int, Field(title="Max Replica")]
+    concurrency_target: Annotated[int, Field(title="Concurrency Target")]
+    autoscaling_window: Annotated[int | None, Field(title="Autoscaling Window")]
+    scale_down_delay: Annotated[int | None, Field(title="Scale Down Delay")]
+    target_utilization_percentage: Annotated[
+        int | None, Field(title="Target Utilization Percentage")
+    ]
+    target_in_flight_tokens: Annotated[
+        int | None, Field(title="Target In Flight Tokens")
+    ]
+    max_scale_down_rate: Annotated[float | None, Field(title="Max Scale Down Rate")]
+    event_type: Annotated[
+        Literal["MODEL_DEPLOYMENT_AUTOSCALING_SETTINGS_CHANGED"],
+        Field(title="Event Type"),
+    ]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    deployment_id: Annotated[str, Field(title="Deployment Id")]
+    deployment_name: Annotated[str, Field(title="Deployment Name")]
+    deployment_type: Annotated[str | None, Field(title="Deployment Type")]
+    previous_settings: AuditLogEventAutoscalingSettings | None
+
+
+class AuditLogEventModelDeploymentDeactivated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["MODEL_DEPLOYMENT_DEACTIVATED"], Field(title="Event Type")
+    ]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    deployment_id: Annotated[str, Field(title="Deployment Id")]
+    deployment_name: Annotated[str, Field(title="Deployment Name")]
+
+
+class AuditLogEventModelDeploymentDeleted(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["MODEL_DEPLOYMENT_DELETED"], Field(title="Event Type")
+    ]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    deployment_id: Annotated[str, Field(title="Deployment Id")]
+    deployment_name: Annotated[str, Field(title="Deployment Name")]
+
+
+class AuditLogEventModelDeploymentInstanceTypeChanged(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["MODEL_DEPLOYMENT_INSTANCE_TYPE_CHANGED"], Field(title="Event Type")
+    ]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    deployment_id: Annotated[str, Field(title="Deployment Id")]
+    deployment_name: Annotated[str, Field(title="Deployment Name")]
+    instance_type_name: Annotated[str, Field(title="Instance Type Name")]
+
+
+class AuditLogEventModelDeploymentPromoted(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["MODEL_DEPLOYMENT_PROMOTED"], Field(title="Event Type")
+    ]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    deployment_id: Annotated[str, Field(title="Deployment Id")]
+    deployment_name: Annotated[str, Field(title="Deployment Name")]
+    environment_name: Annotated[str | None, Field(title="Environment Name")]
+    environment_id: Annotated[str | None, Field(title="Environment Id")]
+
+
+class AuditLogEventModelDeploymentRetried(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["MODEL_DEPLOYMENT_RETRIED"], Field(title="Event Type")
+    ]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    deployment_id: Annotated[str, Field(title="Deployment Id")]
+    deployment_name: Annotated[str, Field(title="Deployment Name")]
+    retried: Annotated[bool, Field(title="Retried")]
+
+
+class AuditLogEventReplicaTerminated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[Literal["REPLICA_TERMINATED"], Field(title="Event Type")]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    deployment_id: Annotated[str, Field(title="Deployment Id")]
+    deployment_name: Annotated[str, Field(title="Deployment Name")]
+    replica_id: Annotated[str, Field(title="Replica Id")]
+
+
+class AuditLogEventRequireGroupBasedAdminsEnabled(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["REQUIRE_GROUP_BASED_ADMINS_ENABLED"], Field(title="Event Type")
+    ]
+    organization_id: Annotated[str, Field(title="Organization Id")]
+
+
+class AuditLogEventSecretDeleted(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[Literal["SECRET_DELETED"], Field(title="Event Type")]
+    secret_id: Annotated[str, Field(title="Secret Id")]
+    secret_name: Annotated[str, Field(title="Secret Name")]
+
+
+class AuditLogEventSecretUpdated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[Literal["SECRET_UPDATED"], Field(title="Event Type")]
+    secret_id: Annotated[str, Field(title="Secret Id")]
+    secret_name: Annotated[str, Field(title="Secret Name")]
+
+
+class AuditLogEventSshCertificateSigned(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[Literal["SSH_CERTIFICATE_SIGNED"], Field(title="Event Type")]
+    workload_type: Annotated[str, Field(title="Workload Type")]
+    workload_id: Annotated[str, Field(title="Workload Id")]
+    project_id: Annotated[str, Field(title="Project Id")]
+    replica_id: Annotated[str, Field(title="Replica Id")]
+    proxy_address: Annotated[str, Field(title="Proxy Address")]
+    expires_at: Annotated[str, Field(title="Expires At")]
+
+
+class AuditLogEventType(Enum):
+    MODEL_DEPLOYED = "MODEL_DEPLOYED"
+    MODEL_DEPLOYMENT_ACTIVATED = "MODEL_DEPLOYMENT_ACTIVATED"
+    MODEL_DEPLOYMENT_DEACTIVATED = "MODEL_DEPLOYMENT_DEACTIVATED"
+    MODEL_DEPLOYMENT_RETRIED = "MODEL_DEPLOYMENT_RETRIED"
+    MODEL_DEPLOYMENT_PROMOTED = "MODEL_DEPLOYMENT_PROMOTED"
+    MODEL_DEPLOYMENT_AUTOSCALING_SETTINGS_CHANGED = (
+        "MODEL_DEPLOYMENT_AUTOSCALING_SETTINGS_CHANGED"
+    )
+    MODEL_DEPLOYMENT_INSTANCE_TYPE_CHANGED = "MODEL_DEPLOYMENT_INSTANCE_TYPE_CHANGED"
+    MODEL_DEPLOYMENT_DELETED = "MODEL_DEPLOYMENT_DELETED"
+    MODEL_DELETED = "MODEL_DELETED"
+    CHAIN_DEPLOYED = "CHAIN_DEPLOYED"
+    CHAIN_DEPLOYMENT_ACTIVATED = "CHAIN_DEPLOYMENT_ACTIVATED"
+    CHAIN_DEPLOYMENT_DEACTIVATED = "CHAIN_DEPLOYMENT_DEACTIVATED"
+    CHAIN_DEPLOYMENT_PROMOTED = "CHAIN_DEPLOYMENT_PROMOTED"
+    CHAINLET_AUTOSCALING_SETTINGS_CHANGED = "CHAINLET_AUTOSCALING_SETTINGS_CHANGED"
+    CHAINLET_INSTANCE_TYPE_CHANGED = "CHAINLET_INSTANCE_TYPE_CHANGED"
+    CHAIN_DEPLOYMENT_DELETED = "CHAIN_DEPLOYMENT_DELETED"
+    CHAIN_DELETED = "CHAIN_DELETED"
+    CHAIN_ENVIRONMENT_CREATED = "CHAIN_ENVIRONMENT_CREATED"
+    CHAIN_ENVIRONMENT_UPDATED = "CHAIN_ENVIRONMENT_UPDATED"
+    SECRET_UPDATED = "SECRET_UPDATED"
+    SECRET_DELETED = "SECRET_DELETED"
+    API_KEY_CREATED = "API_KEY_CREATED"
+    API_KEY_DELETED = "API_KEY_DELETED"
+    GATEWAY_ENDPOINT_CREATED = "GATEWAY_ENDPOINT_CREATED"
+    GATEWAY_ENDPOINT_UPDATED = "GATEWAY_ENDPOINT_UPDATED"
+    GATEWAY_ENDPOINT_DELETED = "GATEWAY_ENDPOINT_DELETED"
+    USER_INVITED = "USER_INVITED"
+    USER_JOINED_ORGANIZATION = "USER_JOINED_ORGANIZATION"
+    WEBHOOK_SIGNING_SECRET_CREATED = "WEBHOOK_SIGNING_SECRET_CREATED"
+    WEBHOOK_SIGNING_SECRET_ROTATED = "WEBHOOK_SIGNING_SECRET_ROTATED"
+    WEBHOOK_SIGNING_SECRET_DELETED = "WEBHOOK_SIGNING_SECRET_DELETED"
+    USER_ROLE_UPDATED = "USER_ROLE_UPDATED"
+    USER_TEAM_ROLE_UPDATED = "USER_TEAM_ROLE_UPDATED"
+    USER_REMOVED = "USER_REMOVED"
+    DIRECTORY_GROUP_ROLE_UPDATED = "DIRECTORY_GROUP_ROLE_UPDATED"
+    REQUIRE_GROUP_BASED_ADMINS_ENABLED = "REQUIRE_GROUP_BASED_ADMINS_ENABLED"
+    ENVIRONMENT_CREATED = "ENVIRONMENT_CREATED"
+    ENVIRONMENT_UPDATED = "ENVIRONMENT_UPDATED"
+    ENVIRONMENT_DELETED = "ENVIRONMENT_DELETED"
+    REPLICA_TERMINATED = "REPLICA_TERMINATED"
+    MODEL_PROMOTION_CONTROL_ACTION = "MODEL_PROMOTION_CONTROL_ACTION"
+    SSH_CERTIFICATE_SIGNED = "SSH_CERTIFICATE_SIGNED"
+
+
+class AuditLogEventUserInvited(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[Literal["USER_INVITED"], Field(title="Event Type")]
+    invited_user_email: Annotated[str, Field(title="Invited User Email")]
+    role_name: Annotated[str, Field(title="Role Name")]
+
+
+class AuditLogEventUserJoinedOrganization(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["USER_JOINED_ORGANIZATION"], Field(title="Event Type")
+    ]
+    new_user_email: Annotated[str, Field(title="New User Email")]
+    user_id: Annotated[str, Field(title="User Id")]
+
+
+class AuditLogEventUserRemoved(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[Literal["USER_REMOVED"], Field(title="Event Type")]
+    removed_user_email: Annotated[str, Field(title="Removed User Email")]
+
+
+class AuditLogEventUserRoleUpdated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[Literal["USER_ROLE_UPDATED"], Field(title="Event Type")]
+    user_id: Annotated[str, Field(title="User Id")]
+    user_email: Annotated[str, Field(title="User Email")]
+    new_role_name: Annotated[str, Field(title="New Role Name")]
+
+
+class AuditLogEventUserTeamRoleUpdated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[Literal["USER_TEAM_ROLE_UPDATED"], Field(title="Event Type")]
+    user_id: Annotated[str, Field(title="User Id")]
+    user_email: Annotated[str, Field(title="User Email")]
+    team_id: Annotated[str, Field(title="Team Id")]
+    team_name: Annotated[str, Field(title="Team Name")]
+    new_role_name: Annotated[str, Field(title="New Role Name")]
+
+
+class AuditLogEventWebhookSigningSecretCreated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["WEBHOOK_SIGNING_SECRET_CREATED"], Field(title="Event Type")
+    ]
+    webhook_signing_secret_id: Annotated[str, Field(title="Webhook Signing Secret Id")]
+
+
+class AuditLogEventWebhookSigningSecretDeleted(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["WEBHOOK_SIGNING_SECRET_DELETED"], Field(title="Event Type")
+    ]
+    webhook_signing_secret_id: Annotated[str, Field(title="Webhook Signing Secret Id")]
+
+
+class AuditLogEventWebhookSigningSecretRotated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["WEBHOOK_SIGNING_SECRET_ROTATED"], Field(title="Event Type")
+    ]
+    webhook_signing_secret_id: Annotated[str, Field(title="Webhook Signing Secret Id")]
+
+
+class AuditLogPromotionControlAction(Enum):
+    PAUSE = "PAUSE"
+    RESUME = "RESUME"
+    FORCE_CANCEL = "FORCE_CANCEL"
+    FORCE_ROLL_FORWARD = "FORCE_ROLL_FORWARD"
+    GRACEFUL_CANCEL = "GRACEFUL_CANCEL"
+
+
+class AuditLogSource(Enum):
+    UI = "UI"
+    API = "API"
+    MCP = "MCP"
+    OTHER = "OTHER"
+
+
+class AuditLogEventTypeGroup(Enum):
+    DEPLOYED = "DEPLOYED"
+    PROMOTED = "PROMOTED"
+    ACTIVATED_DEACTIVATED = "ACTIVATED_DEACTIVATED"
+    AUTOSCALING_SETTINGS = "AUTOSCALING_SETTINGS"
+    INSTANCE_TYPE_CHANGED = "INSTANCE_TYPE_CHANGED"
+    ENVIRONMENT_SETTINGS = "ENVIRONMENT_SETTINGS"
+    REPLICA_TERMINATED = "REPLICA_TERMINATED"
+    DELETED = "DELETED"
+    SECRETS = "SECRETS"
+    API_KEYS = "API_KEYS"
+    GATEWAY = "GATEWAY"
+    WEBHOOK_SIGNING_SECRETS = "WEBHOOK_SIGNING_SECRETS"
+    USER_MANAGEMENT = "USER_MANAGEMENT"
+    DIRECTORY_GROUP_MANAGEMENT = "DIRECTORY_GROUP_MANAGEMENT"
+    SSH = "SSH"
+
+
+class AuditLogSortDirection(Enum):
+    DESC = "DESC"
+    ASC = "ASC"
 
 
 class Model(BaseModel):
@@ -966,16 +1716,6 @@ class Models(BaseModel):
     models: Annotated[list[Model], Field(title="Models")]
 
 
-class ModelsRequest(BaseModel):
-    name: Annotated[
-        str | None,
-        Field(
-            description="When set, returns only models with this exact name, if any. On a team-scoped route this matches at most one model; on the org-wide route it may match models in multiple teams, since names are unique only within a team.",
-            title="Name",
-        ),
-    ] = None
-
-
 class LibraryListingSource(BaseModel):
     kind: Annotated[Literal["library_listing"], Field(title="Kind")] = "library_listing"
     lab_display_name: Annotated[
@@ -1011,12 +1751,12 @@ class ModelArchiveSource(BaseModel):
         ),
     ]
     s3_key: Annotated[
-        str,
+        str | None,
         Field(
-            description="S3 key of the uploaded archive, from the credentials returned by `POST /v1/prepare_model_upload`.",
+            description="S3 key of the uploaded archive, from the credentials returned by `POST /v1/prepare_model_upload`. Omit for model formats that are not built from an archive (for example, BIS-LLM), where prepare issues no upload target.",
             title="S3 Key",
         ),
-    ]
+    ] = None
     disable_archive_download: Annotated[
         bool | None,
         Field(
@@ -1194,28 +1934,18 @@ class Deployments(BaseModel):
     ]
 
 
-class DeploymentsRequest(BaseModel):
-    name: Annotated[
-        str | None,
-        Field(
-            description="When set, returns only the deployment with this exact name, if any.",
-            title="Name",
-        ),
-    ] = None
-
-
 class DeploymentArchiveSource(BaseModel):
     kind: Annotated[Literal["model_archive"], Field(title="Kind")] = "model_archive"
     deployment: Annotated[
         DeploymentArchivePayload, Field(description="Deployment-level configuration.")
     ]
     s3_key: Annotated[
-        str,
+        str | None,
         Field(
-            description="S3 key of the uploaded archive, from the credentials returned by `POST /v1/prepare_model_upload`.",
+            description="S3 key of the uploaded archive, from the credentials returned by `POST /v1/prepare_model_upload`. Omit for model formats that are not built from an archive (for example, BIS-LLM), where prepare issues no upload target.",
             title="S3 Key",
         ),
-    ]
+    ] = None
 
 
 class CreateModelDeploymentRequest(BaseModel):
@@ -1420,15 +2150,6 @@ class DeploymentConfigResponse(BaseModel):
             title="Raw Config",
         ),
     ] = None
-
-
-class GetDeploymentConfigRequest(BaseModel):
-    output_format: Annotated[
-        DeploymentConfigOutputFormat | None,
-        Field(
-            description="'raw': verbatim config.yaml with comments (not available for deployments created before 2026-04-30). 'parsed': dict with server-side defaults applied (always available). 'both': both fields populated."
-        ),
-    ] = DeploymentConfigOutputFormat.both
 
 
 class LogLevel(Enum):
@@ -1859,36 +2580,6 @@ class ModelMetricValueSet(BaseModel):
     ]
 
 
-class GetDeploymentMetricsRequest(BaseModel):
-    mode: Annotated[
-        ModelMetricMode | None,
-        Field(
-            description="'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration."
-        ),
-    ] = ModelMetricMode.CURRENT
-    start_epoch_millis: Annotated[
-        int | None,
-        Field(
-            description="Epoch millis timestamp to start fetching metrics. Defaults to one hour before the end.",
-            title="Start Epoch Millis",
-        ),
-    ] = None
-    end_epoch_millis: Annotated[
-        int | None,
-        Field(
-            description="Epoch millis timestamp to end fetching metrics. Defaults to the current time. The window between start and end must not exceed 7 days.",
-            title="End Epoch Millis",
-        ),
-    ] = None
-    metrics: Annotated[
-        list[str] | None,
-        Field(
-            description="Names of the metrics to return; see https://docs.baseten.co/observability/export-metrics/supported-metrics for the available names. When omitted, a default set is returned: baseten_replicas_active, baseten_inference_requests_total, and baseten_end_to_end_response_time_seconds. Unknown names are rejected; valid names that do not apply are omitted from the response.",
-            title="Metrics",
-        ),
-    ] = None
-
-
 class TerminateReplicaResponse(BaseModel):
     success: Annotated[
         bool | None,
@@ -2025,111 +2716,6 @@ class UpdateRollingDeployConfig(BaseModel):
             description="The replica overhead percentage for rolling deploys.",
             examples=[0],
             title="Replica Overhead Percent",
-        ),
-    ] = None
-
-
-class GetEnvironmentLogsRequest(BaseModel):
-    start_epoch_millis: Annotated[
-        int | None,
-        Field(
-            description="Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.",
-            title="Start Epoch Millis",
-        ),
-    ] = None
-    end_epoch_millis: Annotated[
-        int | None,
-        Field(
-            description="Epoch milliseconds at which to stop fetching logs. Defaults to the current time.",
-            title="End Epoch Millis",
-        ),
-    ] = None
-    direction: Annotated[SortOrder | None, Field(description="Sort order for logs")] = (
-        None
-    )
-    limit: Annotated[
-        Limit | None,
-        Field(
-            default_factory=lambda: Limit(500),
-            description="Limit of logs to fetch in a single request",
-            title="Limit",
-        ),
-    ]
-    min_level: Annotated[
-        LogLevel | None,
-        Field(
-            description="Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level."
-        ),
-    ] = None
-    replica: Annotated[
-        Replica | None,
-        Field(
-            description="Only return logs emitted by this replica (5-char short ID).",
-            title="Replica",
-        ),
-    ] = None
-    request_id: Annotated[
-        RequestId | None,
-        Field(
-            description="Only return logs tagged with this inference request ID.",
-            title="Request Id",
-        ),
-    ] = None
-    component: Annotated[
-        Component | None,
-        Field(description="Only return logs from this component.", title="Component"),
-    ] = None
-    search_pattern: Annotated[
-        SearchPattern | None,
-        Field(
-            description="RE2 regular expression matched against the log message. Prefer `includes` and `excludes` for plain substring matches.",
-            title="Search Pattern",
-        ),
-    ] = None
-    includes: Annotated[
-        list[str] | None,
-        Field(
-            description="Case-sensitive substrings that must all appear in the log message.",
-            max_length=8,
-            title="Includes",
-        ),
-    ] = None
-    excludes: Annotated[
-        list[str] | None,
-        Field(
-            description="Case-sensitive substrings; lines containing any of these are dropped.",
-            max_length=8,
-            title="Excludes",
-        ),
-    ] = None
-
-
-class GetEnvironmentMetricsRequest(BaseModel):
-    mode: Annotated[
-        ModelMetricMode | None,
-        Field(
-            description="'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration."
-        ),
-    ] = ModelMetricMode.CURRENT
-    start_epoch_millis: Annotated[
-        int | None,
-        Field(
-            description="Epoch millis timestamp to start fetching metrics. Defaults to one hour before the end.",
-            title="Start Epoch Millis",
-        ),
-    ] = None
-    end_epoch_millis: Annotated[
-        int | None,
-        Field(
-            description="Epoch millis timestamp to end fetching metrics. Defaults to the current time. The window between start and end must not exceed 7 days.",
-            title="End Epoch Millis",
-        ),
-    ] = None
-    metrics: Annotated[
-        list[str] | None,
-        Field(
-            description="Names of the metrics to return; see https://docs.baseten.co/observability/export-metrics/supported-metrics for the available names. When omitted, a default set is returned: baseten_replicas_active, baseten_inference_requests_total, and baseten_end_to_end_response_time_seconds. Unknown names are rejected; valid names that do not apply are omitted from the response.",
-            title="Metrics",
         ),
     ] = None
 
@@ -2838,23 +3424,6 @@ class GetTrainingJobCheckpointFilesResponse(BaseModel):
     ]
 
 
-class GetTrainingJobCheckpointFilesRequest(BaseModel):
-    page_size: Annotated[
-        int | None,
-        Field(
-            description="Max files per page (default 1000).", ge=1, title="Page Size"
-        ),
-    ] = 1000
-    page_token: Annotated[
-        int | None,
-        Field(
-            description="Offset into the file list (default 0).",
-            ge=0,
-            title="Page Token",
-        ),
-    ] = 0
-
-
 class AuthCode(BaseModel):
     session_id: Annotated[
         str,
@@ -3180,21 +3749,6 @@ class LoopsSampler(BaseModel):
     ]
 
 
-class ListLoopsRunsQueryParams(BaseModel):
-    run_id: Annotated[
-        str | None,
-        Field(description="Filter by run ID.", examples=["k4q95w5"], title="Run Id"),
-    ] = None
-    base_model: Annotated[
-        str | None,
-        Field(
-            description="Filter runs by base model name.",
-            examples=["Qwen/Qwen3-8B"],
-            title="Base Model",
-        ),
-    ] = None
-
-
 class Name1(RootModel[str]):
     root: Annotated[
         str | None,
@@ -3234,7 +3788,7 @@ class CreateLoopsRunRequest(BaseModel):
         ),
     ] = None
     lora_rank: Annotated[
-        int | None, Field(description="LoRA rank.", title="Lora Rank")
+        int | None, Field(description="LoRA rank.", ge=1, title="Lora Rank")
     ] = 64
     seed: Annotated[
         int | None, Field(description="Random seed for reproducibility.", title="Seed")
@@ -3383,33 +3937,6 @@ class ListLoopsCheckpointsResponse(BaseModel):
         list[LoopsCheckpoint],
         Field(description="Matching checkpoints.", title="Checkpoints"),
     ]
-
-
-class ListLoopsCheckpointsQueryParams(BaseModel):
-    run_id: Annotated[
-        str | None,
-        Field(
-            description="Filter by run ID. Returns all checkpoints saved by the run.",
-            examples=["k4q95w5"],
-            title="Run Id",
-        ),
-    ] = None
-    base_model: Annotated[
-        str | None,
-        Field(
-            description="Filter by base model. Returns checkpoints across the caller's runs of this base model.",
-            examples=["Qwen/Qwen3-8B"],
-            title="Base Model",
-        ),
-    ] = None
-    checkpoint_path: Annotated[
-        str | None,
-        Field(
-            description="bt:// URI of a Loops checkpoint. Form: bt://loops:<run_id>/(weights|sampler_weights)/<checkpoint_name>.",
-            examples=["bt://loops:k4q95w5/sampler_weights/step-100"],
-            title="Checkpoint Path",
-        ),
-    ] = None
 
 
 class ValidateLoopsCheckpointRequest(BaseModel):
@@ -3576,40 +4103,6 @@ class ResponseTimeDatapoint(BaseModel):
     ] = None
 
 
-class GetLoopsDeploymentLogsRequest(BaseModel):
-    start_epoch_millis: Annotated[
-        int | None,
-        Field(
-            description="Epoch milliseconds at which to start fetching logs. Defaults to 30 minutes before the end. The window from start to end must not exceed 7 days.",
-            title="Start Epoch Millis",
-        ),
-    ] = None
-    end_epoch_millis: Annotated[
-        int | None,
-        Field(
-            description="Epoch milliseconds at which to stop fetching logs. Defaults to the current time.",
-            title="End Epoch Millis",
-        ),
-    ] = None
-    direction: Annotated[SortOrder | None, Field(description="Sort order for logs")] = (
-        None
-    )
-    limit: Annotated[
-        Limit | None,
-        Field(
-            default_factory=lambda: Limit(500),
-            description="Limit of logs to fetch in a single request",
-            title="Limit",
-        ),
-    ]
-    min_level: Annotated[
-        LogLevel | None,
-        Field(
-            description="Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level."
-        ),
-    ] = None
-
-
 class TeamTrainingGpuCapacityItem(BaseModel):
     team_id: Annotated[str, Field(description="Team identifier", title="Team Id")]
     team_name: Annotated[str, Field(description="Team name", title="Team Name")]
@@ -3640,6 +4133,20 @@ class TeamTrainingGpuCapacityItem(BaseModel):
             title="Usage Count",
         ),
     ]
+    dedicated_usage_count: Annotated[
+        int | None,
+        Field(
+            description="Portion of usage_count from dedicated (on-demand) jobs.",
+            title="Dedicated Usage Count",
+        ),
+    ] = 0
+    spot_usage_count: Annotated[
+        int | None,
+        Field(
+            description="Portion of usage_count from spot jobs.",
+            title="Spot Usage Count",
+        ),
+    ] = 0
 
 
 class TrainingGpuCapacityItem(BaseModel):
@@ -3670,6 +4177,20 @@ class TrainingGpuCapacityItem(BaseModel):
             title="Usage Count",
         ),
     ]
+    dedicated_usage_count: Annotated[
+        int | None,
+        Field(
+            description="Portion of usage_count from dedicated (on-demand) jobs, which run against the baseline.",
+            title="Dedicated Usage Count",
+        ),
+    ] = 0
+    spot_usage_count: Annotated[
+        int | None,
+        Field(
+            description="Portion of usage_count from spot jobs, which burst into the peak and may push usage above the limit.",
+            title="Spot Usage Count",
+        ),
+    ] = 0
 
 
 class GetTrainingGpuCapacityResponse(BaseModel):
@@ -4078,32 +4599,6 @@ class RateLimit(BaseModel):
             title="Threshold",
         ),
     ]
-
-
-class ModelAPIsRequest(BaseModel):
-    cursor: Annotated[
-        str | None,
-        Field(
-            description="Opaque cursor returned by a previous page. Omit to fetch the first page.",
-            title="Cursor",
-        ),
-    ] = None
-    limit: Annotated[
-        int | None,
-        Field(
-            description="Maximum number of items to return.",
-            ge=1,
-            le=1000,
-            title="Limit",
-        ),
-    ] = 100
-    added_only: Annotated[
-        bool | None,
-        Field(
-            description="When true, restrict the result to Model APIs the workspace has added. Defaults to the full visible catalog.",
-            title="Added Only",
-        ),
-    ] = False
 
 
 class CreateLLMModelRequest(BaseModel):
@@ -4822,23 +5317,6 @@ class Subtotal8(RootModel[str]):
     ]
 
 
-class UsageSummaryRequest(BaseModel):
-    start_date: Annotated[
-        AwareDatetime,
-        Field(
-            description="Start date (ISO 8601, UTC). Earliest queryable: 2026-01-01.",
-            title="Start Date",
-        ),
-    ]
-    end_date: Annotated[
-        AwareDatetime,
-        Field(
-            description="End date in ISO 8601 format (UTC). Date range cannot exceed 31 days.",
-            title="End Date",
-        ),
-    ]
-
-
 class UserInfo(BaseModel):
     user_id: Annotated[
         str, Field(description="Unique identifier for the user", title="User Id")
@@ -4864,93 +5342,20 @@ class UsersResponse(BaseModel):
     ]
 
 
-class UsersRequest(BaseModel):
-    cursor: Annotated[
-        str | None,
-        Field(
-            description="Opaque cursor returned by a previous page. Omit to fetch the first page.",
-            title="Cursor",
-        ),
-    ] = None
-    limit: Annotated[
-        int | None,
-        Field(
-            description="Maximum number of items to return.",
-            ge=1,
-            le=1000,
-            title="Limit",
-        ),
-    ] = 100
-    email: Annotated[
-        str | None,
-        Field(
-            description="When set, returns only users with this exact email, if any.",
-            title="Email",
-        ),
-    ] = None
-
-
-class EndpointTarget(BaseModel):
-    provider: Annotated[GatewayProvider, Field(description="Upstream provider.")]
-    secret_id: Annotated[
-        str | None, Field(description="Referenced secret, if any.", title="Secret Id")
-    ] = None
-    target_model: Annotated[
-        str | None,
-        Field(description="Upstream model name, if any.", title="Target Model"),
-    ] = None
-    base_url: Annotated[
-        str | None,
-        Field(
-            description="Custom OpenAI-compatible base URL, if any.", title="Base Url"
-        ),
-    ] = None
-    model_id: Annotated[
-        str | None, Field(description="Baseten model, if any.", title="Model Id")
-    ] = None
-    environment_name: Annotated[
-        str | None,
-        Field(
-            description="Baseten model environment, if non-production.",
-            title="Environment Name",
-        ),
-    ] = None
-
-
-class Endpoint(BaseModel):
-    id: Annotated[
-        str, Field(description="Stable identifier for the endpoint.", title="Id")
-    ]
-    slug: Annotated[
+class VertexTargetConfig(BaseModel):
+    project_id: Annotated[
         str,
         Field(
-            description="Globally-unique routing slug.",
-            examples=["baseten/mymodel-4"],
-            title="Slug",
+            description="Google Cloud project ID or project number.",
+            examples=["my-gcp-project", "464036093014"],
+            title="Project Id",
         ),
     ]
-    created_at: Annotated[
-        AwareDatetime, Field(description="Creation time, ISO 8601.", title="Created At")
-    ]
-    updated_at: Annotated[
-        AwareDatetime,
-        Field(description="Last update time, ISO 8601.", title="Updated At"),
-    ]
-    targets: Annotated[
-        list[EndpointTarget],
+    location: Annotated[
+        str,
         Field(
-            description="The endpoint's upstream targets. Exactly one target is supported at this time.",
-            title="Targets",
+            description="Google Cloud location.", examples=["global"], title="Location"
         ),
-    ]
-
-
-class EndpointsResponse(BaseModel):
-    items: Annotated[
-        list[Endpoint], Field(description="Items in this page.", title="Items")
-    ]
-    pagination: Annotated[
-        PaginationResponse, Field(description="Pagination metadata for the page.")
     ]
 
 
@@ -5000,6 +5405,12 @@ class EndpointTargetRequest(BaseModel):
             description="Baseten model environment to route to. Only valid with BASETEN. Omit or pass `production` to target production.",
             examples=["staging"],
             title="Environment Name",
+        ),
+    ] = None
+    vertex_config: Annotated[
+        VertexTargetConfig | None,
+        Field(
+            description="Google Vertex configuration. Required for and only valid with VERTEX."
         ),
     ] = None
 
@@ -5333,6 +5744,182 @@ class LoadCheckpointConfig(BaseModel):
     ] = None
 
 
+class GetAuditLogsRequest(BaseModel):
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor returned by a previous page. Omit to fetch the first page.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        int | None,
+        Field(
+            description="Maximum number of entries to return per page. Defaults to 20, and must be between 1 and 200.",
+            ge=1,
+            le=200,
+            title="Limit",
+        ),
+    ] = 20
+    direction: Annotated[
+        AuditLogSortDirection | None,
+        Field(
+            description="Sort order by the time the action occurred. Defaults to DESC (newest first). Ignored when paginating with a cursor."
+        ),
+    ] = AuditLogSortDirection.DESC
+    search: Annotated[
+        str | None,
+        Field(
+            description="Case-insensitive substring matched against resource names and IDs in the entry.",
+            title="Search",
+        ),
+    ] = None
+    event_type_groups: Annotated[
+        list[AuditLogEventTypeGroup] | None,
+        Field(
+            description="When set, returns only entries whose event type falls in one of these groups.",
+            title="Event Type Groups",
+        ),
+    ] = None
+    user_ids: Annotated[
+        list[str] | None,
+        Field(
+            description="When set, returns only entries whose acting user is one of these IDs.",
+            title="User Ids",
+        ),
+    ] = None
+    deployment_ids: Annotated[
+        list[str] | None,
+        Field(
+            description="When set, returns only entries referencing one of these model deployment IDs.",
+            title="Deployment Ids",
+        ),
+    ] = None
+    chain_deployment_ids: Annotated[
+        list[str] | None,
+        Field(
+            description="When set, returns only entries referencing one of these chain deployment IDs.",
+            title="Chain Deployment Ids",
+        ),
+    ] = None
+    environment_names: Annotated[
+        list[str] | None,
+        Field(
+            description="When set, returns only entries for one of these environments.",
+            title="Environment Names",
+        ),
+    ] = None
+    sources: Annotated[
+        list[AuditLogSource] | None,
+        Field(
+            description="When set, returns only entries issued from one of these surfaces.",
+            title="Sources",
+        ),
+    ] = None
+    start_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch milliseconds for the start of the window. Defaults to the beginning of the audit-log history.",
+            title="Start Epoch Millis",
+        ),
+    ] = None
+    end_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch milliseconds for the end of the window. Defaults to the current time.",
+            title="End Epoch Millis",
+        ),
+    ] = None
+
+
+class GetModelsAuditLogsRequest(BaseModel):
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor returned by a previous page. Omit to fetch the first page.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        int | None,
+        Field(
+            description="Maximum number of entries to return per page. Defaults to 20, and must be between 1 and 200.",
+            ge=1,
+            le=200,
+            title="Limit",
+        ),
+    ] = 20
+    direction: Annotated[
+        AuditLogSortDirection | None,
+        Field(
+            description="Sort order by the time the action occurred. Defaults to DESC (newest first). Ignored when paginating with a cursor."
+        ),
+    ] = AuditLogSortDirection.DESC
+    search: Annotated[
+        str | None,
+        Field(
+            description="Case-insensitive substring matched against resource names and IDs in the entry.",
+            title="Search",
+        ),
+    ] = None
+    event_type_groups: Annotated[
+        list[AuditLogEventTypeGroup] | None,
+        Field(
+            description="When set, returns only entries whose event type falls in one of these groups.",
+            title="Event Type Groups",
+        ),
+    ] = None
+    user_ids: Annotated[
+        list[str] | None,
+        Field(
+            description="When set, returns only entries whose acting user is one of these IDs.",
+            title="User Ids",
+        ),
+    ] = None
+    deployment_ids: Annotated[
+        list[str] | None,
+        Field(
+            description="When set, returns only entries referencing one of these model deployment IDs.",
+            title="Deployment Ids",
+        ),
+    ] = None
+    chain_deployment_ids: Annotated[
+        list[str] | None,
+        Field(
+            description="When set, returns only entries referencing one of these chain deployment IDs.",
+            title="Chain Deployment Ids",
+        ),
+    ] = None
+    environment_names: Annotated[
+        list[str] | None,
+        Field(
+            description="When set, returns only entries for one of these environments.",
+            title="Environment Names",
+        ),
+    ] = None
+    sources: Annotated[
+        list[AuditLogSource] | None,
+        Field(
+            description="When set, returns only entries issued from one of these surfaces.",
+            title="Sources",
+        ),
+    ] = None
+    start_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch milliseconds for the start of the window. Defaults to the beginning of the audit-log history.",
+            title="Start Epoch Millis",
+        ),
+    ] = None
+    end_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch milliseconds for the end of the window. Defaults to the current time.",
+            title="End Epoch Millis",
+        ),
+    ] = None
+
+
 class GetModelsDeploymentsLogsRequest(BaseModel):
     start_epoch_millis: Annotated[
         int | None,
@@ -5543,6 +6130,94 @@ class GetModelsEnvironmentsMetricsRequest(BaseModel):
     ] = None
 
 
+class GetChainsAuditLogsRequest(BaseModel):
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor returned by a previous page. Omit to fetch the first page.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        int | None,
+        Field(
+            description="Maximum number of entries to return per page. Defaults to 20, and must be between 1 and 200.",
+            ge=1,
+            le=200,
+            title="Limit",
+        ),
+    ] = 20
+    direction: Annotated[
+        AuditLogSortDirection | None,
+        Field(
+            description="Sort order by the time the action occurred. Defaults to DESC (newest first). Ignored when paginating with a cursor."
+        ),
+    ] = AuditLogSortDirection.DESC
+    search: Annotated[
+        str | None,
+        Field(
+            description="Case-insensitive substring matched against resource names and IDs in the entry.",
+            title="Search",
+        ),
+    ] = None
+    event_type_groups: Annotated[
+        list[AuditLogEventTypeGroup] | None,
+        Field(
+            description="When set, returns only entries whose event type falls in one of these groups.",
+            title="Event Type Groups",
+        ),
+    ] = None
+    user_ids: Annotated[
+        list[str] | None,
+        Field(
+            description="When set, returns only entries whose acting user is one of these IDs.",
+            title="User Ids",
+        ),
+    ] = None
+    deployment_ids: Annotated[
+        list[str] | None,
+        Field(
+            description="When set, returns only entries referencing one of these model deployment IDs.",
+            title="Deployment Ids",
+        ),
+    ] = None
+    chain_deployment_ids: Annotated[
+        list[str] | None,
+        Field(
+            description="When set, returns only entries referencing one of these chain deployment IDs.",
+            title="Chain Deployment Ids",
+        ),
+    ] = None
+    environment_names: Annotated[
+        list[str] | None,
+        Field(
+            description="When set, returns only entries for one of these environments.",
+            title="Environment Names",
+        ),
+    ] = None
+    sources: Annotated[
+        list[AuditLogSource] | None,
+        Field(
+            description="When set, returns only entries issued from one of these surfaces.",
+            title="Sources",
+        ),
+    ] = None
+    start_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch milliseconds for the start of the window. Defaults to the beginning of the audit-log history.",
+            title="Start Epoch Millis",
+        ),
+    ] = None
+    end_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch milliseconds for the end of the window. Defaults to the current time.",
+            title="End Epoch Millis",
+        ),
+    ] = None
+
+
 class GetChainsDeploymentsChainletsLogsRequest(BaseModel):
     start_epoch_millis: Annotated[
         int | None,
@@ -5741,6 +6416,22 @@ class EnvironmentGroups(BaseModel):
     pagination: Annotated[
         PaginationResponse, Field(description="Pagination metadata for the page.")
     ]
+
+
+class AuditLogEventModelPromotionControlAction(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["MODEL_PROMOTION_CONTROL_ACTION"], Field(title="Event Type")
+    ]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    deployment_id: Annotated[str, Field(title="Deployment Id")]
+    deployment_name: Annotated[str, Field(title="Deployment Name")]
+    environment_name: Annotated[str, Field(title="Environment Name")]
+    environment_id: Annotated[str | None, Field(title="Environment Id")]
+    action: AuditLogPromotionControlAction
 
 
 class ModelMetricDescriptor(BaseModel):
@@ -6867,6 +7558,74 @@ class UsageSummary(BaseModel):
     ] = None
 
 
+class EndpointTarget(BaseModel):
+    provider: Annotated[GatewayProvider, Field(description="Upstream provider.")]
+    secret_id: Annotated[
+        str | None, Field(description="Referenced secret, if any.", title="Secret Id")
+    ] = None
+    target_model: Annotated[
+        str | None,
+        Field(description="Upstream model name, if any.", title="Target Model"),
+    ] = None
+    base_url: Annotated[
+        str | None,
+        Field(
+            description="Custom OpenAI-compatible base URL, if any.", title="Base Url"
+        ),
+    ] = None
+    model_id: Annotated[
+        str | None, Field(description="Baseten model, if any.", title="Model Id")
+    ] = None
+    environment_name: Annotated[
+        str | None,
+        Field(
+            description="Baseten model environment, if non-production.",
+            title="Environment Name",
+        ),
+    ] = None
+    vertex_config: Annotated[
+        VertexTargetConfig | None,
+        Field(description="Google Vertex configuration, if any."),
+    ] = None
+
+
+class Endpoint(BaseModel):
+    id: Annotated[
+        str, Field(description="Stable identifier for the endpoint.", title="Id")
+    ]
+    slug: Annotated[
+        str,
+        Field(
+            description="Globally-unique routing slug.",
+            examples=["baseten/mymodel-4"],
+            title="Slug",
+        ),
+    ]
+    created_at: Annotated[
+        AwareDatetime, Field(description="Creation time, ISO 8601.", title="Created At")
+    ]
+    updated_at: Annotated[
+        AwareDatetime,
+        Field(description="Last update time, ISO 8601.", title="Updated At"),
+    ]
+    targets: Annotated[
+        list[EndpointTarget],
+        Field(
+            description="The endpoint's upstream targets. Exactly one target is supported at this time.",
+            title="Targets",
+        ),
+    ]
+
+
+class EndpointsResponse(BaseModel):
+    items: Annotated[
+        list[Endpoint], Field(description="Items in this page.", title="Items")
+    ]
+    pagination: Annotated[
+        PaginationResponse, Field(description="Pagination metadata for the page.")
+    ]
+
+
 class EffectiveUsageLimit(BaseModel):
     type: Annotated[
         LimitType,
@@ -6941,6 +7700,107 @@ class UpdateGroupRequest(BaseModel):
             description="Per-model rate and usage limit configuration.", title="Models"
         ),
     ] = None
+
+
+class AuditLogEntry(BaseModel):
+    id: Annotated[
+        str, Field(description="Unique identifier of the audit-log entry.", title="Id")
+    ]
+    created: Annotated[
+        AwareDatetime,
+        Field(
+            description="Time the action occurred, in ISO 8601 format.", title="Created"
+        ),
+    ]
+    event_type: Annotated[
+        AuditLogEventType, Field(description="Type of action that was recorded.")
+    ]
+    event_data: Annotated[
+        AuditLogEventModelDeployed
+        | AuditLogEventModelDeploymentActivated
+        | AuditLogEventModelDeploymentDeactivated
+        | AuditLogEventModelDeploymentRetried
+        | AuditLogEventModelDeploymentPromoted
+        | AuditLogEventModelDeploymentAutoscalingSettingsChanged
+        | AuditLogEventModelDeploymentInstanceTypeChanged
+        | AuditLogEventModelDeploymentDeleted
+        | AuditLogEventModelDeleted
+        | AuditLogEventChainDeployed
+        | AuditLogEventChainDeploymentActivated
+        | AuditLogEventChainDeploymentDeactivated
+        | AuditLogEventChainDeploymentPromoted
+        | AuditLogEventChainletAutoscalingSettingsChanged
+        | AuditLogEventChainletInstanceTypeChanged
+        | AuditLogEventChainDeploymentDeleted
+        | AuditLogEventChainDeleted
+        | AuditLogEventChainEnvironmentCreated
+        | AuditLogEventChainEnvironmentUpdated
+        | AuditLogEventSecretUpdated
+        | AuditLogEventSecretDeleted
+        | AuditLogEventApiKeyCreated
+        | AuditLogEventApiKeyDeleted
+        | AuditLogEventGatewayEndpointCreated
+        | AuditLogEventGatewayEndpointUpdated
+        | AuditLogEventGatewayEndpointDeleted
+        | AuditLogEventUserInvited
+        | AuditLogEventUserJoinedOrganization
+        | AuditLogEventWebhookSigningSecretCreated
+        | AuditLogEventWebhookSigningSecretRotated
+        | AuditLogEventWebhookSigningSecretDeleted
+        | AuditLogEventUserRoleUpdated
+        | AuditLogEventUserTeamRoleUpdated
+        | AuditLogEventUserRemoved
+        | AuditLogEventDirectoryGroupRoleUpdated
+        | AuditLogEventRequireGroupBasedAdminsEnabled
+        | AuditLogEventEnvironmentCreated
+        | AuditLogEventEnvironmentUpdated
+        | AuditLogEventEnvironmentDeleted
+        | AuditLogEventReplicaTerminated
+        | AuditLogEventModelPromotionControlAction
+        | AuditLogEventSshCertificateSigned,
+        Field(
+            description="Structured details of the action, discriminated by `event_type`.",
+            discriminator="event_type",
+            title="Event Data",
+        ),
+    ]
+    source: Annotated[
+        AuditLogSource | None,
+        Field(description="Surface that issued the action, if known."),
+    ] = None
+    actor: Annotated[
+        AuditLogActor, Field(description="The actor that performed the action.")
+    ]
+    client_name: Annotated[
+        str | None,
+        Field(
+            description="Name of the client that issued the action, if known.",
+            title="Client Name",
+        ),
+    ] = None
+    client_version: Annotated[
+        str | None,
+        Field(
+            description="Version of the client that issued the action, if known.",
+            title="Client Version",
+        ),
+    ] = None
+    client_session_id: Annotated[
+        str | None,
+        Field(
+            description="Opaque identifier grouping actions from the same client session, if known.",
+            title="Client Session Id",
+        ),
+    ] = None
+
+
+class ListAuditLogsResponse(BaseModel):
+    items: Annotated[
+        list[AuditLogEntry], Field(description="Items in this page.", title="Items")
+    ]
+    pagination: Annotated[
+        PaginationResponse, Field(description="Pagination metadata for the page.")
+    ]
 
 
 class PromotionSettings(BaseModel):
