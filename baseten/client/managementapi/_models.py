@@ -66,7 +66,7 @@ class BasetenNamedCheckpointConfig(BaseModel):
 
 class CreateTrainingJobCacheConfig(BaseModel):
     enable_legacy_hf_mount: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether to enable the legacy Hugging Face cache.",
             examples=[True],
@@ -74,7 +74,7 @@ class CreateTrainingJobCacheConfig(BaseModel):
         ),
     ] = False
     enabled: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether to enable the read-write cache.",
             examples=[True],
@@ -82,7 +82,7 @@ class CreateTrainingJobCacheConfig(BaseModel):
         ),
     ] = False
     require_cache_affinity: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether to require region affinity for the read-write cache. If False, the resulting job is not guaranteed to be deployed alongside the previous cache.",
             examples=[True, False],
@@ -90,7 +90,7 @@ class CreateTrainingJobCacheConfig(BaseModel):
         ),
     ] = True
     mount_base_path: Annotated[
-        str | None,
+        str,
         Field(
             description="Mount base path for the cache directory. The project cache and team cache will be mounted under this path.",
             examples=["/workspace/.cache", "/root/.cache"],
@@ -101,7 +101,7 @@ class CreateTrainingJobCacheConfig(BaseModel):
 
 class CreateTrainingJobCheckpointingConfig(BaseModel):
     enabled: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether checkpointing is enabled.",
             examples=[True],
@@ -178,7 +178,7 @@ class LoopsCheckpointConfig(BaseModel):
         Field(description="Name of the checkpoint to load", title="Checkpoint Name"),
     ]
     target: Annotated[
-        Target | None,
+        Target,
         Field(
             description="Which checkpoint target to load: 'trainer' (full training state) or 'sampler' (inference weights)",
             title="Target",
@@ -194,12 +194,10 @@ class TrussUserEnv(BaseModel):
     python_version: Annotated[str | None, Field(title="Python Version")] = None
     pydantic_version: Annotated[str | None, Field(title="Pydantic Version")] = None
     mypy_version: Annotated[str | None, Field(title="Mypy Version")] = None
-    is_library_deployment: Annotated[
-        bool | None, Field(title="Is Library Deployment")
-    ] = False
-    is_frontend_deployment: Annotated[
-        bool | None, Field(title="Is Frontend Deployment")
-    ] = False
+    is_library_deployment: Annotated[bool, Field(title="Is Library Deployment")] = False
+    is_frontend_deployment: Annotated[bool, Field(title="Is Frontend Deployment")] = (
+        False
+    )
     git_info: GitInfo | None = None
 
 
@@ -322,7 +320,7 @@ class GetModelsDeploymentsRequest(BaseModel):
 
 class GetModelsDeploymentsConfigRequest(BaseModel):
     output_format: Annotated[
-        DeploymentConfigOutputFormat | None,
+        DeploymentConfigOutputFormat,
         Field(
             description="'raw': verbatim config.yaml with comments (not available for deployments created before 2026-04-30). 'parsed': dict with server-side defaults applied (always available). 'both': both fields populated."
         ),
@@ -411,13 +409,13 @@ class GetTrainingProjectsJobsMetricsRequest(BaseModel):
 
 class GetTrainingProjectsJobsCheckpointFilesRequest(BaseModel):
     page_size: Annotated[
-        int | None,
+        int,
         Field(
             description="Max files per page (default 1000).", ge=1, title="Page Size"
         ),
     ] = 1000
     page_token: Annotated[
-        int | None,
+        int,
         Field(
             description="Offset into the file list (default 0).",
             ge=0,
@@ -477,7 +475,7 @@ class GetModelApisRequest(BaseModel):
         ),
     ] = None
     limit: Annotated[
-        int | None,
+        int,
         Field(
             description="Maximum number of items to return.",
             ge=1,
@@ -486,7 +484,7 @@ class GetModelApisRequest(BaseModel):
         ),
     ] = 100
     added_only: Annotated[
-        bool | None,
+        bool,
         Field(
             description="When true, restrict the result to Model APIs the workspace has added. Defaults to the full visible catalog.",
             title="Added Only",
@@ -520,7 +518,7 @@ class GetUsersRequest(BaseModel):
         ),
     ] = None
     limit: Annotated[
-        int | None,
+        int,
         Field(
             description="Maximum number of items to return.",
             ge=1,
@@ -797,7 +795,7 @@ class DeploymentArchivePayload(BaseModel):
         ),
     ] = None
     preserve_env_instance_type: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Retain the target environment's current instance type rather than the one in `config`. Only meaningful when `environment_name` is set and that environment already exists.",
             title="Preserve Env Instance Type",
@@ -825,7 +823,7 @@ class DeploymentArchivePayload(BaseModel):
         ),
     ] = None
     is_development: Annotated[
-        bool | None,
+        bool,
         Field(
             description="If true, push as a development deployment: the model's single mutable dev slot, created if absent and overwritten in place otherwise. The following fields must be left at their defaults: `environment_name`, `preserve_env_instance_type`, `deployment_name`.",
             title="Is Development",
@@ -862,7 +860,7 @@ class PrepareModelUploadRequest(BaseModel):
         ),
     ] = None
     dry_run: Annotated[
-        bool | None,
+        bool,
         Field(
             description="If true, validate the payload only and do not issue upload credentials. The response sets `creds`, `s3_bucket`, and `s3_key` to `null`.",
             title="Dry Run",
@@ -1758,7 +1756,7 @@ class ModelArchiveSource(BaseModel):
         ),
     ] = None
     disable_archive_download: Annotated[
-        bool | None,
+        bool,
         Field(
             description="If true, the uploaded archive is not downloadable after creation. Locked at model creation; cannot be changed by subsequent deployments.",
             title="Disable Archive Download",
@@ -2072,7 +2070,7 @@ class UpdateAutoscalingSettingsResponse(BaseModel):
 
 class PromoteRequest(BaseModel):
     scale_down_previous_production: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether to scale down the previous production deployment after promoting",
             examples=[True],
@@ -2080,7 +2078,7 @@ class PromoteRequest(BaseModel):
         ),
     ] = True
     preserve_env_instance_type: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether to use the promoting deployment's instance type or preserve target environment's instance type",
             examples=[True],
@@ -2091,7 +2089,7 @@ class PromoteRequest(BaseModel):
 
 class ActivateResponse(BaseModel):
     success: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether the deployment was successfully activated",
             title="Success",
@@ -2101,7 +2099,7 @@ class ActivateResponse(BaseModel):
 
 class DeactivateResponse(BaseModel):
     success: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether the deployment was successfully deactivated",
             title="Success",
@@ -2290,8 +2288,7 @@ class DeploymentPatchOpConfig(BaseModel):
         Field(description="The full parsed config as a JSON object.", title="Config"),
     ]
     path: Annotated[
-        str | None,
-        Field(description="Config file path within the source.", title="Path"),
+        str, Field(description="Config file path within the source.", title="Path")
     ] = "config.yaml"
 
 
@@ -2354,7 +2351,7 @@ class DeploymentPatchOpModelCode(BaseModel):
         ),
     ] = None
     hot_reload: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether the running server can pick up this change without a restart.",
             title="Hot Reload",
@@ -2582,7 +2579,7 @@ class ModelMetricValueSet(BaseModel):
 
 class TerminateReplicaResponse(BaseModel):
     success: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether the replica was successfully terminated",
             title="Success",
@@ -2722,7 +2719,7 @@ class UpdateRollingDeployConfig(BaseModel):
 
 class PromoteToEnvironmentRequest(BaseModel):
     scale_down_previous_deployment: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether to scale down the previous deployment after promoting",
             examples=[True],
@@ -2734,7 +2731,7 @@ class PromoteToEnvironmentRequest(BaseModel):
         Field(description="The id of the deployment to promote", title="Deployment Id"),
     ]
     preserve_env_instance_type: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether to use the promoting deployment's instance type or preserve target environment's instance type",
             examples=[True],
@@ -2872,7 +2869,7 @@ class ChainletEnvironmentSettingsRequest(BaseModel):
         ),
     ] = None
     instance_type_id: Annotated[
-        str | None,
+        str,
         Field(
             description="ID of the instance type to use for the chainlet",
             examples=["1x4", "2x8", "A10G:2x24x96", "H100:2x52x468"],
@@ -2904,7 +2901,7 @@ class UpdateChainEnvironmentResponse(BaseModel):
 
 class PromoteToChainEnvironmentRequest(BaseModel):
     scale_down_previous_deployment: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether to scale down the previous deployment after promoting",
             examples=[True],
@@ -3157,7 +3154,7 @@ class CreateTrainingJobAccelerator(BaseModel):
 
 class CreateTrainingJobCompute(BaseModel):
     node_count: Annotated[
-        int | None,
+        int,
         Field(
             description="Number of nodes for the training job.",
             examples=[1],
@@ -3165,7 +3162,7 @@ class CreateTrainingJobCompute(BaseModel):
         ),
     ] = 1
     cpu_count: Annotated[
-        int | None,
+        int,
         Field(
             description="Number of cpus for the training job.",
             examples=[1],
@@ -3173,7 +3170,7 @@ class CreateTrainingJobCompute(BaseModel):
         ),
     ] = 1
     memory: Annotated[
-        str | None,
+        str,
         Field(
             description="Memory for the training job.", examples=["2Gi"], title="Memory"
         ),
@@ -3186,7 +3183,7 @@ class CreateTrainingJobCompute(BaseModel):
         ),
     ] = None
     availability_model: Annotated[
-        V1AvailabilityModel | None,
+        V1AvailabilityModel,
         Field(
             description="Capacity guarantee for the job. 'dedicated' (the default) runs on on-demand capacity that is not preempted. 'spot' runs on interruptible capacity that may be preempted; the user is responsible for checkpointing their own progress.",
             examples=["spot"],
@@ -3213,13 +3210,13 @@ class GcpOidcDockerAuth(BaseModel):
 
 class InteractiveSessionConfig(BaseModel):
     trigger: Annotated[
-        V1InteractiveSessionTrigger | None,
+        V1InteractiveSessionTrigger,
         Field(
             description="When to create the interactive session. 'on_startup' creates on job start, 'on_failure' creates on job failure, 'on_demand' bypasses automatic session creation."
         ),
     ] = V1InteractiveSessionTrigger.on_demand
     timeout_minutes: Annotated[
-        int | None,
+        int,
         Field(
             description="Number of minutes before the interactive session times out.",
             examples=[480, 1440, 10080],
@@ -3227,11 +3224,11 @@ class InteractiveSessionConfig(BaseModel):
         ),
     ] = 480
     session_provider: Annotated[
-        V1InteractiveSessionProvider | None,
+        V1InteractiveSessionProvider,
         Field(description="The IDE client for the interactive session."),
     ] = V1InteractiveSessionProvider.vs_code
     auth_provider: Annotated[
-        V1InteractiveSessionAuthProvider | None,
+        V1InteractiveSessionAuthProvider,
         Field(description="The authentication provider for the interactive session."),
     ] = V1InteractiveSessionAuthProvider.github
 
@@ -3663,7 +3660,7 @@ class SearchTrainingJobsRequest(BaseModel):
         ),
     ] = None
     order_by: Annotated[
-        list[OrderBy] | None,
+        list[OrderBy],
         Field(
             default_factory=lambda: [
                 OrderBy.model_validate(v)
@@ -3788,13 +3785,13 @@ class CreateLoopsRunRequest(BaseModel):
         ),
     ] = None
     lora_rank: Annotated[
-        int | None, Field(description="LoRA rank.", ge=1, title="Lora Rank")
+        int, Field(description="LoRA rank.", ge=1, title="Lora Rank")
     ] = 64
     seed: Annotated[
         int | None, Field(description="Random seed for reproducibility.", title="Seed")
     ] = None
     scale_down_delay_seconds: Annotated[
-        int | None,
+        int,
         Field(
             description="Seconds of inactivity before the run scales to zero. Must be between 1 and 3600 (1 hour). Defaults to 3600.",
             gt=0,
@@ -3803,7 +3800,7 @@ class CreateLoopsRunRequest(BaseModel):
         ),
     ] = 3600
     replicas: Annotated[
-        int | None,
+        int,
         Field(
             description="Number of data-parallel trainer replicas. Each replica is one full copy of the model's preset node group, so the trainer deployment runs (preset node_count * replicas) nodes (e.g. replicas=4 on a 4-node preset → 16 nodes, 4 DP workers). Must be a positive integer. Defaults to 1.",
             ge=1,
@@ -4134,14 +4131,14 @@ class TeamTrainingGpuCapacityItem(BaseModel):
         ),
     ]
     dedicated_usage_count: Annotated[
-        int | None,
+        int,
         Field(
             description="Portion of usage_count from dedicated (on-demand) jobs.",
             title="Dedicated Usage Count",
         ),
     ] = 0
     spot_usage_count: Annotated[
-        int | None,
+        int,
         Field(
             description="Portion of usage_count from spot jobs.",
             title="Spot Usage Count",
@@ -4178,14 +4175,14 @@ class TrainingGpuCapacityItem(BaseModel):
         ),
     ]
     dedicated_usage_count: Annotated[
-        int | None,
+        int,
         Field(
             description="Portion of usage_count from dedicated (on-demand) jobs, which run against the baseline.",
             title="Dedicated Usage Count",
         ),
     ] = 0
     spot_usage_count: Annotated[
-        int | None,
+        int,
         Field(
             description="Portion of usage_count from spot jobs, which burst into the peak and may push usage above the limit.",
             title="Spot Usage Count",
@@ -4837,13 +4834,13 @@ class CreateLibraryListingRequest(BaseModel):
         ),
     ]
     is_public: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether the listing is publicly accessible", title="Is Public"
         ),
     ] = False
     closed_source: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether the listing is closed source (deployers cannot view or download the Truss, and forks copy mirrored weights instead of re-mirroring from upstream)",
             title="Closed Source",
@@ -4926,7 +4923,7 @@ class CreateLibraryListingVersionRequest(BaseModel):
         ),
     ] = None
     is_public: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether the listing is publicly accessible. Only used when creating a new listing.",
             title="Is Public",
@@ -4940,14 +4937,14 @@ class CreateLibraryListingVersionRequest(BaseModel):
         ),
     ]
     allow_truss_download: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether users deploying this model can download the Truss",
             title="Allow Truss Download",
         ),
     ] = False
     closed_source: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether the listing is closed source (deployers cannot view or download the Truss, and forks copy mirrored weights instead of re-mirroring from upstream). Only used when creating a new listing.",
             title="Closed Source",
@@ -5728,11 +5725,11 @@ class Checkpoints(
 
 class LoadCheckpointConfig(BaseModel):
     enabled: Annotated[
-        bool | None,
+        bool,
         Field(description="Whether checkpoint loading is enabled", title="Enabled"),
     ] = False
     download_folder: Annotated[
-        str | None,
+        str,
         Field(
             description="Folder where checkpoints will be downloaded",
             title="Download Folder",
@@ -5753,7 +5750,7 @@ class GetAuditLogsRequest(BaseModel):
         ),
     ] = None
     limit: Annotated[
-        int | None,
+        int,
         Field(
             description="Maximum number of entries to return per page. Defaults to 20, and must be between 1 and 200.",
             ge=1,
@@ -5762,7 +5759,7 @@ class GetAuditLogsRequest(BaseModel):
         ),
     ] = 20
     direction: Annotated[
-        AuditLogSortDirection | None,
+        AuditLogSortDirection,
         Field(
             description="Sort order by the time the action occurred. Defaults to DESC (newest first). Ignored when paginating with a cursor."
         ),
@@ -5841,7 +5838,7 @@ class GetModelsAuditLogsRequest(BaseModel):
         ),
     ] = None
     limit: Annotated[
-        int | None,
+        int,
         Field(
             description="Maximum number of entries to return per page. Defaults to 20, and must be between 1 and 200.",
             ge=1,
@@ -5850,7 +5847,7 @@ class GetModelsAuditLogsRequest(BaseModel):
         ),
     ] = 20
     direction: Annotated[
-        AuditLogSortDirection | None,
+        AuditLogSortDirection,
         Field(
             description="Sort order by the time the action occurred. Defaults to DESC (newest first). Ignored when paginating with a cursor."
         ),
@@ -5997,7 +5994,7 @@ class GetModelsDeploymentsLogsRequest(BaseModel):
 
 class GetModelsDeploymentsMetricsRequest(BaseModel):
     mode: Annotated[
-        ModelMetricMode | None,
+        ModelMetricMode,
         Field(
             description="'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration."
         ),
@@ -6102,7 +6099,7 @@ class GetModelsEnvironmentsLogsRequest(BaseModel):
 
 class GetModelsEnvironmentsMetricsRequest(BaseModel):
     mode: Annotated[
-        ModelMetricMode | None,
+        ModelMetricMode,
         Field(
             description="'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration."
         ),
@@ -6139,7 +6136,7 @@ class GetChainsAuditLogsRequest(BaseModel):
         ),
     ] = None
     limit: Annotated[
-        int | None,
+        int,
         Field(
             description="Maximum number of entries to return per page. Defaults to 20, and must be between 1 and 200.",
             ge=1,
@@ -6148,7 +6145,7 @@ class GetChainsAuditLogsRequest(BaseModel):
         ),
     ] = 20
     direction: Annotated[
-        AuditLogSortDirection | None,
+        AuditLogSortDirection,
         Field(
             description="Sort order by the time the action occurred. Defaults to DESC (newest first). Ignored when paginating with a cursor."
         ),
@@ -6488,14 +6485,14 @@ class GetModelMetricsResponse(BaseModel):
 
 class RollingDeployConfig(BaseModel):
     rolling_deploy_strategy: Annotated[
-        RollingDeployStrategy | None,
+        RollingDeployStrategy,
         Field(
             description="The rolling deploy strategy to use for promotions.",
             examples=["REPLICA"],
         ),
     ] = RollingDeployStrategy.REPLICA
     max_surge_percent: Annotated[
-        int | None,
+        int,
         Field(
             description="The maximum surge percentage for rolling deploys.",
             examples=[25],
@@ -6503,7 +6500,7 @@ class RollingDeployConfig(BaseModel):
         ),
     ] = 25
     max_unavailable_percent: Annotated[
-        int | None,
+        int,
         Field(
             description="The maximum unavailable percentage for rolling deploys.",
             examples=[10],
@@ -6511,7 +6508,7 @@ class RollingDeployConfig(BaseModel):
         ),
     ] = 0
     stabilization_time_seconds: Annotated[
-        int | None,
+        int,
         Field(
             description="The stabilization time in seconds for rolling deploys.",
             examples=[300],
@@ -6519,7 +6516,7 @@ class RollingDeployConfig(BaseModel):
         ),
     ] = 0
     replica_overhead_percent: Annotated[
-        int | None,
+        int,
         Field(
             description="The replica overhead percentage for rolling deploys.",
             examples=[0],
@@ -6854,14 +6851,14 @@ class TrainingJob(BaseModel):
         Field(description="Checkpoint sync status of the training job."),
     ] = None
     priority: Annotated[
-        int | None,
+        int,
         Field(
             description="Queue priority. Higher values are dequeued first. NULL is treated as 0.",
             title="Priority",
         ),
     ] = 0
     availability_model: Annotated[
-        V1AvailabilityModel | None,
+        V1AvailabilityModel,
         Field(
             description="Capacity guarantee for the job. 'dedicated' is non-preemptible on-demand capacity; 'spot' is interruptible."
         ),
@@ -7656,7 +7653,7 @@ class EffectiveUsageLimit(BaseModel):
 
 class GroupHierarchy(BaseModel):
     limit_enforcement: Annotated[
-        LimitEnforcement | None, Field(examples=["CASCADING", "INDEPENDENT"])
+        LimitEnforcement, Field(examples=["CASCADING", "INDEPENDENT"])
     ] = LimitEnforcement.INDEPENDENT
     parent_group_id: Annotated[
         str | None, Field(examples=["abc123"], title="Parent Group Id")
@@ -8171,7 +8168,7 @@ class CreateTrainingJob(BaseModel):
         ),
     ] = None
     enable_baseten_workdir: Annotated[
-        bool | None,
+        bool,
         Field(
             description="When enabled, uses /b10/workspace as the working directory instead of the image WORKDIR.",
             examples=[False, True],
