@@ -3,11 +3,22 @@ from __future__ import annotations
 import json
 
 import pytest
+from pydantic import ValidationError
 
 import baseten.client.inferenceapi
 from baseten.client import AsyncInferenceClient, InferenceClient
 from baseten.client.inferenceapi import PredictInput
 from tests.conftest import FakeTransport
+
+
+def test_defaulted_non_nullable_field_rejects_none() -> None:
+    config = baseten.client.inferenceapi.InferenceRetryConfig()
+    assert config.max_attempts == 3
+
+    with pytest.raises(ValidationError):
+        baseten.client.inferenceapi.InferenceRetryConfig(
+            max_attempts=None  # ty: ignore[invalid-argument-type]
+        )
 
 
 def make_sync_client(fake: FakeTransport) -> InferenceClient:

@@ -9,17 +9,16 @@ from enum import Enum
 
 class InferenceRetryConfig(BaseModel):
     max_attempts: Annotated[
-        int | None,
-        Field(description="Number of predict request attempts.", ge=1, le=10),
+        int, Field(description="Number of predict request attempts.", ge=1, le=10)
     ] = 3
     initial_delay_ms: Annotated[
-        int | None,
+        int,
         Field(
             description="Minimum time between retries in milliseconds.", ge=0, le=10000
         ),
     ] = 1000
     max_delay_ms: Annotated[
-        int | None,
+        int,
         Field(
             description="Maximum time between retries in milliseconds.", ge=0, le=60000
         ),
@@ -146,7 +145,7 @@ class AsyncPredictRequest(BaseModel):
         ),
     ] = None
     priority: Annotated[
-        int | None,
+        int,
         Field(
             description="Priority of the request. Lower values are higher priority.",
             ge=0,
@@ -154,7 +153,7 @@ class AsyncPredictRequest(BaseModel):
         ),
     ] = 0
     max_time_in_queue_seconds: Annotated[
-        int | None,
+        int,
         Field(
             description="Maximum time in seconds a request will spend in the queue before expiring. Must be between 10 seconds and 72 hours.",
             ge=10,

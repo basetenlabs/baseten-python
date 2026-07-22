@@ -181,6 +181,7 @@ def run_datamodel_codegen(
         "3.10",
         "--use-annotated",
         "--set-default-enum-member",
+        "--strict-nullable",
         "--disable-timestamp",
         "--formatters",
         "ruff-format",
