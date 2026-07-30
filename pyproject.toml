@@ -27,7 +27,7 @@ dev = [
     # `default_factory=lambda: Model.model_validate(...)`. Pydantic validates
     # these at runtime, but the literal does not match the annotation, so ty
     # rejects the generated code. No flag restores the old emission.
-    "datamodel-code-generator>=0.55.0,<0.56",
+    "datamodel-code-generator>=0.55.0,<0.65",
     "furo>=2025.12.19",
     "poethepoet>=0.35",
     "pytest>=9.0.2",
