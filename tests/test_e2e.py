@@ -11,11 +11,13 @@ set but either DOMAIN or MODEL_ID is missing, the test errors.
 
 from __future__ import annotations
 
+import contextlib
 import functools
 import inspect
 import os
 import uuid
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 
@@ -36,11 +38,11 @@ def ensure_e2e_env() -> None:
     if not API_KEY:
         pytest.skip("BASETEN_E2E_TEST_API_KEY not set")
     if not DOMAIN:
-        raise EnvironmentError(
+        raise OSError(
             "BASETEN_E2E_TEST_API_KEY is set but BASETEN_E2E_TEST_DOMAIN is missing"
         )
     if not MODEL_ID:
-        raise EnvironmentError(
+        raise OSError(
             "BASETEN_E2E_TEST_API_KEY is set but BASETEN_E2E_TEST_MODEL_ID is missing"
         )
 
@@ -168,9 +170,8 @@ async def test_api_key_crud() -> None:
             created_prefix = None
         finally:
             if created_prefix is not None:
-                try:
+                # Best-effort cleanup: never mask the real assertion failure.
+                with contextlib.suppress(Exception):
                     await client.api.delete_api_keys(
                         api_key_prefix=created_prefix,
                     )
-                except Exception:
-                    pass

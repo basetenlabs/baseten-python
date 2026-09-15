@@ -10,31 +10,32 @@ import httpx
 from pydantic import BaseModel
 
 from ._models import (
-    APIKey,
-    APIKeyTombstone,
-    APIKeys,
     ActivateResponse,
+    APIKey,
+    APIKeys,
+    APIKeyTombstone,
     CancelPromotionResponse,
     Chain,
     ChainDeployment,
-    ChainDeploymentTombstone,
     ChainDeployments,
+    ChainDeploymentTombstone,
     ChainEnvironment,
-    ChainTombstone,
     Chains,
-    CreateAPIKeyRequest,
+    ChainTombstone,
     CreateApiKeyForGroupRequest,
     CreateApiKeyForGroupResponse,
+    CreateAPIKeyRequest,
     CreateChainEnvironmentRequest,
     CreateDeploymentPatchRequest,
     CreateDeploymentPatchResponse,
+    CreatedModelDeployment,
     CreateEndpointRequest,
     CreateEnvironmentRequest,
     CreateGroupRequest,
-    CreateLLMModelRequest,
-    CreateLLMModelVersionRequest,
     CreateLibraryListingRequest,
     CreateLibraryListingVersionRequest,
+    CreateLLMModelRequest,
+    CreateLLMModelVersionRequest,
     CreateLoopsRunRequest,
     CreateLoopsRunResponse,
     CreateLoopsSamplerRequest,
@@ -42,28 +43,36 @@ from ._models import (
     CreateLoopsSessionResponse,
     CreateModelDeploymentRequest,
     CreateModelRequest,
-    CreateModelWeightSnapshotRequest,
     CreateTrainingJobRequest,
     CreateTrainingJobResponse,
-    CreatedModelDeployment,
+    CreateVolumeTokenRequest,
+    CreateVolumeTokenResponse,
     DeactivateLoopsDeploymentResponse,
+    DeactivateLoopsRunResponse,
     DeactivateResponse,
+    DeleteVolumeRequest,
+    DeleteVolumeResponse,
+    DeleteVolumeVersionRequest,
+    DeleteVolumeVersionResponse,
     Deployment,
     DeploymentConfigResponse,
-    DeploymentTombstone,
     Deployments,
+    DeploymentTombstone,
     DownloadDeploymentResponse,
     DownloadTrainingJobResponse,
     Endpoint,
-    EndpointTombstone,
     EndpointsResponse,
+    EndpointTombstone,
     Environment,
     EnvironmentGroup,
     EnvironmentGroups,
     Environments,
+    EnvironmentTombstone,
+    GatewayEventsResponse,
     GatewayKeyInfo,
     GetAuditLogsRequest,
     GetAuthCodesResponse,
+    GetBillingModelApisRequest,
     GetBillingUsageSummaryRequest,
     GetBlobCredentialsResponse,
     GetCacheSummaryResponse,
@@ -71,19 +80,25 @@ from ._models import (
     GetChainsDeploymentsChainletsLogsRequest,
     GetDeploymentLogsRequest,
     GetDeploymentPatchesStateResponse,
+    GetGatewayEventsRequest,
     GetLogsResponse,
     GetLoopsCapabilitiesResponse,
+    GetLoopsCheckpointsFilesRequest,
     GetLoopsCheckpointsRequest,
     GetLoopsDeploymentMetricsRequest,
     GetLoopsDeploymentMetricsResponse,
     GetLoopsDeploymentResponse,
+    GetLoopsDeploymentsDebugArchiveFilesRequest,
     GetLoopsDeploymentsLogsRequest,
+    GetLoopsDeploymentsRequest,
     GetLoopsRunResponse,
     GetLoopsRunsRequest,
     GetLoopsSamplerResponse,
+    GetLoopsSamplersRequest,
     GetLoopsSessionResponse,
     GetLoopsUserConfigResponse,
     GetModelApisRequest,
+    GetModelApisUsageRequest,
     GetModelMetricsResponse,
     GetModelsAuditLogsRequest,
     GetModelsDeploymentsConfigRequest,
@@ -93,6 +108,8 @@ from ._models import (
     GetModelsEnvironmentsLogsRequest,
     GetModelsEnvironmentsMetricsRequest,
     GetModelsRequest,
+    GetTeamsLoopsRunsRequest,
+    GetTeamsLoopsSamplersRequest,
     GetTeamsModelsRequest,
     GetTeamsRequest,
     GetTrainingGpuCapacityResponse,
@@ -108,18 +125,20 @@ from ._models import (
     GetTrainingProjectsJobsLogsRequest,
     GetTrainingProjectsJobsMetricsRequest,
     GetUsersRequest,
+    GetVolumesNamespacesRequest,
+    GetVolumesRequest,
+    GetVolumesVersionsRequest,
     Group,
     GroupsResponse,
     InstanceTypePrices,
     InstanceTypes,
     KeysForGroupResponse,
-    LLMModelHandle,
     LibraryListing,
+    LibraryListings,
     LibraryListingTombstone,
     LibraryListingVersion,
-    LibraryListingVersionTombstone,
     LibraryListingVersions,
-    LibraryListings,
+    LibraryListingVersionTombstone,
     ListAuditLogsResponse,
     ListLoopsCheckpointsResponse,
     ListLoopsDeploymentsResponse,
@@ -127,13 +146,20 @@ from ._models import (
     ListLoopsSamplersResponse,
     ListTrainingJobsResponse,
     ListTrainingProjectsResponse,
+    ListVolumeNamespacesResponse,
+    ListVolumesResponse,
+    ListVolumeVersionsResponse,
+    LLMModelHandle,
     LoopsCheckpointFilesResponse,
+    LoopsDebugArchiveFilesResponse,
     Model,
     ModelAPI,
+    ModelApisCostsResponse,
     ModelAPIsResponse,
-    ModelTombstone,
-    ModelWeightSnapshot,
+    ModelApisUsageResponse,
     Models,
+    ModelTombstone,
+    OrganizationInfo,
     PatchInteractiveSessionRequest,
     PatchInteractiveSessionResponse,
     PatchLoopsUserConfigRequest,
@@ -146,17 +172,21 @@ from ._models import (
     PromoteToChainEnvironmentRequest,
     PromoteToEnvironmentRequest,
     RecreateTrainingJobResponse,
+    Regions,
     RegisterAPIKeyRequest,
     RegisterAPIKeyResponse,
+    RequestBackpressureSettings,
+    RestoreVolumeVersionRequest,
+    RestoreVolumeVersionResponse,
     RetryDeploymentResponse,
     SearchTrainingJobsRequest,
     SearchTrainingJobsResponse,
     Secret,
-    SecretTombstone,
     Secrets,
+    SecretTombstone,
+    SignalPromotionResponse,
     SignSSHCertificateRequest,
     SignSSHCertificateResponse,
-    SignalPromotionResponse,
     StopTrainingJobRequest,
     StopTrainingJobResponse,
     SyncDeploymentPatchesRequest,
@@ -173,12 +203,15 @@ from ._models import (
     UpdateChainletEnvironmentAutoscalingSettingsRequest,
     UpdateChainletEnvironmentInstanceTypeRequest,
     UpdateChainletEnvironmentInstanceTypeResponse,
+    UpdateDeploymentRequest,
     UpdateEndpointRequest,
     UpdateEnvironmentGroupRequest,
     UpdateEnvironmentRequest,
+    UpdateEnvironmentResponse,
     UpdateGroupRequest,
     UpdateLibraryListingRequest,
     UpdateLibraryListingVersionRequest,
+    UpdateRequestBackpressureSettings,
     UpdateTrainingJobRequest,
     UpdateTrainingJobResponse,
     UpsertSecretRequest,
@@ -189,6 +222,8 @@ from ._models import (
     UsersResponse,
     ValidateLoopsCheckpointRequest,
     ValidateLoopsCheckpointResponse,
+    Volume,
+    VolumeVersionDetail,
 )
 
 _T = TypeVar("_T", bound=BaseModel)
@@ -371,6 +406,23 @@ class ApiClient:
             ),
         )
 
+    def delete_models_environments(
+        self, *, model_id: str, env_name: str
+    ) -> EnvironmentTombstone:
+        """Deletes an environment"""
+        return self._do_json(
+            EnvironmentTombstone,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/models/{}/environments/{}",
+                path_args=[model_id, env_name],
+                body=None,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     def delete_secrets(self, *, secret_name: str) -> SecretTombstone:
         """Deletes a secret by name"""
         return self._do_json(
@@ -437,6 +489,45 @@ class ApiClient:
             ),
         )
 
+    def delete_volumes(
+        self, *, volume_namespace: str, volume_name: str, request: DeleteVolumeRequest
+    ) -> DeleteVolumeResponse:
+        """Deletes a volume"""
+        return self._do_json(
+            DeleteVolumeResponse,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/volumes/{}/{}",
+                path_args=[volume_namespace, volume_name],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    def delete_volumes_versions(
+        self,
+        *,
+        volume_namespace: str,
+        volume_name: str,
+        volume_version: str,
+        request: DeleteVolumeVersionRequest,
+    ) -> DeleteVolumeVersionResponse:
+        """Deletes one version of a volume"""
+        return self._do_json(
+            DeleteVolumeVersionResponse,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/volumes/{}/{}/versions/{}",
+                path_args=[volume_namespace, volume_name, volume_version],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     def get_api_keys(self) -> APIKeys:
         """Lists API keys (metadata only, no plain text keys)"""
         return self._do_json(
@@ -461,6 +552,23 @@ class ApiClient:
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/audit_logs",
+                path_args=[],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    def get_billing_model_apis(
+        self, *, request: GetBillingModelApisRequest | None = None
+    ) -> ModelApisCostsResponse:
+        """Gets daily Model APIs costs"""
+        return self._do_json(
+            ModelApisCostsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/billing/model_apis",
                 path_args=[],
                 body=None,
                 query=request,
@@ -709,6 +817,23 @@ class ApiClient:
             ),
         )
 
+    def get_gateway_events(
+        self, *, request: GetGatewayEventsRequest | None = None
+    ) -> GatewayEventsResponse:
+        """Lists gateway events"""
+        return self._do_json(
+            GatewayEventsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/gateway/events",
+                path_args=[],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     def get_gateway_groups(self) -> GroupsResponse:
         """Lists groups"""
         return self._do_json(
@@ -900,7 +1025,10 @@ class ApiClient:
         )
 
     def get_loops_checkpoints_files(
-        self, *, checkpoint_id: str
+        self,
+        *,
+        checkpoint_id: str,
+        request: GetLoopsCheckpointsFilesRequest | None = None,
     ) -> LoopsCheckpointFilesResponse:
         """Gets Loops checkpoint files"""
         return self._do_json(
@@ -910,13 +1038,15 @@ class ApiClient:
                 path_fmt="/v1/loops/checkpoints/{}/files",
                 path_args=[checkpoint_id],
                 body=None,
-                query=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    def get_loops_deployments(self) -> ListLoopsDeploymentsResponse:
+    def get_loops_deployments(
+        self, *, request: GetLoopsDeploymentsRequest | None = None
+    ) -> ListLoopsDeploymentsResponse:
         """Lists Loops deployments"""
         return self._do_json(
             ListLoopsDeploymentsResponse,
@@ -925,7 +1055,27 @@ class ApiClient:
                 path_fmt="/v1/loops/deployments",
                 path_args=[],
                 body=None,
-                query=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    def get_loops_deployments_debug_archive_files(
+        self,
+        *,
+        deployment_id: str,
+        request: GetLoopsDeploymentsDebugArchiveFilesRequest | None = None,
+    ) -> LoopsDebugArchiveFilesResponse:
+        """Gets Loops debug archive files"""
+        return self._do_json(
+            LoopsDebugArchiveFilesResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/loops/deployments/{}/debug_archive/files",
+                path_args=[deployment_id],
+                body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1000,7 +1150,9 @@ class ApiClient:
             ),
         )
 
-    def get_loops_samplers(self) -> ListLoopsSamplersResponse:
+    def get_loops_samplers(
+        self, *, request: GetLoopsSamplersRequest | None = None
+    ) -> ListLoopsSamplersResponse:
         """Lists Loops samplers"""
         return self._do_json(
             ListLoopsSamplersResponse,
@@ -1009,7 +1161,7 @@ class ApiClient:
                 path_fmt="/v1/loops/samplers",
                 path_args=[],
                 body=None,
-                query=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1094,33 +1246,18 @@ class ApiClient:
             ),
         )
 
-    def get_model_apis_snapshots(self) -> ModelWeightSnapshot:
-        """Gets the latest model weight snapshot"""
+    def get_model_apis_usage(
+        self, *, request: GetModelApisUsageRequest | None = None
+    ) -> ModelApisUsageResponse:
+        """Gets Model APIs token usage in time buckets"""
         return self._do_json(
-            ModelWeightSnapshot,
+            ModelApisUsageResponse,
             _ApiRequest(
                 method="GET",
-                path_fmt="/v1/model_apis/snapshots",
+                path_fmt="/v1/model_apis/usage",
                 path_args=[],
                 body=None,
-                query=None,
-                success_code=200,
-                error_codes=None,
-            ),
-        )
-
-    def get_model_apis_snapshots_model_id(
-        self, *, model_id: str
-    ) -> ModelWeightSnapshot:
-        """Gets the latest model weight snapshot"""
-        return self._do_json(
-            ModelWeightSnapshot,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/model_apis/snapshots/{}",
-                path_args=[model_id],
-                body=None,
-                query=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1408,6 +1545,36 @@ class ApiClient:
             ),
         )
 
+    def get_organizations_me(self) -> OrganizationInfo:
+        """Gets the authenticated organization"""
+        return self._do_json(
+            OrganizationInfo,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/organizations/me",
+                path_args=[],
+                body=None,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    def get_regions(self) -> Regions:
+        """Lists regions available to the organization"""
+        return self._do_json(
+            Regions,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/regions",
+                path_args=[],
+                body=None,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     def get_secrets(self) -> Secrets:
         """Gets all secrets (metadata only, no plain text keys)"""
         return self._do_json(
@@ -1470,6 +1637,40 @@ class ApiClient:
             ),
         )
 
+    def get_teams_loops_runs(
+        self, *, team_id: str, request: GetTeamsLoopsRunsRequest | None = None
+    ) -> ListLoopsRunsResponse:
+        """Lists a team's Loops runs"""
+        return self._do_json(
+            ListLoopsRunsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/teams/{}/loops/runs",
+                path_args=[team_id],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    def get_teams_loops_samplers(
+        self, *, team_id: str, request: GetTeamsLoopsSamplersRequest | None = None
+    ) -> ListLoopsSamplersResponse:
+        """Lists a team's Loops samplers"""
+        return self._do_json(
+            ListLoopsSamplersResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/teams/{}/loops/samplers",
+                path_args=[team_id],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     def get_teams_models(
         self, *, team_id: str, request: GetTeamsModelsRequest | None = None
     ) -> Models:
@@ -1482,6 +1683,21 @@ class ApiClient:
                 path_args=[team_id],
                 body=None,
                 query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    def get_teams_regions(self, *, team_id: str) -> Regions:
+        """Lists regions available to a team"""
+        return self._do_json(
+            Regions,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/teams/{}/regions",
+                path_args=[team_id],
+                body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -1791,6 +2007,93 @@ class ApiClient:
             ),
         )
 
+    def get_volumes(self, *, request: GetVolumesRequest) -> ListVolumesResponse:
+        """Gets the volumes in a namespace"""
+        return self._do_json(
+            ListVolumesResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/volumes",
+                path_args=[],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    def get_volumes_namespaces(
+        self, *, request: GetVolumesNamespacesRequest | None = None
+    ) -> ListVolumeNamespacesResponse:
+        """Gets the volume namespaces in your workspace"""
+        return self._do_json(
+            ListVolumeNamespacesResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/volumes/namespaces",
+                path_args=[],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    def get_volumes_versions(
+        self,
+        *,
+        volume_namespace: str,
+        volume_name: str,
+        request: GetVolumesVersionsRequest | None = None,
+    ) -> ListVolumeVersionsResponse:
+        """Gets the versions of a volume"""
+        return self._do_json(
+            ListVolumeVersionsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/volumes/{}/{}/versions",
+                path_args=[volume_namespace, volume_name],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    def get_volumes_versions_volume_version(
+        self, *, volume_namespace: str, volume_name: str, volume_version: str
+    ) -> VolumeVersionDetail:
+        """Gets one version of a volume"""
+        return self._do_json(
+            VolumeVersionDetail,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/volumes/{}/{}/versions/{}",
+                path_args=[volume_namespace, volume_name, volume_version],
+                body=None,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    def get_volumes_volume_name(
+        self, *, volume_namespace: str, volume_name: str
+    ) -> Volume:
+        """Gets a volume"""
+        return self._do_json(
+            Volume,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/volumes/{}/{}",
+                path_args=[volume_namespace, volume_name],
+                body=None,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     def patch_chains_environments(
         self, *, chain_id: str, env_name: str, request: UpdateChainEnvironmentRequest
     ) -> UpdateChainEnvironmentResponse:
@@ -1935,6 +2238,23 @@ class ApiClient:
             ),
         )
 
+    def patch_models_deployments(
+        self, *, model_id: str, deployment_id: str, request: UpdateDeploymentRequest
+    ) -> Deployment:
+        """Updates a model's deployment by ID"""
+        return self._do_json(
+            Deployment,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/models/{}/deployments/{}",
+                path_args=[model_id, deployment_id],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     def patch_models_deployments_autoscaling_settings(
         self, *, model_id: str, deployment_id: str, request: UpdateAutoscalingSettings
     ) -> UpdateAutoscalingSettingsResponse:
@@ -1986,12 +2306,33 @@ class ApiClient:
             ),
         )
 
+    def patch_models_deployments_request_backpressure_settings(
+        self,
+        *,
+        model_id: str,
+        deployment_id: str,
+        request: UpdateRequestBackpressureSettings,
+    ) -> RequestBackpressureSettings:
+        """Updates a deployment's request backpressure settings"""
+        return self._do_json(
+            RequestBackpressureSettings,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/models/{}/deployments/{}/request_backpressure_settings",
+                path_args=[model_id, deployment_id],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     def patch_models_environments(
         self, *, model_id: str, env_name: str, request: UpdateEnvironmentRequest
-    ) -> UpdateAutoscalingSettingsResponse:
+    ) -> UpdateEnvironmentResponse:
         """Updates an environment's settings"""
         return self._do_json(
-            UpdateAutoscalingSettingsResponse,
+            UpdateEnvironmentResponse,
             _ApiRequest(
                 method="PATCH",
                 path_fmt="/v1/models/{}/environments/{}",
@@ -2368,6 +2709,21 @@ class ApiClient:
             ),
         )
 
+    def post_loops_runs_deactivate(self, *, run_id: str) -> DeactivateLoopsRunResponse:
+        """Deactivates a Loops run"""
+        return self._do_json(
+            DeactivateLoopsRunResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/loops/runs/{}/deactivate",
+                path_args=[run_id],
+                body=None,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     def post_loops_samplers(
         self, *, request: CreateLoopsSamplerRequest
     ) -> CreateLoopsSamplerResponse:
@@ -2400,33 +2756,16 @@ class ApiClient:
             ),
         )
 
-    def post_model_apis_snapshots(
-        self, *, request: CreateModelWeightSnapshotRequest
-    ) -> ModelWeightSnapshot:
-        """Creates a model weight snapshot"""
+    def post_loops_trainers(
+        self, *, request: CreateLoopsRunRequest
+    ) -> CreateLoopsRunResponse:
+        """Creates a Loops trainer"""
         return self._do_json(
-            ModelWeightSnapshot,
+            CreateLoopsRunResponse,
             _ApiRequest(
                 method="POST",
-                path_fmt="/v1/model_apis/snapshots",
+                path_fmt="/v1/loops/trainers",
                 path_args=[],
-                body=request,
-                query=None,
-                success_code=200,
-                error_codes=None,
-            ),
-        )
-
-    def post_model_apis_snapshots_model_id(
-        self, *, model_id: str, request: CreateModelWeightSnapshotRequest
-    ) -> ModelWeightSnapshot:
-        """Creates a model weight snapshot"""
-        return self._do_json(
-            ModelWeightSnapshot,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/model_apis/snapshots/{}",
-                path_args=[model_id],
                 body=request,
                 query=None,
                 success_code=200,
@@ -2948,6 +3287,72 @@ class ApiClient:
             ),
         )
 
+    def post_teams_loops_runs(
+        self, *, team_id: str, request: CreateLoopsRunRequest
+    ) -> CreateLoopsRunResponse:
+        """Creates a Loops run in a team"""
+        return self._do_json(
+            CreateLoopsRunResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/teams/{}/loops/runs",
+                path_args=[team_id],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    def post_teams_loops_samplers(
+        self, *, team_id: str, request: CreateLoopsSamplerRequest
+    ) -> CreateLoopsSamplerResponse:
+        """Creates a Loops sampler in a team"""
+        return self._do_json(
+            CreateLoopsSamplerResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/teams/{}/loops/samplers",
+                path_args=[team_id],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    def post_teams_loops_sessions(self, *, team_id: str) -> CreateLoopsSessionResponse:
+        """Creates a Loops session"""
+        return self._do_json(
+            CreateLoopsSessionResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/teams/{}/loops/sessions",
+                path_args=[team_id],
+                body=None,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    def post_teams_loops_trainers(
+        self, *, team_id: str, request: CreateLoopsRunRequest
+    ) -> CreateLoopsRunResponse:
+        """Creates a Loops trainer"""
+        return self._do_json(
+            CreateLoopsRunResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/teams/{}/loops/trainers",
+                path_args=[team_id],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     def post_teams_models(
         self, *, team_id: str, request: CreateModelRequest
     ) -> CreatedModelDeployment:
@@ -3144,6 +3549,45 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/training_projects/{}/jobs/{}/stop",
                 path_args=[training_project_id, training_job_id],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    def post_volumes_token(
+        self, *, request: CreateVolumeTokenRequest
+    ) -> CreateVolumeTokenResponse:
+        """Creates a volume access token"""
+        return self._do_json(
+            CreateVolumeTokenResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/volumes/token",
+                path_args=[],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    def post_volumes_versions_restore(
+        self,
+        *,
+        volume_namespace: str,
+        volume_name: str,
+        volume_version: str,
+        request: RestoreVolumeVersionRequest,
+    ) -> RestoreVolumeVersionResponse:
+        """Restores a deleted version of a volume"""
+        return self._do_json(
+            RestoreVolumeVersionResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/volumes/{}/{}/versions/{}/restore",
+                path_args=[volume_namespace, volume_name, volume_version],
                 body=request,
                 query=None,
                 success_code=200,
@@ -3348,6 +3792,23 @@ class AsyncApiClient:
             ),
         )
 
+    async def delete_models_environments(
+        self, *, model_id: str, env_name: str
+    ) -> EnvironmentTombstone:
+        """Deletes an environment"""
+        return await self._do_json(
+            EnvironmentTombstone,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/models/{}/environments/{}",
+                path_args=[model_id, env_name],
+                body=None,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     async def delete_secrets(self, *, secret_name: str) -> SecretTombstone:
         """Deletes a secret by name"""
         return await self._do_json(
@@ -3414,6 +3875,45 @@ class AsyncApiClient:
             ),
         )
 
+    async def delete_volumes(
+        self, *, volume_namespace: str, volume_name: str, request: DeleteVolumeRequest
+    ) -> DeleteVolumeResponse:
+        """Deletes a volume"""
+        return await self._do_json(
+            DeleteVolumeResponse,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/volumes/{}/{}",
+                path_args=[volume_namespace, volume_name],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    async def delete_volumes_versions(
+        self,
+        *,
+        volume_namespace: str,
+        volume_name: str,
+        volume_version: str,
+        request: DeleteVolumeVersionRequest,
+    ) -> DeleteVolumeVersionResponse:
+        """Deletes one version of a volume"""
+        return await self._do_json(
+            DeleteVolumeVersionResponse,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/volumes/{}/{}/versions/{}",
+                path_args=[volume_namespace, volume_name, volume_version],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     async def get_api_keys(self) -> APIKeys:
         """Lists API keys (metadata only, no plain text keys)"""
         return await self._do_json(
@@ -3438,6 +3938,23 @@ class AsyncApiClient:
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/audit_logs",
+                path_args=[],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    async def get_billing_model_apis(
+        self, *, request: GetBillingModelApisRequest | None = None
+    ) -> ModelApisCostsResponse:
+        """Gets daily Model APIs costs"""
+        return await self._do_json(
+            ModelApisCostsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/billing/model_apis",
                 path_args=[],
                 body=None,
                 query=request,
@@ -3688,6 +4205,23 @@ class AsyncApiClient:
             ),
         )
 
+    async def get_gateway_events(
+        self, *, request: GetGatewayEventsRequest | None = None
+    ) -> GatewayEventsResponse:
+        """Lists gateway events"""
+        return await self._do_json(
+            GatewayEventsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/gateway/events",
+                path_args=[],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     async def get_gateway_groups(self) -> GroupsResponse:
         """Lists groups"""
         return await self._do_json(
@@ -3881,7 +4415,10 @@ class AsyncApiClient:
         )
 
     async def get_loops_checkpoints_files(
-        self, *, checkpoint_id: str
+        self,
+        *,
+        checkpoint_id: str,
+        request: GetLoopsCheckpointsFilesRequest | None = None,
     ) -> LoopsCheckpointFilesResponse:
         """Gets Loops checkpoint files"""
         return await self._do_json(
@@ -3891,13 +4428,15 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/checkpoints/{}/files",
                 path_args=[checkpoint_id],
                 body=None,
-                query=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
         )
 
-    async def get_loops_deployments(self) -> ListLoopsDeploymentsResponse:
+    async def get_loops_deployments(
+        self, *, request: GetLoopsDeploymentsRequest | None = None
+    ) -> ListLoopsDeploymentsResponse:
         """Lists Loops deployments"""
         return await self._do_json(
             ListLoopsDeploymentsResponse,
@@ -3906,7 +4445,27 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/deployments",
                 path_args=[],
                 body=None,
-                query=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    async def get_loops_deployments_debug_archive_files(
+        self,
+        *,
+        deployment_id: str,
+        request: GetLoopsDeploymentsDebugArchiveFilesRequest | None = None,
+    ) -> LoopsDebugArchiveFilesResponse:
+        """Gets Loops debug archive files"""
+        return await self._do_json(
+            LoopsDebugArchiveFilesResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/loops/deployments/{}/debug_archive/files",
+                path_args=[deployment_id],
+                body=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -3981,7 +4540,9 @@ class AsyncApiClient:
             ),
         )
 
-    async def get_loops_samplers(self) -> ListLoopsSamplersResponse:
+    async def get_loops_samplers(
+        self, *, request: GetLoopsSamplersRequest | None = None
+    ) -> ListLoopsSamplersResponse:
         """Lists Loops samplers"""
         return await self._do_json(
             ListLoopsSamplersResponse,
@@ -3990,7 +4551,7 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/samplers",
                 path_args=[],
                 body=None,
-                query=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4075,33 +4636,18 @@ class AsyncApiClient:
             ),
         )
 
-    async def get_model_apis_snapshots(self) -> ModelWeightSnapshot:
-        """Gets the latest model weight snapshot"""
+    async def get_model_apis_usage(
+        self, *, request: GetModelApisUsageRequest | None = None
+    ) -> ModelApisUsageResponse:
+        """Gets Model APIs token usage in time buckets"""
         return await self._do_json(
-            ModelWeightSnapshot,
+            ModelApisUsageResponse,
             _ApiRequest(
                 method="GET",
-                path_fmt="/v1/model_apis/snapshots",
+                path_fmt="/v1/model_apis/usage",
                 path_args=[],
                 body=None,
-                query=None,
-                success_code=200,
-                error_codes=None,
-            ),
-        )
-
-    async def get_model_apis_snapshots_model_id(
-        self, *, model_id: str
-    ) -> ModelWeightSnapshot:
-        """Gets the latest model weight snapshot"""
-        return await self._do_json(
-            ModelWeightSnapshot,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/model_apis/snapshots/{}",
-                path_args=[model_id],
-                body=None,
-                query=None,
+                query=request,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4389,6 +4935,36 @@ class AsyncApiClient:
             ),
         )
 
+    async def get_organizations_me(self) -> OrganizationInfo:
+        """Gets the authenticated organization"""
+        return await self._do_json(
+            OrganizationInfo,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/organizations/me",
+                path_args=[],
+                body=None,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    async def get_regions(self) -> Regions:
+        """Lists regions available to the organization"""
+        return await self._do_json(
+            Regions,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/regions",
+                path_args=[],
+                body=None,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     async def get_secrets(self) -> Secrets:
         """Gets all secrets (metadata only, no plain text keys)"""
         return await self._do_json(
@@ -4451,6 +5027,40 @@ class AsyncApiClient:
             ),
         )
 
+    async def get_teams_loops_runs(
+        self, *, team_id: str, request: GetTeamsLoopsRunsRequest | None = None
+    ) -> ListLoopsRunsResponse:
+        """Lists a team's Loops runs"""
+        return await self._do_json(
+            ListLoopsRunsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/teams/{}/loops/runs",
+                path_args=[team_id],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    async def get_teams_loops_samplers(
+        self, *, team_id: str, request: GetTeamsLoopsSamplersRequest | None = None
+    ) -> ListLoopsSamplersResponse:
+        """Lists a team's Loops samplers"""
+        return await self._do_json(
+            ListLoopsSamplersResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/teams/{}/loops/samplers",
+                path_args=[team_id],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     async def get_teams_models(
         self, *, team_id: str, request: GetTeamsModelsRequest | None = None
     ) -> Models:
@@ -4463,6 +5073,21 @@ class AsyncApiClient:
                 path_args=[team_id],
                 body=None,
                 query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    async def get_teams_regions(self, *, team_id: str) -> Regions:
+        """Lists regions available to a team"""
+        return await self._do_json(
+            Regions,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/teams/{}/regions",
+                path_args=[team_id],
+                body=None,
+                query=None,
                 success_code=200,
                 error_codes=None,
             ),
@@ -4774,6 +5399,93 @@ class AsyncApiClient:
             ),
         )
 
+    async def get_volumes(self, *, request: GetVolumesRequest) -> ListVolumesResponse:
+        """Gets the volumes in a namespace"""
+        return await self._do_json(
+            ListVolumesResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/volumes",
+                path_args=[],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    async def get_volumes_namespaces(
+        self, *, request: GetVolumesNamespacesRequest | None = None
+    ) -> ListVolumeNamespacesResponse:
+        """Gets the volume namespaces in your workspace"""
+        return await self._do_json(
+            ListVolumeNamespacesResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/volumes/namespaces",
+                path_args=[],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    async def get_volumes_versions(
+        self,
+        *,
+        volume_namespace: str,
+        volume_name: str,
+        request: GetVolumesVersionsRequest | None = None,
+    ) -> ListVolumeVersionsResponse:
+        """Gets the versions of a volume"""
+        return await self._do_json(
+            ListVolumeVersionsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/volumes/{}/{}/versions",
+                path_args=[volume_namespace, volume_name],
+                body=None,
+                query=request,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    async def get_volumes_versions_volume_version(
+        self, *, volume_namespace: str, volume_name: str, volume_version: str
+    ) -> VolumeVersionDetail:
+        """Gets one version of a volume"""
+        return await self._do_json(
+            VolumeVersionDetail,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/volumes/{}/{}/versions/{}",
+                path_args=[volume_namespace, volume_name, volume_version],
+                body=None,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    async def get_volumes_volume_name(
+        self, *, volume_namespace: str, volume_name: str
+    ) -> Volume:
+        """Gets a volume"""
+        return await self._do_json(
+            Volume,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/volumes/{}/{}",
+                path_args=[volume_namespace, volume_name],
+                body=None,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     async def patch_chains_environments(
         self, *, chain_id: str, env_name: str, request: UpdateChainEnvironmentRequest
     ) -> UpdateChainEnvironmentResponse:
@@ -4918,6 +5630,23 @@ class AsyncApiClient:
             ),
         )
 
+    async def patch_models_deployments(
+        self, *, model_id: str, deployment_id: str, request: UpdateDeploymentRequest
+    ) -> Deployment:
+        """Updates a model's deployment by ID"""
+        return await self._do_json(
+            Deployment,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/models/{}/deployments/{}",
+                path_args=[model_id, deployment_id],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     async def patch_models_deployments_autoscaling_settings(
         self, *, model_id: str, deployment_id: str, request: UpdateAutoscalingSettings
     ) -> UpdateAutoscalingSettingsResponse:
@@ -4969,12 +5698,33 @@ class AsyncApiClient:
             ),
         )
 
+    async def patch_models_deployments_request_backpressure_settings(
+        self,
+        *,
+        model_id: str,
+        deployment_id: str,
+        request: UpdateRequestBackpressureSettings,
+    ) -> RequestBackpressureSettings:
+        """Updates a deployment's request backpressure settings"""
+        return await self._do_json(
+            RequestBackpressureSettings,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/models/{}/deployments/{}/request_backpressure_settings",
+                path_args=[model_id, deployment_id],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     async def patch_models_environments(
         self, *, model_id: str, env_name: str, request: UpdateEnvironmentRequest
-    ) -> UpdateAutoscalingSettingsResponse:
+    ) -> UpdateEnvironmentResponse:
         """Updates an environment's settings"""
         return await self._do_json(
-            UpdateAutoscalingSettingsResponse,
+            UpdateEnvironmentResponse,
             _ApiRequest(
                 method="PATCH",
                 path_fmt="/v1/models/{}/environments/{}",
@@ -5355,6 +6105,23 @@ class AsyncApiClient:
             ),
         )
 
+    async def post_loops_runs_deactivate(
+        self, *, run_id: str
+    ) -> DeactivateLoopsRunResponse:
+        """Deactivates a Loops run"""
+        return await self._do_json(
+            DeactivateLoopsRunResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/loops/runs/{}/deactivate",
+                path_args=[run_id],
+                body=None,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     async def post_loops_samplers(
         self, *, request: CreateLoopsSamplerRequest
     ) -> CreateLoopsSamplerResponse:
@@ -5387,33 +6154,16 @@ class AsyncApiClient:
             ),
         )
 
-    async def post_model_apis_snapshots(
-        self, *, request: CreateModelWeightSnapshotRequest
-    ) -> ModelWeightSnapshot:
-        """Creates a model weight snapshot"""
+    async def post_loops_trainers(
+        self, *, request: CreateLoopsRunRequest
+    ) -> CreateLoopsRunResponse:
+        """Creates a Loops trainer"""
         return await self._do_json(
-            ModelWeightSnapshot,
+            CreateLoopsRunResponse,
             _ApiRequest(
                 method="POST",
-                path_fmt="/v1/model_apis/snapshots",
+                path_fmt="/v1/loops/trainers",
                 path_args=[],
-                body=request,
-                query=None,
-                success_code=200,
-                error_codes=None,
-            ),
-        )
-
-    async def post_model_apis_snapshots_model_id(
-        self, *, model_id: str, request: CreateModelWeightSnapshotRequest
-    ) -> ModelWeightSnapshot:
-        """Creates a model weight snapshot"""
-        return await self._do_json(
-            ModelWeightSnapshot,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/model_apis/snapshots/{}",
-                path_args=[model_id],
                 body=request,
                 query=None,
                 success_code=200,
@@ -5937,6 +6687,74 @@ class AsyncApiClient:
             ),
         )
 
+    async def post_teams_loops_runs(
+        self, *, team_id: str, request: CreateLoopsRunRequest
+    ) -> CreateLoopsRunResponse:
+        """Creates a Loops run in a team"""
+        return await self._do_json(
+            CreateLoopsRunResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/teams/{}/loops/runs",
+                path_args=[team_id],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    async def post_teams_loops_samplers(
+        self, *, team_id: str, request: CreateLoopsSamplerRequest
+    ) -> CreateLoopsSamplerResponse:
+        """Creates a Loops sampler in a team"""
+        return await self._do_json(
+            CreateLoopsSamplerResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/teams/{}/loops/samplers",
+                path_args=[team_id],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    async def post_teams_loops_sessions(
+        self, *, team_id: str
+    ) -> CreateLoopsSessionResponse:
+        """Creates a Loops session"""
+        return await self._do_json(
+            CreateLoopsSessionResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/teams/{}/loops/sessions",
+                path_args=[team_id],
+                body=None,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    async def post_teams_loops_trainers(
+        self, *, team_id: str, request: CreateLoopsRunRequest
+    ) -> CreateLoopsRunResponse:
+        """Creates a Loops trainer"""
+        return await self._do_json(
+            CreateLoopsRunResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/teams/{}/loops/trainers",
+                path_args=[team_id],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
     async def post_teams_models(
         self, *, team_id: str, request: CreateModelRequest
     ) -> CreatedModelDeployment:
@@ -6133,6 +6951,45 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/training_projects/{}/jobs/{}/stop",
                 path_args=[training_project_id, training_job_id],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    async def post_volumes_token(
+        self, *, request: CreateVolumeTokenRequest
+    ) -> CreateVolumeTokenResponse:
+        """Creates a volume access token"""
+        return await self._do_json(
+            CreateVolumeTokenResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/volumes/token",
+                path_args=[],
+                body=request,
+                query=None,
+                success_code=200,
+                error_codes=None,
+            ),
+        )
+
+    async def post_volumes_versions_restore(
+        self,
+        *,
+        volume_namespace: str,
+        volume_name: str,
+        volume_version: str,
+        request: RestoreVolumeVersionRequest,
+    ) -> RestoreVolumeVersionResponse:
+        """Restores a deleted version of a volume"""
+        return await self._do_json(
+            RestoreVolumeVersionResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/volumes/{}/{}/versions/{}/restore",
+                path_args=[volume_namespace, volume_name, volume_version],
                 body=request,
                 query=None,
                 success_code=200,

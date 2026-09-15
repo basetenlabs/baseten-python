@@ -2,9 +2,11 @@
 #   filename:  <stdin>
 
 from __future__ import annotations
+
+from enum import StrEnum
 from typing import Annotated, Any, Literal
+
 from pydantic import BaseModel, ConfigDict, Field, RootModel
-from enum import Enum
 
 
 class ModelMetadata(BaseModel):
@@ -29,7 +31,46 @@ class AutoscalingMetric(BaseModel):
     target: Annotated[float, Field(title="Target")]
 
 
-class CheckpointSource(Enum):
+class BDNAccessGrant(StrEnum):
+    pull = "pull"
+    push = "push"
+    tag = "tag"
+    inspect = "inspect"
+    delete = "delete"
+
+
+class BDNHotload(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    enabled: Annotated[
+        bool, Field(description="If true, enables BDN hot-loading.", title="Enabled")
+    ] = False
+
+
+class BDNVolumeMount(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    source: Annotated[
+        str,
+        Field(
+            description="BDN volume reference to mount (for example, bdn:weights/llama-8b:prod).",
+            min_length=1,
+            title="Source",
+        ),
+    ]
+    path: Annotated[
+        str,
+        Field(
+            description="Absolute path where the volume will be mounted at runtime.",
+            min_length=1,
+            title="Path",
+        ),
+    ]
+
+
+class CheckpointSource(StrEnum):
     HF = "HF"
     GCS = "GCS"
     S3 = "S3"
@@ -39,12 +80,13 @@ class CheckpointSource(Enum):
     BASETEN_TRAINING = "BASETEN_TRAINING"
 
 
-class DockerAuthType(Enum):
+class DockerAuthType(StrEnum):
     GCP_SERVICE_ACCOUNT_JSON = "GCP_SERVICE_ACCOUNT_JSON"
     AWS_IAM = "AWS_IAM"
     AWS_OIDC = "AWS_OIDC"
     GCP_OIDC = "GCP_OIDC"
     REGISTRY_SECRET = "REGISTRY_SECRET"
+    AWS_ASSUME_ROLE = "AWS_ASSUME_ROLE"
 
 
 class DockerServer(BaseModel):
@@ -145,7 +187,7 @@ class ExternalDataItem(BaseModel):
         ),
     ]
     backend: Annotated[
-        str | None,
+        str,
         Field(
             description="Download backend to use. Defaults to 'http_public'.",
             title="Backend",
@@ -156,6 +198,27 @@ class ExternalDataItem(BaseModel):
         Field(
             description="Optional name for the download. Path relative to data directory.",
             title="Name",
+        ),
+    ] = None
+
+
+class FabricRequirement(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    use_rdma: Annotated[
+        bool | None,
+        Field(
+            description="Whether to use RDMA with any supported fabric.",
+            title="Use Rdma",
+        ),
+    ] = None
+    preferences: Annotated[
+        list[str] | None,
+        Field(
+            description="Exhaustive list of acceptable network fabrics, in preference order. An empty list requires no fabric.",
+            examples=[["infiniband"]],
+            title="Preferences",
         ),
     ] = None
 
@@ -206,14 +269,14 @@ class VolumeFolder(RootModel[str]):
     root: Annotated[str | None, Field(min_length=1, title="Volume Folder")] = None
 
 
-class ModelRepoSourceKind(Enum):
+class ModelRepoSourceKind(StrEnum):
     hf = "hf"
     gcs = "gcs"
     s3 = "s3"
     azure = "azure"
 
 
-class ModelServer(Enum):
+class ModelServer(StrEnum):
     TrussServer = "TrussServer"
     TRT_LLM = "TRT_LLM"
 
@@ -236,7 +299,7 @@ class RemoteSSH(BaseModel):
         extra="allow",
     )
     enabled: Annotated[
-        bool | None,
+        bool,
         Field(
             description="If true, enables SSH access to running model instances.",
             title="Enabled",
@@ -260,7 +323,7 @@ class Resources(BaseModel):
         extra="allow",
     )
     cpu: Annotated[
-        str | None,
+        str,
         Field(
             description="CPU resources needed, expressed as either a raw number or millicpus. For example, 500m is half of a CPU core.",
             examples=["1", "500m", "4"],
@@ -268,7 +331,7 @@ class Resources(BaseModel):
         ),
     ] = "1"
     memory: Annotated[
-        str | None,
+        str,
         Field(
             description="CPU RAM needed, expressed as a number with units. Units include Gi (Gibibytes), G (Gigabytes), Mi (Mebibytes), and M (Megabytes).",
             examples=["2Gi", "512Mi"],
@@ -297,6 +360,10 @@ class Resources(BaseModel):
             title="Node Count",
         ),
     ] = None
+    fabric: Annotated[
+        FabricRequirement | None,
+        Field(description="Network fabric requirements for this deployment."),
+    ] = None
 
 
 class MaxSeqLen(RootModel[int]):
@@ -308,18 +375,14 @@ class TRTLLMRuntimeConfigurationV2(BaseModel):
         extra="allow",
     )
     max_seq_len: Annotated[MaxSeqLen | None, Field(title="Max Seq Len")] = None
-    max_batch_size: Annotated[
-        int | None, Field(ge=1, le=2048, title="Max Batch Size")
-    ] = 256
-    max_num_tokens: Annotated[
-        int | None, Field(gt=64, le=131072, title="Max Num Tokens")
-    ] = 8192
-    tensor_parallel_size: Annotated[
-        int | None, Field(ge=1, title="Tensor Parallel Size")
-    ] = 1
-    enable_chunked_prefill: Annotated[
-        bool | None, Field(title="Enable Chunked Prefill")
-    ] = True
+    max_batch_size: Annotated[int, Field(ge=1, le=2048, title="Max Batch Size")] = 256
+    max_num_tokens: Annotated[int, Field(gt=64, le=131072, title="Max Num Tokens")] = (
+        8192
+    )
+    tensor_parallel_size: Annotated[int, Field(ge=1, title="Tensor Parallel Size")] = 1
+    enable_chunked_prefill: Annotated[bool, Field(title="Enable Chunked Prefill")] = (
+        True
+    )
     served_model_name: Annotated[str | None, Field(title="Served Model Name")] = None
     patch_kwargs: Annotated[
         dict[str, str | int | float | dict[str, Any] | list[Any] | None] | None,
@@ -370,13 +433,14 @@ class WebsocketOptions(BaseModel):
     ] = None
 
 
-class WeightsAuthMethod(Enum):
+class WeightsAuthMethod(StrEnum):
     CUSTOM_SECRET = "CUSTOM_SECRET"
     AWS_OIDC = "AWS_OIDC"
     GCP_OIDC = "GCP_OIDC"
+    AWS_ASSUME_ROLE = "AWS_ASSUME_ROLE"
 
 
-class ModelSpecDecMode(Enum):
+class ModelSpecDecMode(StrEnum):
     DRAFT_TOKENS_EXTERNAL = "DRAFT_TOKENS_EXTERNAL"
     LOOKAHEAD_DECODING = "LOOKAHEAD_DECODING"
 
@@ -399,7 +463,7 @@ class LookaheadVerificationSetSize(RootModel[int]):
     ] = None
 
 
-class ModelTRTLLMBatchSchedulerPolicy(Enum):
+class ModelTRTLLMBatchSchedulerPolicy(StrEnum):
     max_utilization = "max_utilization"
     guaranteed_no_evict = "guaranteed_no_evict"
 
@@ -412,13 +476,11 @@ class ModelTRTLLMLoraConfiguration(BaseModel):
     model_config = ConfigDict(
         extra="allow",
     )
-    max_lora_rank: Annotated[int | None, Field(title="Max Lora Rank")] = 64
-    lora_target_modules: Annotated[
-        list[str] | None, Field(title="Lora Target Modules")
-    ] = []
+    max_lora_rank: Annotated[int, Field(title="Max Lora Rank")] = 64
+    lora_target_modules: Annotated[list[str], Field(title="Lora Target Modules")] = []
 
 
-class ModelTRTLLMModel(Enum):
+class ModelTRTLLMModel(StrEnum):
     encoder = "encoder"
     encoder_bert = "encoder_bert"
     decoder = "decoder"
@@ -434,16 +496,14 @@ class ModelTRTLLMPluginConfiguration(BaseModel):
     model_config = ConfigDict(
         extra="allow",
     )
-    paged_kv_cache: Annotated[bool | None, Field(title="Paged Kv Cache")] = True
-    use_paged_context_fmha: Annotated[
-        bool | None, Field(title="Use Paged Context Fmha")
-    ] = True
-    use_fp8_context_fmha: Annotated[
-        bool | None, Field(title="Use Fp8 Context Fmha")
-    ] = False
+    paged_kv_cache: Annotated[bool, Field(title="Paged Kv Cache")] = True
+    use_paged_context_fmha: Annotated[bool, Field(title="Use Paged Context Fmha")] = (
+        True
+    )
+    use_fp8_context_fmha: Annotated[bool, Field(title="Use Fp8 Context Fmha")] = False
 
 
-class ModelTRTLLMQuantizationType(Enum):
+class ModelTRTLLMQuantizationType(StrEnum):
     no_quant = "no_quant"
     weights_int8 = "weights_int8"
     weights_kv_int8 = "weights_kv_int8"
@@ -452,6 +512,7 @@ class ModelTRTLLMQuantizationType(Enum):
     smooth_quant = "smooth_quant"
     fp8 = "fp8"
     fp8_kv = "fp8_kv"
+    fp8_mlp_only = "fp8_mlp_only"
     fp4 = "fp4"
     fp4_kv = "fp4_kv"
     fp4_mlp_only = "fp4_mlp_only"
@@ -461,11 +522,33 @@ class KvCacheHostMemoryBytes(RootModel[int]):
     root: Annotated[int | None, Field(ge=1, title="Kv Cache Host Memory Bytes")] = None
 
 
+class LoraCacheMaxAdapterSize(RootModel[int]):
+    root: Annotated[int | None, Field(ge=1, title="Lora Cache Max Adapter Size")] = None
+
+
+class LoraCacheOptimalAdapterSize(RootModel[int]):
+    root: Annotated[
+        int | None, Field(ge=1, title="Lora Cache Optimal Adapter Size")
+    ] = None
+
+
+class LoraCacheGpuMemoryFraction(RootModel[float]):
+    root: Annotated[
+        float | None, Field(gt=0.0, le=1.0, title="Lora Cache Gpu Memory Fraction")
+    ] = None
+
+
+class LoraCacheHostMemoryBytes(RootModel[int]):
+    root: Annotated[int | None, Field(ge=1, title="Lora Cache Host Memory Bytes")] = (
+        None
+    )
+
+
 class RequestDefaultMaxTokens(RootModel[int]):
     root: Annotated[int | None, Field(ge=1, title="Request Default Max Tokens")] = None
 
 
-class WebserverDefaultRoute(Enum):
+class WebserverDefaultRoute(StrEnum):
     field_v1_embeddings = "/v1/embeddings"
     field_rerank = "/rerank"
     field_predict = "/predict"
@@ -477,22 +560,35 @@ class ModelTRTLLMRuntimeConfiguration(BaseModel):
         extra="allow",
     )
     kv_cache_free_gpu_mem_fraction: Annotated[
-        float | None, Field(title="Kv Cache Free Gpu Mem Fraction")
+        float, Field(title="Kv Cache Free Gpu Mem Fraction")
     ] = 0.9
     kv_cache_host_memory_bytes: Annotated[
         KvCacheHostMemoryBytes | None, Field(title="Kv Cache Host Memory Bytes")
     ] = None
-    enable_chunked_context: Annotated[
-        bool | None, Field(title="Enable Chunked Context")
-    ] = True
-    batch_scheduler_policy: ModelTRTLLMBatchSchedulerPolicy | None = (
+    lora_cache_max_adapter_size: Annotated[
+        LoraCacheMaxAdapterSize | None, Field(title="Lora Cache Max Adapter Size")
+    ] = None
+    lora_cache_optimal_adapter_size: Annotated[
+        LoraCacheOptimalAdapterSize | None,
+        Field(title="Lora Cache Optimal Adapter Size"),
+    ] = None
+    lora_cache_gpu_memory_fraction: Annotated[
+        LoraCacheGpuMemoryFraction | None, Field(title="Lora Cache Gpu Memory Fraction")
+    ] = None
+    lora_cache_host_memory_bytes: Annotated[
+        LoraCacheHostMemoryBytes | None, Field(title="Lora Cache Host Memory Bytes")
+    ] = None
+    enable_chunked_context: Annotated[bool, Field(title="Enable Chunked Context")] = (
+        True
+    )
+    batch_scheduler_policy: ModelTRTLLMBatchSchedulerPolicy = (
         ModelTRTLLMBatchSchedulerPolicy.guaranteed_no_evict
     )
     request_default_max_tokens: Annotated[
         RequestDefaultMaxTokens | None, Field(title="Request Default Max Tokens")
     ] = None
     served_model_name: Annotated[str | None, Field(title="Served Model Name")] = None
-    total_token_limit: Annotated[int | None, Field(title="Total Token Limit")] = 500000
+    total_token_limit: Annotated[int, Field(title="Total Token Limit")] = 500000
     webserver_default_route: Annotated[
         WebserverDefaultRoute | None, Field(title="Webserver Default Route")
     ] = None
@@ -502,13 +598,9 @@ class ModelTRTQuantizationConfiguration(BaseModel):
     model_config = ConfigDict(
         extra="allow",
     )
-    calib_size: Annotated[int | None, Field(title="Calib Size")] = 1024
-    calib_dataset: Annotated[str | None, Field(title="Calib Dataset")] = (
-        "abisee/cnn_dailymail"
-    )
-    calib_max_seq_length: Annotated[int | None, Field(title="Calib Max Seq Length")] = (
-        1536
-    )
+    calib_size: Annotated[int, Field(title="Calib Size")] = 1024
+    calib_dataset: Annotated[str, Field(title="Calib Dataset")] = "abisee/cnn_dailymail"
+    calib_max_seq_length: Annotated[int, Field(title="Calib Max Seq Length")] = 1536
 
 
 class AdditionalAutoscalingConfig(BaseModel):
@@ -516,6 +608,54 @@ class AdditionalAutoscalingConfig(BaseModel):
         list[AutoscalingMetric],
         Field(description="List of metric targets for autoscaling.", title="Metrics"),
     ]
+
+
+class BDNAccess(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    namespace: Annotated[
+        str,
+        Field(
+            description="BDN namespace to grant access to.",
+            min_length=1,
+            title="Namespace",
+        ),
+    ]
+    grants: Annotated[
+        list[BDNAccessGrant],
+        Field(
+            description="Operations granted in this namespace.",
+            min_length=1,
+            title="Grants",
+        ),
+    ]
+
+
+class BDNConfig(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    mounts: Annotated[
+        list[BDNVolumeMount] | None,
+        Field(
+            description="Existing BDN volumes to mount when the model starts.",
+            title="Mounts",
+        ),
+    ] = None
+    access: Annotated[
+        list[BDNAccess] | None,
+        Field(
+            description="Namespace-level BDN access grants for the deployment.",
+            title="Access",
+        ),
+    ] = None
+    hotload: Annotated[
+        BDNHotload | None,
+        Field(
+            description="Configure loading BDN data while the deployment is running."
+        ),
+    ] = None
 
 
 class BISLLM(BaseModel):
@@ -529,7 +669,7 @@ class BISLLM(BaseModel):
         ),
     ] = None
     version: Annotated[
-        str | None,
+        str,
         Field(
             description="The version of the BIS LLM deployment stack.", title="Version"
         ),
@@ -544,7 +684,7 @@ class Build(BaseModel):
     model_config = ConfigDict(
         extra="allow",
     )
-    model_server: ModelServer | None = ModelServer.TrussServer
+    model_server: ModelServer = ModelServer.TrussServer
     arguments: Annotated[dict[str, Any] | None, Field(title="Arguments")] = None
     secret_to_path_mapping: Annotated[
         dict[str, str] | None,
@@ -553,7 +693,7 @@ class Build(BaseModel):
             title="Secret To Path Mapping",
         ),
     ] = None
-    no_cache: Annotated[bool | None, Field(title="No Cache")] = False
+    no_cache: Annotated[bool, Field(title="No Cache")] = False
 
 
 class CheckpointList(BaseModel):
@@ -561,7 +701,7 @@ class CheckpointList(BaseModel):
         extra="allow",
     )
     download_folder: Annotated[
-        str | None,
+        str,
         Field(
             description="The folder to download the checkpoints to.",
             examples=["/tmp/training_checkpoints"],
@@ -587,7 +727,7 @@ class CheckpointRepository(BaseModel):
     source: CheckpointSource
     repo: Annotated[str, Field(title="Repo")]
     revision: Annotated[str | None, Field(title="Revision")] = None
-    runtime_secret_name: Annotated[str | None, Field(title="Runtime Secret Name")] = (
+    runtime_secret_name: Annotated[str, Field(title="Runtime Secret Name")] = (
         "hf_access_token"
     )
 
@@ -623,14 +763,28 @@ class DockerAuthSettings(BaseModel):
             title="Gcp Oidc Workload Id Provider",
         ),
     ] = None
+    aws_assume_role_arn: Annotated[
+        str | None,
+        Field(
+            description="AWS IAM role ARN that Baseten assumes with its own AWS principal, scoped by the sts:ExternalId Baseten assigns to your organization.",
+            title="Aws Assume Role Arn",
+        ),
+    ] = None
+    aws_assume_role_region: Annotated[
+        str | None,
+        Field(
+            description="AWS region for AWS AssumeRole authentication.",
+            title="Aws Assume Role Region",
+        ),
+    ] = None
     auth_method: DockerAuthType
     registry: Annotated[str | None, Field(title="Registry")] = ""
     secret_name: Annotated[str | None, Field(title="Secret Name")] = None
     aws_access_key_id_secret_name: Annotated[
-        str | None, Field(title="Aws Access Key Id Secret Name")
+        str, Field(title="Aws Access Key Id Secret Name")
     ] = "aws_access_key_id"
     aws_secret_access_key_secret_name: Annotated[
-        str | None, Field(title="Aws Secret Access Key Secret Name")
+        str, Field(title="Aws Secret Access Key Secret Name")
     ] = "aws_secret_access_key"
 
 
@@ -649,13 +803,13 @@ class ModelRepo(BaseModel):
         extra="allow",
     )
     repo_id: Annotated[str, Field(min_length=1, title="Repo Id")]
-    revision: Annotated[str | None, Field(title="Revision")] = ""
+    revision: Annotated[str, Field(title="Revision")] = ""
     allow_patterns: Annotated[list[str] | None, Field(title="Allow Patterns")] = None
     ignore_patterns: Annotated[list[str] | None, Field(title="Ignore Patterns")] = None
     volume_folder: Annotated[VolumeFolder | None, Field(title="Volume Folder")] = None
     use_volume: Annotated[bool, Field(title="Use Volume")]
-    kind: ModelRepoSourceKind | None = ModelRepoSourceKind.hf
-    runtime_secret_name: Annotated[str | None, Field(title="Runtime Secret Name")] = (
+    kind: ModelRepoSourceKind = ModelRepoSourceKind.hf
+    runtime_secret_name: Annotated[str, Field(title="Runtime Secret Name")] = (
         "hf_access_token"
     )
 
@@ -665,13 +819,13 @@ class ModelRepoCacheInternal(BaseModel):
         extra="allow",
     )
     repo_id: Annotated[str, Field(min_length=1, title="Repo Id")]
-    revision: Annotated[str | None, Field(title="Revision")] = ""
+    revision: Annotated[str, Field(title="Revision")] = ""
     allow_patterns: Annotated[list[str] | None, Field(title="Allow Patterns")] = None
     ignore_patterns: Annotated[list[str] | None, Field(title="Ignore Patterns")] = None
     volume_folder: Annotated[VolumeFolder | None, Field(title="Volume Folder")] = None
-    use_volume: Annotated[bool | None, Field(title="Use Volume")] = False
-    kind: ModelRepoSourceKind | None = ModelRepoSourceKind.hf
-    runtime_secret_name: Annotated[str | None, Field(title="Runtime Secret Name")] = (
+    use_volume: Annotated[bool, Field(title="Use Volume")] = False
+    kind: ModelRepoSourceKind = ModelRepoSourceKind.hf
+    runtime_secret_name: Annotated[str, Field(title="Runtime Secret Name")] = (
         "hf_access_token"
     )
 
@@ -681,28 +835,28 @@ class Runtime(BaseModel):
         extra="allow",
     )
     predict_concurrency: Annotated[
-        int | None,
+        int,
         Field(
             description="The number of concurrent requests that can run in your model's predict method. Increase this if your model supports parallelism.",
             title="Predict Concurrency",
         ),
     ] = 1
     streaming_read_timeout: Annotated[
-        int | None,
+        int,
         Field(
             description="The timeout in seconds for streaming read operations.",
             title="Streaming Read Timeout",
         ),
     ] = 60
     enable_tracing_data: Annotated[
-        bool | None,
+        bool,
         Field(
             description="If true, enables trace data export with built-in OTEL instrumentation. May add performance overhead.",
             title="Enable Tracing Data",
         ),
     ] = False
     enable_debug_logs: Annotated[
-        bool | None,
+        bool,
         Field(
             description="If true, sets the Truss server log level to DEBUG instead of INFO.",
             title="Enable Debug Logs",
@@ -777,6 +931,20 @@ class WeightsAuth(BaseModel):
             title="Gcp Oidc Workload Id Provider",
         ),
     ] = None
+    aws_assume_role_arn: Annotated[
+        str | None,
+        Field(
+            description="AWS IAM role ARN that Baseten assumes with its own AWS principal, scoped by the sts:ExternalId Baseten assigns to your organization.",
+            title="Aws Assume Role Arn",
+        ),
+    ] = None
+    aws_assume_role_region: Annotated[
+        str | None,
+        Field(
+            description="AWS region for AWS AssumeRole authentication.",
+            title="Aws Assume Role Region",
+        ),
+    ] = None
     auth_method: Annotated[
         WeightsAuthMethod,
         Field(
@@ -846,7 +1014,7 @@ class BaseImage(BaseModel):
         extra="allow",
     )
     image: Annotated[
-        str | None,
+        str,
         Field(
             description="The path to the Docker image.",
             examples=["vllm/vllm-openai:v0.7.3", "nvcr.io/nvidia/nemo:23.03"],
@@ -854,7 +1022,7 @@ class BaseImage(BaseModel):
         ),
     ] = ""
     python_executable_path: Annotated[
-        str | None,
+        str,
         Field(
             description="A path to the Python executable on the image.",
             examples=["/usr/bin/python"],
@@ -910,14 +1078,14 @@ class ModelConfig(BaseModel):
         Field(description="A description of your model.", title="Description"),
     ] = None
     examples_filename: Annotated[
-        str | None,
+        str,
         Field(
             description="Path to a file containing example model inputs.",
             title="Examples Filename",
         ),
     ] = "examples.yaml"
     data_dir: Annotated[
-        str | None,
+        str,
         Field(description="The folder for data files in your Truss.", title="Data Dir"),
     ] = "data"
     external_data: Annotated[
@@ -934,7 +1102,7 @@ class ModelConfig(BaseModel):
         ),
     ] = None
     python_version: Annotated[
-        str | None,
+        str,
         Field(
             description="The Python version to use.",
             examples=["py313", "py312", "py311", "py310", "py39"],
@@ -1011,6 +1179,12 @@ class ModelConfig(BaseModel):
             description="Configure Baseten Delivery Network (BDN) for model weight delivery with multi-tier caching."
         ),
     ] = None
+    bdn: Annotated[
+        BDNConfig | None,
+        Field(
+            description="Configure BDN volume mounts, access grants, and hot-loading."
+        ),
+    ] = None
     trt_llm: Annotated[
         TRTLLMConfiguration | None,
         Field(description="TensorRT-LLM configuration for optimized LLM inference."),
@@ -1025,50 +1199,50 @@ class ModelConfig(BaseModel):
             description="Configuration options for BIS LLM deployments. This field may change in the future."
         ),
     ] = None
-    input_type: Annotated[str | None, Field(title="Input Type")] = "Any"
-    model_framework: Annotated[str | None, Field(title="Model Framework")] = "custom"
-    model_type: Annotated[str | None, Field(title="Model Type")] = "Model"
+    input_type: Annotated[str, Field(title="Input Type")] = "Any"
+    model_framework: Annotated[str, Field(title="Model Framework")] = "custom"
+    model_type: Annotated[str, Field(title="Model Type")] = "Model"
     model_module_dir: Annotated[
-        str | None,
+        str,
         Field(
             description="The folder containing your model class.",
             title="Model Module Dir",
         ),
     ] = "model"
-    model_class_filename: Annotated[str | None, Field(title="Model Class Filename")] = (
+    model_class_filename: Annotated[str, Field(title="Model Class Filename")] = (
         "model.py"
     )
     model_class_name: Annotated[
-        str | None,
+        str,
         Field(
             description="The name of the class that defines your Truss model. This class must implement at least a predict method.",
             title="Model Class Name",
         ),
     ] = "Model"
     bundled_packages_dir: Annotated[
-        str | None,
+        str,
         Field(
             description="The folder for custom packages in your Truss.",
             title="Bundled Packages Dir",
         ),
     ] = "packages"
-    use_local_src: Annotated[bool | None, Field(title="Use Local Src")] = False
+    use_local_src: Annotated[bool, Field(title="Use Local Src")] = False
     cache_internal: CacheInternal | None = None
     live_reload: Annotated[
-        bool | None,
+        bool,
         Field(
             description="If true, changes to your model code are automatically reloaded without restarting the server.",
             title="Live Reload",
         ),
     ] = False
     apply_library_patches: Annotated[
-        bool | None,
+        bool,
         Field(
             description="Whether to apply library patches for improved compatibility.",
             title="Apply Library Patches",
         ),
     ] = True
-    spec_version: Annotated[str | None, Field(title="Spec Version")] = "2.0"
+    spec_version: Annotated[str, Field(title="Spec Version")] = "2.0"
 
 
 class TRTLLMConfigurationV1(BaseModel):
@@ -1078,36 +1252,34 @@ class TRTLLMConfigurationV1(BaseModel):
     build: ModelTRTLLMBuildConfiguration
     inference_stack: Annotated[Literal["v1"], Field(title="Inference Stack")] = "v1"
     runtime: Annotated[
-        ModelTRTLLMRuntimeConfiguration | None,
-        Field(
-            default_factory=lambda: ModelTRTLLMRuntimeConfiguration.model_validate(
-                {
-                    "kv_cache_free_gpu_mem_fraction": 0.9,
-                    "kv_cache_host_memory_bytes": None,
-                    "enable_chunked_context": True,
-                    "batch_scheduler_policy": "guaranteed_no_evict",
-                    "request_default_max_tokens": None,
-                    "served_model_name": None,
-                    "total_token_limit": 500000,
-                    "webserver_default_route": None,
-                }
-            )
-        ),
-    ]
-    version_overrides: Annotated[
-        VersionsOverrides | None,
-        Field(
-            default_factory=lambda: VersionsOverrides.model_validate(
-                {
-                    "engine_builder_version": None,
-                    "briton_version": None,
-                    "bei_version": None,
-                    "bei_bert_version": None,
-                    "v2_llm_version": None,
-                }
-            )
-        ),
-    ]
+        ModelTRTLLMRuntimeConfiguration, Field(validate_default=True)
+    ] = ModelTRTLLMRuntimeConfiguration.model_validate(
+        {
+            "kv_cache_free_gpu_mem_fraction": 0.9,
+            "kv_cache_host_memory_bytes": None,
+            "lora_cache_max_adapter_size": None,
+            "lora_cache_optimal_adapter_size": None,
+            "lora_cache_gpu_memory_fraction": None,
+            "lora_cache_host_memory_bytes": None,
+            "enable_chunked_context": True,
+            "batch_scheduler_policy": "guaranteed_no_evict",
+            "request_default_max_tokens": None,
+            "served_model_name": None,
+            "total_token_limit": 500000,
+            "webserver_default_route": None,
+        }
+    )
+    version_overrides: Annotated[VersionsOverrides, Field(validate_default=True)] = (
+        VersionsOverrides.model_validate(
+            {
+                "engine_builder_version": None,
+                "briton_version": None,
+                "bei_version": None,
+                "bei_bert_version": None,
+                "v2_llm_version": None,
+            }
+        )
+    )
 
 
 class TRTLLMConfigurationV2(BaseModel):
@@ -1117,50 +1289,46 @@ class TRTLLMConfigurationV2(BaseModel):
     inference_stack: Annotated[Literal["v2"], Field(title="Inference Stack")] = "v2"
     build: ModelTRTLLMBuildConfiguration
     runtime: TRTLLMRuntimeConfigurationV2
-    version_overrides: Annotated[
-        VersionsOverrides | None,
-        Field(
-            default_factory=lambda: VersionsOverrides.model_validate(
-                {
-                    "engine_builder_version": None,
-                    "briton_version": None,
-                    "bei_version": None,
-                    "bei_bert_version": None,
-                    "v2_llm_version": None,
-                }
-            )
-        ),
-    ]
+    version_overrides: Annotated[VersionsOverrides, Field(validate_default=True)] = (
+        VersionsOverrides.model_validate(
+            {
+                "engine_builder_version": None,
+                "briton_version": None,
+                "bei_version": None,
+                "bei_bert_version": None,
+                "v2_llm_version": None,
+            }
+        )
+    )
 
 
 class ModelSpeculatorConfiguration(BaseModel):
     model_config = ConfigDict(
         extra="allow",
     )
-    speculative_decoding_mode: ModelSpecDecMode | None = (
-        ModelSpecDecMode.DRAFT_TOKENS_EXTERNAL
-    )
+    speculative_decoding_mode: ModelSpecDecMode = ModelSpecDecMode.DRAFT_TOKENS_EXTERNAL
     num_draft_tokens: Annotated[
         NumDraftTokens | None, Field(title="Num Draft Tokens")
     ] = None
     checkpoint_repository: CheckpointRepository | None = None
     runtime: Annotated[
-        ModelTRTLLMRuntimeConfiguration | None,
-        Field(
-            default_factory=lambda: ModelTRTLLMRuntimeConfiguration.model_validate(
-                {
-                    "kv_cache_free_gpu_mem_fraction": 0.9,
-                    "kv_cache_host_memory_bytes": None,
-                    "enable_chunked_context": True,
-                    "batch_scheduler_policy": "guaranteed_no_evict",
-                    "request_default_max_tokens": None,
-                    "served_model_name": None,
-                    "total_token_limit": 500000,
-                    "webserver_default_route": None,
-                }
-            )
-        ),
-    ]
+        ModelTRTLLMRuntimeConfiguration, Field(validate_default=True)
+    ] = ModelTRTLLMRuntimeConfiguration.model_validate(
+        {
+            "kv_cache_free_gpu_mem_fraction": 0.9,
+            "kv_cache_host_memory_bytes": None,
+            "lora_cache_max_adapter_size": None,
+            "lora_cache_optimal_adapter_size": None,
+            "lora_cache_gpu_memory_fraction": None,
+            "lora_cache_host_memory_bytes": None,
+            "enable_chunked_context": True,
+            "batch_scheduler_policy": "guaranteed_no_evict",
+            "request_default_max_tokens": None,
+            "served_model_name": None,
+            "total_token_limit": 500000,
+            "webserver_default_route": None,
+        }
+    )
     build: ModelTRTLLMBuildConfiguration | None = None
     lookahead_windows_size: Annotated[
         LookaheadWindowsSize | None, Field(title="Lookahead Windows Size")
@@ -1181,62 +1349,50 @@ class ModelTRTLLMBuildConfiguration(BaseModel):
     model_config = ConfigDict(
         extra="allow",
     )
-    base_model: ModelTRTLLMModel | None = ModelTRTLLMModel.decoder
+    base_model: ModelTRTLLMModel = ModelTRTLLMModel.decoder
     max_seq_len: Annotated[MaxSeqLen | None, Field(title="Max Seq Len")] = None
-    max_batch_size: Annotated[
-        int | None, Field(ge=1, le=2048, title="Max Batch Size")
-    ] = 256
-    max_num_tokens: Annotated[
-        int | None, Field(gt=64, le=1048576, title="Max Num Tokens")
-    ] = 8192
-    max_beam_width: Annotated[int | None, Field(ge=1, le=1, title="Max Beam Width")] = 1
+    max_batch_size: Annotated[int, Field(ge=1, le=2048, title="Max Batch Size")] = 256
+    max_num_tokens: Annotated[int, Field(gt=64, le=1048576, title="Max Num Tokens")] = (
+        8192
+    )
+    max_beam_width: Annotated[int, Field(ge=1, le=1, title="Max Beam Width")] = 1
     max_prompt_embedding_table_size: Annotated[
-        int | None, Field(title="Max Prompt Embedding Table Size")
+        int, Field(title="Max Prompt Embedding Table Size")
     ] = 0
     checkpoint_repository: CheckpointRepository | None = None
-    gather_all_token_logits: Annotated[
-        bool | None, Field(title="Gather All Token Logits")
-    ] = False
-    strongly_typed: Annotated[bool | None, Field(title="Strongly Typed")] = False
-    quantization_type: ModelTRTLLMQuantizationType | None = (
+    gather_all_token_logits: Annotated[bool, Field(title="Gather All Token Logits")] = (
+        False
+    )
+    strongly_typed: Annotated[bool, Field(title="Strongly Typed")] = False
+    quantization_type: ModelTRTLLMQuantizationType = (
         ModelTRTLLMQuantizationType.no_quant
     )
     quantization_config: Annotated[
-        ModelTRTQuantizationConfiguration | None,
-        Field(
-            default_factory=lambda: ModelTRTQuantizationConfiguration.model_validate(
-                {
-                    "calib_size": 1024,
-                    "calib_dataset": "abisee/cnn_dailymail",
-                    "calib_max_seq_length": 1536,
-                }
-            )
-        ),
-    ]
+        ModelTRTQuantizationConfiguration, Field(validate_default=True)
+    ] = ModelTRTQuantizationConfiguration.model_validate(
+        {
+            "calib_size": 1024,
+            "calib_dataset": "abisee/cnn_dailymail",
+            "calib_max_seq_length": 1536,
+        }
+    )
     tensor_parallel_count: Annotated[
-        int | None, Field(ge=1, title="Tensor Parallel Count")
+        int, Field(ge=1, title="Tensor Parallel Count")
     ] = 1
-    pipeline_parallel_count: Annotated[
-        int | None, Field(title="Pipeline Parallel Count")
-    ] = 1
+    pipeline_parallel_count: Annotated[int, Field(title="Pipeline Parallel Count")] = 1
     moe_expert_parallel_option: Annotated[
-        int | None, Field(title="Moe Expert Parallel Option")
+        int, Field(title="Moe Expert Parallel Option")
     ] = -1
-    sequence_parallel_count: Annotated[
-        int | None, Field(title="Sequence Parallel Count")
-    ] = 1
+    sequence_parallel_count: Annotated[int, Field(title="Sequence Parallel Count")] = 1
     plugin_configuration: Annotated[
-        ModelTRTLLMPluginConfiguration | None,
-        Field(
-            default_factory=lambda: ModelTRTLLMPluginConfiguration.model_validate(
-                {
-                    "paged_kv_cache": True,
-                    "use_paged_context_fmha": True,
-                    "use_fp8_context_fmha": False,
-                }
-            )
-        ),
-    ]
+        ModelTRTLLMPluginConfiguration, Field(validate_default=True)
+    ] = ModelTRTLLMPluginConfiguration.model_validate(
+        {
+            "paged_kv_cache": True,
+            "use_paged_context_fmha": True,
+            "use_fp8_context_fmha": False,
+        }
+    )
     num_builder_gpus: Annotated[
         NumBuilderGpus | None, Field(title="Num Builder Gpus")
     ] = None
@@ -1249,7 +1405,7 @@ class ModelTRTLLMBuildConfiguration(BaseModel):
         Field(title="Lora Adapters"),
     ] = None
     lora_configuration: ModelTRTLLMLoraConfiguration | None = None
-    skip_build_result: Annotated[bool | None, Field(title="Skip Build Result")] = False
+    skip_build_result: Annotated[bool, Field(title="Skip Build Result")] = False
 
 
 class TRTLLMConfiguration(RootModel[TRTLLMConfigurationV1 | TRTLLMConfigurationV2]):

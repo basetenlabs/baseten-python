@@ -178,9 +178,12 @@ def run_datamodel_codegen(
         "--output-model-type",
         "pydantic_v2.BaseModel",
         "--target-python-version",
-        "3.10",
+        "3.11",
         "--use-annotated",
         "--set-default-enum-member",
+        # Model presence and nullability independently: a field with a default
+        # is optional to pass, but only accepts None if the schema is nullable.
+        "--strict-nullable",
         "--disable-timestamp",
         "--formatters",
         "ruff-format",

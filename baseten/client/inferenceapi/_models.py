@@ -2,31 +2,32 @@
 #   filename:  <stdin>
 
 from __future__ import annotations
+
+from enum import StrEnum
 from typing import Annotated, Any
+
 from pydantic import AnyUrl, BaseModel, Field, RootModel
-from enum import Enum
 
 
 class InferenceRetryConfig(BaseModel):
     max_attempts: Annotated[
-        int | None,
-        Field(description="Number of predict request attempts.", ge=1, le=10),
+        int, Field(description="Number of predict request attempts.", ge=1, le=10)
     ] = 3
     initial_delay_ms: Annotated[
-        int | None,
+        int,
         Field(
             description="Minimum time between retries in milliseconds.", ge=0, le=10000
         ),
     ] = 1000
     max_delay_ms: Annotated[
-        int | None,
+        int,
         Field(
             description="Maximum time between retries in milliseconds.", ge=0, le=60000
         ),
     ] = 5000
 
 
-class Status(Enum):
+class Status(StrEnum):
     QUEUED = "QUEUED"
     IN_PROGRESS = "IN_PROGRESS"
     SUCCEEDED = "SUCCEEDED"
@@ -36,7 +37,7 @@ class Status(Enum):
     WEBHOOK_FAILED = "WEBHOOK_FAILED"
 
 
-class WebhookStatus(Enum):
+class WebhookStatus(StrEnum):
     PENDING = "PENDING"
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
@@ -44,7 +45,7 @@ class WebhookStatus(Enum):
     NO_WEBHOOK_PROVIDED = "NO_WEBHOOK_PROVIDED"
 
 
-class Code(Enum):
+class Code(StrEnum):
     MODEL_PREDICT_ERROR = "MODEL_PREDICT_ERROR"
     MODEL_PREDICT_TIMEOUT = "MODEL_PREDICT_TIMEOUT"
     MODEL_NOT_READY = "MODEL_NOT_READY"
@@ -60,7 +61,7 @@ class AsyncRequestError(BaseModel):
     message: Annotated[str, Field(description="Details of the error.")]
 
 
-class ErrorCode(Enum):
+class ErrorCode(StrEnum):
     timeout = "timeout"
     client_error = "client_error"
     model_unavailable = "model_unavailable"
@@ -146,7 +147,7 @@ class AsyncPredictRequest(BaseModel):
         ),
     ] = None
     priority: Annotated[
-        int | None,
+        int,
         Field(
             description="Priority of the request. Lower values are higher priority.",
             ge=0,
@@ -154,7 +155,7 @@ class AsyncPredictRequest(BaseModel):
         ),
     ] = 0
     max_time_in_queue_seconds: Annotated[
-        int | None,
+        int,
         Field(
             description="Maximum time in seconds a request will spend in the queue before expiring. Must be between 10 seconds and 72 hours.",
             ge=10,
@@ -201,7 +202,6 @@ class AsyncRequestStatusResponse(BaseModel):
     errors: Annotated[
         list[AsyncRequestError],
         Field(
-            default_factory=list,
-            description="Errors that occurred while processing the async request. Empty if no errors occurred.",
+            description="Errors that occurred while processing the async request. Empty if no errors occurred."
         ),
     ]

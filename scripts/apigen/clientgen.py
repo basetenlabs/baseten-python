@@ -239,12 +239,13 @@ def _render_client(ops: list[_Operation]) -> str:
 
 from __future__ import annotations
 
+import contextlib
 import urllib.parse
 from dataclasses import dataclass
 from typing import Any, TypeVar
 
 import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from ._models import (
 {chr(10).join(f"    {name}," for name in sorted(model_imports))}
@@ -346,16 +347,16 @@ class {cls}:
                 error_name = request.error_codes[response.status_code]
                 if error_name in _ERROR_TYPES:
                     model_cls, exc_cls, field_name = _ERROR_TYPES[error_name]
-                    try:
+                    # A body that does not match the declared error schema
+                    # falls through to the generic ResponseError below.
+                    model = None
+                    with contextlib.suppress(ValidationError):
                         model = model_cls.model_validate_json(response.content)
+                    if model is not None:
                         raise exc_cls(
                             status_code=response.status_code,  # ty: ignore[unknown-argument]
                             **{field_name: model},
                         )
-                    except exc_cls:
-                        raise
-                    except Exception:
-                        pass
 """
 
     src += f"""

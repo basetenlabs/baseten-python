@@ -46,6 +46,111 @@
       "title": "AutoscalingMetric",
       "type": "object"
     },
+    "BDNAccess": {
+      "additionalProperties": true,
+      "description": "Access grants for a BDN namespace.",
+      "properties": {
+        "namespace": {
+          "description": "BDN namespace to grant access to.",
+          "minLength": 1,
+          "title": "Namespace",
+          "type": "string"
+        },
+        "grants": {
+          "description": "Operations granted in this namespace.",
+          "items": {
+            "$ref": "#/$defs/BDNAccessGrant"
+          },
+          "minItems": 1,
+          "title": "Grants",
+          "type": "array"
+        }
+      },
+      "required": [
+        "namespace",
+        "grants"
+      ],
+      "title": "BDNAccess",
+      "type": "object"
+    },
+    "BDNAccessGrant": {
+      "description": "An operation a deployment may perform in a BDN namespace.",
+      "enum": [
+        "pull",
+        "push",
+        "tag",
+        "inspect",
+        "delete"
+      ],
+      "title": "BDNAccessGrant",
+      "type": "string"
+    },
+    "BDNConfig": {
+      "additionalProperties": true,
+      "description": "Configuration for BDN mounts, access grants, and hot-loading.",
+      "properties": {
+        "mounts": {
+          "description": "Existing BDN volumes to mount when the model starts.",
+          "items": {
+            "$ref": "#/$defs/BDNVolumeMount"
+          },
+          "title": "Mounts",
+          "type": "array"
+        },
+        "access": {
+          "description": "Namespace-level BDN access grants for the deployment.",
+          "items": {
+            "$ref": "#/$defs/BDNAccess"
+          },
+          "title": "Access",
+          "type": "array"
+        },
+        "hotload": {
+          "$ref": "#/$defs/BDNHotload",
+          "description": "Configure loading BDN data while the deployment is running."
+        }
+      },
+      "title": "BDNConfig",
+      "type": "object"
+    },
+    "BDNHotload": {
+      "additionalProperties": true,
+      "description": "Configuration for loading BDN data while a deployment is running.",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "description": "If true, enables BDN hot-loading.",
+          "title": "Enabled",
+          "type": "boolean"
+        }
+      },
+      "title": "BDNHotload",
+      "type": "object"
+    },
+    "BDNVolumeMount": {
+      "additionalProperties": true,
+      "description": "An existing BDN volume mounted into a model container.\n\nBDN vocabulary, read off a reference like `bdn:weights/llama-8b:prod`:\n\n- A *namespace* (`weights`) groups volumes within your organization, and is\n  the unit that access grants and storage are scoped to. Names are\n  lowercase alphanumeric plus hyphens, at least two characters, and may not\n  begin with a digit; `namespaces` and `resolve` are reserved.\n- A *volume* (`llama-8b`) is one versioned collection of files. Every\n  published version is immutable and identified by its content digest.\n- A *tag* (`prod`) is a mutable, case-sensitive name pointing at one\n  version, repointed as newer versions are published. A reference carrying\n  neither tag nor digest resolves to the volume's head, its latest version.\n\n```\nbdn:\n  mounts:\n    - source: bdn:weights/llama-8b:prod\n      path: /models/llama\n```",
+      "properties": {
+        "source": {
+          "description": "BDN volume reference to mount (for example, bdn:weights/llama-8b:prod).",
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "path": {
+          "description": "Absolute path where the volume will be mounted at runtime.",
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "path"
+      ],
+      "title": "BDNVolumeMount",
+      "type": "object"
+    },
     "BISLLM": {
       "additionalProperties": true,
       "description": "Configuration options for BIS LLM deployments.",
@@ -297,6 +402,32 @@
           "description": "GCP workload identity provider for OIDC authentication.",
           "title": "Gcp Oidc Workload Id Provider"
         },
+        "aws_assume_role_arn": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "AWS IAM role ARN that Baseten assumes with its own AWS principal, scoped by the sts:ExternalId Baseten assigns to your organization.",
+          "title": "Aws Assume Role Arn"
+        },
+        "aws_assume_role_region": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "AWS region for AWS AssumeRole authentication.",
+          "title": "Aws Assume Role Region"
+        },
         "auth_method": {
           "$ref": "#/$defs/DockerAuthType"
         },
@@ -348,7 +479,8 @@
         "AWS_IAM",
         "AWS_OIDC",
         "GCP_OIDC",
-        "REGISTRY_SECRET"
+        "REGISTRY_SECRET",
+        "AWS_ASSUME_ROLE"
       ],
       "title": "DockerAuthType",
       "type": "string"
@@ -527,6 +659,48 @@
         "local_data_path"
       ],
       "title": "ExternalDataItem",
+      "type": "object"
+    },
+    "FabricRequirement": {
+      "additionalProperties": true,
+      "description": "Network fabric requirements for a deployment.",
+      "properties": {
+        "use_rdma": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Whether to use RDMA with any supported fabric.",
+          "title": "Use Rdma"
+        },
+        "preferences": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exhaustive list of acceptable network fabrics, in preference order. An empty list requires no fabric.",
+          "examples": [
+            [
+              "infiniband"
+            ]
+          ],
+          "title": "Preferences"
+        }
+      },
+      "title": "FabricRequirement",
       "type": "object"
     },
     "GRPCOptions": {
@@ -892,6 +1066,18 @@
           "default": null,
           "description": "Number of nodes for multi-node deployments.",
           "title": "Node Count"
+        },
+        "fabric": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FabricRequirement"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Network fabric requirements for this deployment."
         }
       },
       "title": "Resources",
@@ -1028,6 +1214,10 @@
           "default": {
             "kv_cache_free_gpu_mem_fraction": 0.9,
             "kv_cache_host_memory_bytes": null,
+            "lora_cache_max_adapter_size": null,
+            "lora_cache_optimal_adapter_size": null,
+            "lora_cache_gpu_memory_fraction": null,
+            "lora_cache_host_memory_bytes": null,
             "enable_chunked_context": true,
             "batch_scheduler_policy": "guaranteed_no_evict",
             "request_default_max_tokens": null,
@@ -1239,6 +1429,10 @@
           "default": {
             "kv_cache_free_gpu_mem_fraction": 0.9,
             "kv_cache_host_memory_bytes": null,
+            "lora_cache_max_adapter_size": null,
+            "lora_cache_optimal_adapter_size": null,
+            "lora_cache_gpu_memory_fraction": null,
+            "lora_cache_host_memory_bytes": null,
             "enable_chunked_context": true,
             "batch_scheduler_policy": "guaranteed_no_evict",
             "request_default_max_tokens": null,
@@ -1558,6 +1752,7 @@
         "smooth_quant",
         "fp8",
         "fp8_kv",
+        "fp8_mlp_only",
         "fp4",
         "fp4_kv",
         "fp4_mlp_only"
@@ -1585,6 +1780,59 @@
           ],
           "default": null,
           "title": "Kv Cache Host Memory Bytes"
+        },
+        "lora_cache_max_adapter_size": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lora Cache Max Adapter Size"
+        },
+        "lora_cache_optimal_adapter_size": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lora Cache Optimal Adapter Size"
+        },
+        "lora_cache_gpu_memory_fraction": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 1,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lora Cache Gpu Memory Fraction"
+        },
+        "lora_cache_host_memory_bytes": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lora Cache Host Memory Bytes"
         },
         "enable_chunked_context": {
           "default": true,
@@ -1837,6 +2085,32 @@
           "description": "GCP workload identity provider for OIDC authentication.",
           "title": "Gcp Oidc Workload Id Provider"
         },
+        "aws_assume_role_arn": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "AWS IAM role ARN that Baseten assumes with its own AWS principal, scoped by the sts:ExternalId Baseten assigns to your organization.",
+          "title": "Aws Assume Role Arn"
+        },
+        "aws_assume_role_region": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "AWS region for AWS AssumeRole authentication.",
+          "title": "Aws Assume Role Region"
+        },
         "auth_method": {
           "$ref": "#/$defs/WeightsAuthMethod",
           "description": "Authentication method for downloading weights from the source."
@@ -1866,14 +2140,15 @@
       "enum": [
         "CUSTOM_SECRET",
         "AWS_OIDC",
-        "GCP_OIDC"
+        "GCP_OIDC",
+        "AWS_ASSUME_ROLE"
       ],
       "title": "WeightsAuthMethod",
       "type": "string"
     },
     "WeightsSource": {
       "additionalProperties": true,
-      "description": "Configuration for a weights source in the new weights API.\n\nUses a URI-based `source` field with a required scheme prefix:\n- hf:// -> HuggingFace (e.g., \"hf://meta-llama/Llama-2-7b\" or \"hf://meta-llama/Llama-2-7b@main\")\n- s3:// -> AWS S3 (e.g., \"s3://bucket/path\")\n- gs:// -> Google Cloud Storage (e.g., \"gs://bucket/path\")\n- azure:// -> Azure Blob Storage (e.g., \"azure://account/container/path\")\n- r2:// -> CloudFlare R2 Storage (e.g., \"r2://account_id.bucket/path\")\n- cw:// -> CoreWeave AI Object Storage (e.g., \"cw://bucket/path\")\n- https:// -> Direct URL download (e.g., \"https://example.com/model.bin\")\n\nFor HuggingFace sources, you can specify a revision (branch, tag, or commit SHA)\nusing the @{rev} suffix: \"hf://owner/repo@revision\"\n\nAuthentication can be specified either:\n- Using the `auth` section (required for OIDC):\n    auth:\n      auth_method: AWS_OIDC\n      aws_oidc_role_arn: <role_arn>\n      aws_oidc_region: <region>\n- Using `auth_secret_name` at the top level (or in the `auth` section)",
+      "description": "Configuration for a weights source in the new weights API.\n\nUses a URI-based `source` field with a required scheme prefix:\n- hf:// -> HuggingFace (e.g., \"hf://meta-llama/Llama-2-7b\" or \"hf://meta-llama/Llama-2-7b@main\")\n- s3:// -> AWS S3 (e.g., \"s3://bucket/path\")\n- gs:// -> Google Cloud Storage (e.g., \"gs://bucket/path\")\n- azure:// -> Azure Blob Storage (e.g., \"azure://account/container/path\")\n- r2:// -> CloudFlare R2 Storage (e.g., \"r2://account_id.bucket/path\")\n- cw:// -> CoreWeave AI Object Storage (e.g., \"cw://bucket/path\")\n- https:// -> Direct URL download (e.g., \"https://example.com/model.bin\")\n\nFor HuggingFace sources, you can specify a revision (branch, tag, or commit SHA)\nusing the @{rev} suffix: \"hf://owner/repo@revision\"\n\nAuthentication can be specified either:\n- Using the `auth` section (required for OIDC and AWS AssumeRole):\n    auth:\n      auth_method: AWS_OIDC\n      aws_oidc_role_arn: <role_arn>\n      aws_oidc_region: <region>\n  or, for native AWS AssumeRole:\n    auth:\n      auth_method: AWS_ASSUME_ROLE\n      aws_assume_role_arn: <role_arn>\n      aws_assume_role_region: <region>\n- Using `auth_secret_name` at the top level (or in the `auth` section)",
       "properties": {
         "source": {
           "description": "URI with scheme prefix. Use hf://, s3://, gs://, azure://, r2://, cw://, or https://. For HuggingFace, use @revision suffix (e.g., hf://owner/repo@main).",
@@ -2150,6 +2425,10 @@
     "weights": {
       "$ref": "#/$defs/Weights",
       "description": "Configure Baseten Delivery Network (BDN) for model weight delivery with multi-tier caching."
+    },
+    "bdn": {
+      "$ref": "#/$defs/BDNConfig",
+      "description": "Configure BDN volume mounts, access grants, and hot-loading."
     },
     "trt_llm": {
       "anyOf": [

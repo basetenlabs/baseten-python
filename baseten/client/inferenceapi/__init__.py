@@ -35,8 +35,6 @@ from ._models import (
 __all__ = [
     "ApiClient",
     "AsyncApiClient",
-    "ResponseError",
-    "ResponseErrorResponse",
     "AsyncPredictOutput",
     "AsyncPredictRequest",
     "AsyncRequestError",
@@ -51,6 +49,8 @@ __all__ = [
     "InferenceRetryConfig",
     "PredictInput",
     "PredictOutput",
+    "ResponseError",
+    "ResponseErrorResponse",
     "RunRemoteInput",
     "RunRemoteOutput",
     "Status",
