@@ -1,5 +1,6 @@
 """Postprocesses generated Python model files."""
 
+import ast
 import re
 
 # Matches a class block of the form:
@@ -42,7 +43,108 @@ def postprocess_models(src: str) -> str:
         src = src.replace(", RootModel, constr", ", RootModel")
         src = src.replace(", constr,", ",")
         src = src.replace(", constr\n", "\n")
+    return _validate_literal_model_defaults(src)
+
+
+def _validate_literal_model_defaults(src: str) -> str:
+    # datamodel-code-generator emits a schema default verbatim even when the
+    # field is model-typed, e.g. `x: Model = {"a": 1}` or `x: Limit | None =
+    # 500`, relying on validate_default=True to coerce it at runtime. Pydantic
+    # deliberately treats that as a static type error (pydantic/pydantic#11083),
+    # so wrap the literal in a validating call to match the annotation.
+    tree = ast.parse(src)
+    models = {
+        node.name
+        for node in tree.body
+        if isinstance(node, ast.ClassDef)
+        and any(
+            (isinstance(b, ast.Name) and b.id == "BaseModel")
+            # RootModel[...] is subscripted, so the name is the subscript value.
+            or (
+                isinstance(b, ast.Subscript)
+                and isinstance(b.value, ast.Name)
+                and b.value.id == "RootModel"
+            )
+            for b in node.bases
+        )
+    }
+
+    line_starts = [0]
+    for line in src.splitlines(keepends=True):
+        line_starts.append(line_starts[-1] + len(line))
+
+    edits: list[tuple[int, int, str]] = []
+    for cls in tree.body:
+        if not isinstance(cls, ast.ClassDef):
+            continue
+        for stmt in cls.body:
+            if not isinstance(stmt, ast.AnnAssign):
+                continue
+            # Only bare literal defaults need rewriting; None, enum members
+            # and existing calls already match their annotation.
+            value = stmt.value
+            if not isinstance(value, (ast.Dict, ast.List, ast.Constant)):
+                continue
+            if isinstance(value, ast.Constant) and value.value is None:
+                continue
+            if value.end_lineno is None or value.end_col_offset is None:
+                continue
+            target = _model_default_type(stmt.annotation, models)
+            if target is None:
+                continue
+            name, is_list = target
+            if is_list:
+                if not isinstance(value, ast.List) or not value.elts:
+                    continue
+                inner = ", ".join(
+                    f"{name}.model_validate({ast.get_source_segment(src, e)})"
+                    for e in value.elts
+                )
+                replacement = f"[{inner}]"
+            else:
+                replacement = (
+                    f"{name}.model_validate({ast.get_source_segment(src, value)})"
+                )
+            edits.append(
+                (
+                    line_starts[value.lineno - 1] + value.col_offset,
+                    line_starts[value.end_lineno - 1] + value.end_col_offset,
+                    replacement,
+                )
+            )
+
+    # Apply last to first so earlier offsets stay valid.
+    for start, end, replacement in sorted(edits, reverse=True):
+        src = src[:start] + replacement + src[end:]
     return src
+
+
+def _model_default_type(ann: ast.expr, models: set[str]) -> tuple[str, bool] | None:
+    # Unwrap Annotated[T, Field(...)] down to T and drop a trailing `| None`,
+    # then report T and whether the default is a list of T.
+    if (
+        isinstance(ann, ast.Subscript)
+        and isinstance(ann.value, ast.Name)
+        and ann.value.id == "Annotated"
+        and isinstance(ann.slice, ast.Tuple)
+        and ann.slice.elts
+    ):
+        ann = ann.slice.elts[0]
+    if isinstance(ann, ast.BinOp) and isinstance(ann.op, ast.BitOr):
+        if not (isinstance(ann.right, ast.Constant) and ann.right.value is None):
+            return None
+        ann = ann.left
+    if isinstance(ann, ast.Name):
+        return (ann.id, False) if ann.id in models else None
+    if (
+        isinstance(ann, ast.Subscript)
+        and isinstance(ann.value, ast.Name)
+        and ann.value.id == "list"
+        and isinstance(ann.slice, ast.Name)
+        and ann.slice.id in models
+    ):
+        return (ann.slice.id, True)
+    return None
 
 
 def _widen_root_annotation(m: re.Match) -> str:

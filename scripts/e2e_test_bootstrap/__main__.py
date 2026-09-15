@@ -51,7 +51,9 @@ def main() -> None:
     remote_url = f"https://app.{domain}"
 
     try:
-        from truss.remote.baseten.remote import BasetenRemote  # type: ignore[import-untyped]
+        from truss.remote.baseten.remote import (
+            BasetenRemote,  # type: ignore[import-untyped]
+        )
         from truss.truss_handle.build import load  # type: ignore[import-untyped]
     except ImportError:
         print(

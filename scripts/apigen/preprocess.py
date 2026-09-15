@@ -35,11 +35,11 @@ _DEFS_REF_PATTERN = re.compile(r"#/\$defs/(\w+)")
 
 def _rename_defs_refs(node: object, renames: dict[str, str]) -> None:
     if isinstance(node, dict):
-        ref = node.get("$ref")  # ty: ignore[invalid-argument-type]
+        ref = node.get("$ref")
         if isinstance(ref, str):
             m = _DEFS_REF_PATTERN.fullmatch(ref)
             if m and m.group(1) in renames:
-                node["$ref"] = f"#/$defs/{renames[m.group(1)]}"  # ty: ignore[invalid-assignment]
+                node["$ref"] = f"#/$defs/{renames[m.group(1)]}"
         for child in node.values():
             _rename_defs_refs(child, renames)
     elif isinstance(node, list):
@@ -147,13 +147,13 @@ def _prune_unused_schemas(doc: dict) -> None:
 
 def _collect_schema_refs(node: object, out: set[str]) -> None:
     if isinstance(node, dict):
-        ref = node.get("$ref")  # ty: ignore[invalid-argument-type]
+        ref = node.get("$ref")
         if isinstance(ref, str):
             m = _REF_PATTERN.fullmatch(ref)
             if m:
                 out.add(m.group(1))
         # Discriminator mapping values are schema refs but not under a $ref key.
-        disc = node.get("discriminator")  # ty: ignore[invalid-argument-type]
+        disc = node.get("discriminator")
         if isinstance(disc, dict):
             mapping = disc.get("mapping")
             if isinstance(mapping, dict):
@@ -246,11 +246,24 @@ _REF_PATTERN = re.compile(r"#/components/schemas/(\w+)")
 
 def _rename_refs(node: object, renames: dict[str, str]) -> None:
     if isinstance(node, dict):
-        ref = node.get("$ref")  # ty: ignore[invalid-argument-type]
+        ref = node.get("$ref")
         if isinstance(ref, str):
             m = _REF_PATTERN.fullmatch(ref)
             if m and m.group(1) in renames:
-                node["$ref"] = f"#/components/schemas/{renames[m.group(1)]}"  # ty: ignore[invalid-assignment]
+                node["$ref"] = f"#/components/schemas/{renames[m.group(1)]}"
+        # Discriminator mapping values are schema refs but not under a $ref key.
+        # Leaving them stale makes datamodel-code-generator fail to resolve the
+        # tag for unions discriminated on an enum field, silently dropping the
+        # discriminator (and crashing outright on some versions).
+        disc = node.get("discriminator")
+        if isinstance(disc, dict):
+            mapping = disc.get("mapping")
+            if isinstance(mapping, dict):
+                for key, value in mapping.items():
+                    if isinstance(value, str):
+                        m = _REF_PATTERN.fullmatch(value)
+                        if m and m.group(1) in renames:
+                            mapping[key] = f"#/components/schemas/{renames[m.group(1)]}"
         for child in node.values():
             _rename_refs(child, renames)
     elif isinstance(node, list):

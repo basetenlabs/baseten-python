@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Self
 
 import httpx
 
@@ -121,10 +121,10 @@ class ManagementClient:
         if self.close_http_client_on_close:
             self._http_client.close()
 
-    def __enter__(self) -> ManagementClient:
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *args: Any) -> None:
+    def __exit__(self, *args: object) -> None:
         self.close()
 
 
@@ -214,8 +214,8 @@ class AsyncManagementClient:
         if self.close_http_client_on_close:
             await self._http_client.aclose()
 
-    async def __aenter__(self) -> AsyncManagementClient:
+    async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, *args: Any) -> None:
+    async def __aexit__(self, *args: object) -> None:
         await self.close()
