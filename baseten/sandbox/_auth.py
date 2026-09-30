@@ -8,19 +8,16 @@ from typing import Protocol
 
 import httpx
 
-# Refresh this long before the token's stated expiry, to allow for clock skew
-# between this machine and the server, and for time spent in flight.
+# Refresh before the stated expiry: clock skew, plus time in flight.
 _TOKEN_EXPIRY_LEEWAY = timedelta(seconds=60)
 
-# A few retries cover a new token being invalidated in the same event as the
-# old one. Past that, the failure is raised, since tokens that keep getting
-# rejected point at something a new token cannot fix.
+# A few retries cover a new token invalidated in the same event as the old
+# one; beyond that, rejection points at something a new token cannot fix.
 _TOKEN_INVALIDATION_MAX_RETRIES = 2
 
-# The control plane and sandboxes send this header when they reject a request's
-# token as revoked, which can happen before the token's stated expiry. The
-# request was rejected before any work was done, so sending it again with a
-# new token is safe even when it has side effects.
+# Both planes send this header on revocation, which can precede the stated
+# expiry. The request was untouched, so re-sending with a new token is safe
+# even when it has side effects.
 _TOKEN_REVOKED_CODE = "TOKEN_REVOKED"
 
 
