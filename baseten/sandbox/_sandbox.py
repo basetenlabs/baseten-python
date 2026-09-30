@@ -358,8 +358,8 @@ class SandboxFileSystem:
         """
 
         def attempt() -> baseten.client.sandboxapi.GetFilesystemResponse:
-            # Errors convert per attempt, so the retry helper sees
-            # SandboxGatewayError instead of the generated ResponseError.
+            # Convert per attempt: the retry helper must see
+            # SandboxGatewayError, not the generated ResponseError.
             try:
                 return self._api.get_filesystem(path=path)
             except Exception as error:
@@ -407,8 +407,8 @@ class AsyncSandboxFileSystem:
         """
 
         async def attempt() -> baseten.client.sandboxapi.GetFilesystemResponse:
-            # Errors convert per attempt, so the retry helper sees
-            # SandboxGatewayError instead of the generated ResponseError.
+            # Convert per attempt: the retry helper must see
+            # SandboxGatewayError, not the generated ResponseError.
             try:
                 return await self._api.get_filesystem(path=path)
             except Exception as error:
