@@ -11,6 +11,7 @@ import json
 import subprocess
 import sys
 import urllib.request
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
@@ -52,14 +53,20 @@ def main() -> None:
         download_spec(SANDBOX_SPEC_URL, SPECS_DIR / "sandbox.yml")
 
     generate_api(
-        SPECS_DIR / "management.json", CLIENT_DIR / "managementapi", "Management"
+        SPECS_DIR / "management.json",
+        CLIENT_DIR / "managementapi",
+        "Management",
+        # Sandbox management operations take a team selector as a query
+        # parameter alongside the request body; the rest of the management
+        # API keeps query parameters and request bodies separated.
+        query_and_body_allowed=lambda path: path.startswith("/v1/sandboxes"),
     )
     generate_api(SPECS_DIR / "inference.json", CLIENT_DIR / "inferenceapi", "Inference")
     generate_api(
         SPECS_DIR / "sandbox.yml",
         CLIENT_DIR / "sandboxapi",
         "Sandbox",
-        allow_query_and_body=True,
+        query_and_body_allowed=lambda path: True,
     )
     generate_modelconfig(SPECS_DIR / "config.schema.json", CLIENT_DIR / "modelconfig")
 
@@ -85,13 +92,13 @@ def generate_api(
     out_dir: Path,
     display_name: str,
     *,
-    allow_query_and_body: bool = False,
+    query_and_body_allowed: Callable[[str], bool] | None = None,
 ) -> None:
     print(f"Generating {out_dir.name} from {spec_file}")
     out_dir.mkdir(parents=True, exist_ok=True)
 
     preprocessed = preprocess_spec(
-        _read_spec(spec_file), allow_query_and_body=allow_query_and_body
+        _read_spec(spec_file), query_and_body_allowed=query_and_body_allowed
     )
 
     models_file = out_dir / "_models.py"

@@ -22,6 +22,7 @@ from ._models import (
     ChainEnvironment,
     Chains,
     ChainTombstone,
+    CleanupImagesParams,
     CleanupImagesResponse,
     CreateApiKeyForGroupRequest,
     CreateApiKeyForGroupResponse,
@@ -45,6 +46,7 @@ from ._models import (
     CreateModelDeploymentRequest,
     CreateModelRequest,
     CreateRouteRequest,
+    CreateSandboxParams,
     CreateSandboxRequest,
     CreateTokenRequest,
     CreateTrainingJobRequest,
@@ -55,6 +57,9 @@ from ._models import (
     DeactivateLoopsDeploymentResponse,
     DeactivateLoopsRunResponse,
     DeactivateResponse,
+    DeleteImageParams,
+    DeleteImageTagParams,
+    DeleteSandboxParams,
     DeleteVolumeRequest,
     DeleteVolumeResponse,
     DeleteVolumeVersionRequest,
@@ -90,6 +95,7 @@ from ._models import (
     GetDeploymentPatchesStateResponse,
     GetExploreMetadataParams,
     GetGatewayEventsParams,
+    GetImageParams,
     GetLogsResponse,
     GetLoopsCapabilitiesParams,
     GetLoopsCapabilitiesResponse,
@@ -120,6 +126,7 @@ from ._models import (
     GetModelsParams,
     GetRoutesParams,
     GetRoutesUsageParams,
+    GetSandboxParams,
     GetTeamsLoopsRunsParams,
     GetTeamsLoopsSamplersParams,
     GetTeamsModelsParams,
@@ -192,6 +199,7 @@ from ._models import (
     PromoteRequest,
     PromoteToChainEnvironmentRequest,
     PromoteToEnvironmentRequest,
+    PushImageParams,
     PushImageRequest,
     PushImageResponse,
     RecreateTrainingJobResponse,
@@ -244,6 +252,7 @@ from ._models import (
     UpdateModelRequest,
     UpdateRequestBackpressureSettings,
     UpdateRouteRequest,
+    UpdateSandboxParams,
     UpdateSandboxRequest,
     UpdateTrainingJobRequest,
     UpdateTrainingJobResponse,
@@ -298,7 +307,9 @@ class ApiClient:
         """Create a new client. The caller is responsible for closing *http_client*."""
         self._http_client = http_client
 
-    def cleanup_images(self) -> CleanupImagesResponse:
+    def cleanup_images(
+        self, *, params: CleanupImagesParams | None = None
+    ) -> CleanupImagesResponse:
         """Clean up unused images"""
         return self._do_json(
             CleanupImagesResponse,
@@ -307,13 +318,18 @@ class ApiClient:
                 path_fmt="/v1/sandboxes/cleanup_images",
                 path_args=[],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
         )
 
-    def create_sandbox(self, *, request: CreateSandboxRequest) -> Sandbox:
+    def create_sandbox(
+        self,
+        *,
+        params: CreateSandboxParams | None = None,
+        request: CreateSandboxRequest,
+    ) -> Sandbox:
         """Create a sandbox"""
         return self._do_json(
             Sandbox,
@@ -322,7 +338,7 @@ class ApiClient:
                 path_fmt="/v1/sandboxes/instances",
                 path_args=[],
                 body=request,
-                query=None,
+                query=params,
                 success_codes=[201],
                 error_codes=None,
             ),
@@ -390,7 +406,9 @@ class ApiClient:
             ),
         )
 
-    def delete_image(self, *, image_name: str) -> Image:
+    def delete_image(
+        self, *, image_name: str, params: DeleteImageParams | None = None
+    ) -> Image:
         """Delete a sandbox image"""
         return self._do_json(
             Image,
@@ -399,13 +417,19 @@ class ApiClient:
                 path_fmt="/v1/sandboxes/images/{}",
                 path_args=[image_name],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
         )
 
-    def delete_image_tag(self, *, image_name: str, tag_name: str) -> Image:
+    def delete_image_tag(
+        self,
+        *,
+        image_name: str,
+        tag_name: str,
+        params: DeleteImageTagParams | None = None,
+    ) -> Image:
         """Delete an image tag"""
         return self._do_json(
             Image,
@@ -414,7 +438,7 @@ class ApiClient:
                 path_fmt="/v1/sandboxes/images/{}/tags/{}",
                 path_args=[image_name, tag_name],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -535,7 +559,9 @@ class ApiClient:
             ),
         )
 
-    def delete_sandbox(self, *, sandbox_name: str) -> Sandbox:
+    def delete_sandbox(
+        self, *, sandbox_name: str, params: DeleteSandboxParams | None = None
+    ) -> Sandbox:
         """Delete a sandbox"""
         return self._do_json(
             Sandbox,
@@ -544,7 +570,7 @@ class ApiClient:
                 path_fmt="/v1/sandboxes/instances/{}",
                 path_args=[sandbox_name],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[202],
                 error_codes=None,
             ),
@@ -1057,7 +1083,9 @@ class ApiClient:
             ),
         )
 
-    def get_image(self, *, image_name: str) -> Image:
+    def get_image(
+        self, *, image_name: str, params: GetImageParams | None = None
+    ) -> Image:
         """Get a sandbox image"""
         return self._do_json(
             Image,
@@ -1066,7 +1094,7 @@ class ApiClient:
                 path_fmt="/v1/sandboxes/images/{}",
                 path_args=[image_name],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -1814,7 +1842,9 @@ class ApiClient:
             ),
         )
 
-    def get_sandbox(self, *, sandbox_name: str) -> Sandbox:
+    def get_sandbox(
+        self, *, sandbox_name: str, params: GetSandboxParams | None = None
+    ) -> Sandbox:
         """Get a sandbox"""
         return self._do_json(
             Sandbox,
@@ -1823,7 +1853,7 @@ class ApiClient:
                 path_fmt="/v1/sandboxes/instances/{}",
                 path_args=[sandbox_name],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -4022,7 +4052,9 @@ class ApiClient:
             ),
         )
 
-    def push_image(self, *, request: PushImageRequest) -> PushImageResponse:
+    def push_image(
+        self, *, params: PushImageParams | None = None, request: PushImageRequest
+    ) -> PushImageResponse:
         """Push a sandbox image"""
         return self._do_json(
             PushImageResponse,
@@ -4031,14 +4063,18 @@ class ApiClient:
                 path_fmt="/v1/sandboxes/images",
                 path_args=[],
                 body=request,
-                query=None,
+                query=params,
                 success_codes=[202],
                 error_codes=None,
             ),
         )
 
     def update_sandbox(
-        self, *, sandbox_name: str, request: UpdateSandboxRequest
+        self,
+        *,
+        sandbox_name: str,
+        params: UpdateSandboxParams | None = None,
+        request: UpdateSandboxRequest,
     ) -> Sandbox:
         """Update a sandbox"""
         return self._do_json(
@@ -4048,7 +4084,7 @@ class ApiClient:
                 path_fmt="/v1/sandboxes/instances/{}",
                 path_args=[sandbox_name],
                 body=request,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -4124,7 +4160,9 @@ class AsyncApiClient:
         """Create a new client. The caller is responsible for closing *http_client*."""
         self._http_client = http_client
 
-    async def cleanup_images(self) -> CleanupImagesResponse:
+    async def cleanup_images(
+        self, *, params: CleanupImagesParams | None = None
+    ) -> CleanupImagesResponse:
         """Clean up unused images"""
         return await self._do_json(
             CleanupImagesResponse,
@@ -4133,13 +4171,18 @@ class AsyncApiClient:
                 path_fmt="/v1/sandboxes/cleanup_images",
                 path_args=[],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
         )
 
-    async def create_sandbox(self, *, request: CreateSandboxRequest) -> Sandbox:
+    async def create_sandbox(
+        self,
+        *,
+        params: CreateSandboxParams | None = None,
+        request: CreateSandboxRequest,
+    ) -> Sandbox:
         """Create a sandbox"""
         return await self._do_json(
             Sandbox,
@@ -4148,7 +4191,7 @@ class AsyncApiClient:
                 path_fmt="/v1/sandboxes/instances",
                 path_args=[],
                 body=request,
-                query=None,
+                query=params,
                 success_codes=[201],
                 error_codes=None,
             ),
@@ -4216,7 +4259,9 @@ class AsyncApiClient:
             ),
         )
 
-    async def delete_image(self, *, image_name: str) -> Image:
+    async def delete_image(
+        self, *, image_name: str, params: DeleteImageParams | None = None
+    ) -> Image:
         """Delete a sandbox image"""
         return await self._do_json(
             Image,
@@ -4225,13 +4270,19 @@ class AsyncApiClient:
                 path_fmt="/v1/sandboxes/images/{}",
                 path_args=[image_name],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
         )
 
-    async def delete_image_tag(self, *, image_name: str, tag_name: str) -> Image:
+    async def delete_image_tag(
+        self,
+        *,
+        image_name: str,
+        tag_name: str,
+        params: DeleteImageTagParams | None = None,
+    ) -> Image:
         """Delete an image tag"""
         return await self._do_json(
             Image,
@@ -4240,7 +4291,7 @@ class AsyncApiClient:
                 path_fmt="/v1/sandboxes/images/{}/tags/{}",
                 path_args=[image_name, tag_name],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -4361,7 +4412,9 @@ class AsyncApiClient:
             ),
         )
 
-    async def delete_sandbox(self, *, sandbox_name: str) -> Sandbox:
+    async def delete_sandbox(
+        self, *, sandbox_name: str, params: DeleteSandboxParams | None = None
+    ) -> Sandbox:
         """Delete a sandbox"""
         return await self._do_json(
             Sandbox,
@@ -4370,7 +4423,7 @@ class AsyncApiClient:
                 path_fmt="/v1/sandboxes/instances/{}",
                 path_args=[sandbox_name],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[202],
                 error_codes=None,
             ),
@@ -4887,7 +4940,9 @@ class AsyncApiClient:
             ),
         )
 
-    async def get_image(self, *, image_name: str) -> Image:
+    async def get_image(
+        self, *, image_name: str, params: GetImageParams | None = None
+    ) -> Image:
         """Get a sandbox image"""
         return await self._do_json(
             Image,
@@ -4896,7 +4951,7 @@ class AsyncApiClient:
                 path_fmt="/v1/sandboxes/images/{}",
                 path_args=[image_name],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -5646,7 +5701,9 @@ class AsyncApiClient:
             ),
         )
 
-    async def get_sandbox(self, *, sandbox_name: str) -> Sandbox:
+    async def get_sandbox(
+        self, *, sandbox_name: str, params: GetSandboxParams | None = None
+    ) -> Sandbox:
         """Get a sandbox"""
         return await self._do_json(
             Sandbox,
@@ -5655,7 +5712,7 @@ class AsyncApiClient:
                 path_fmt="/v1/sandboxes/instances/{}",
                 path_args=[sandbox_name],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -7872,7 +7929,9 @@ class AsyncApiClient:
             ),
         )
 
-    async def push_image(self, *, request: PushImageRequest) -> PushImageResponse:
+    async def push_image(
+        self, *, params: PushImageParams | None = None, request: PushImageRequest
+    ) -> PushImageResponse:
         """Push a sandbox image"""
         return await self._do_json(
             PushImageResponse,
@@ -7881,14 +7940,18 @@ class AsyncApiClient:
                 path_fmt="/v1/sandboxes/images",
                 path_args=[],
                 body=request,
-                query=None,
+                query=params,
                 success_codes=[202],
                 error_codes=None,
             ),
         )
 
     async def update_sandbox(
-        self, *, sandbox_name: str, request: UpdateSandboxRequest
+        self,
+        *,
+        sandbox_name: str,
+        params: UpdateSandboxParams | None = None,
+        request: UpdateSandboxRequest,
     ) -> Sandbox:
         """Update a sandbox"""
         return await self._do_json(
@@ -7898,7 +7961,7 @@ class AsyncApiClient:
                 path_fmt="/v1/sandboxes/instances/{}",
                 path_args=[sandbox_name],
                 body=request,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),

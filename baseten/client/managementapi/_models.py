@@ -908,6 +908,31 @@ class StatusItem(RootModel[str]):
 
 
 class ListSandboxesParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor from the previous page; omit for the first page.",
+            examples=[
+                "eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ"
+            ],
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of items to return.",
+            examples=[20],
+            ge=1,
+            le=100,
+        ),
+    ] = 20
     q: Annotated[
         str | None,
         Field(
@@ -932,7 +957,72 @@ class ListSandboxesParams(BaseModel):
     ] = None
 
 
+class CreateSandboxParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
+class GetSandboxParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
+class UpdateSandboxParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
+class DeleteSandboxParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
 class ListImagesParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor from the previous page; omit for the first page.",
+            examples=[
+                "eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ"
+            ],
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of items to return.",
+            examples=[20],
+            ge=1,
+            le=100,
+        ),
+    ] = 20
     sort: Annotated[
         str,
         Field(
@@ -947,7 +1037,72 @@ class ListImagesParams(BaseModel):
     ] = None
 
 
+class PushImageParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
+class CleanupImagesParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
+class GetImageParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
+class DeleteImageParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
 class ListImageTagsParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor from the previous page; omit for the first page.",
+            examples=[
+                "eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ"
+            ],
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of items to return.",
+            examples=[20],
+            ge=1,
+            le=100,
+        ),
+    ] = 20
     sort: Annotated[
         str,
         Field(
@@ -964,6 +1119,16 @@ class ListImageTagsParams(BaseModel):
         str | None,
         Field(
             description="Exact tag name. Cannot be combined with q. Forces ascending name order."
+        ),
+    ] = None
+
+
+class DeleteImageTagParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
         ),
     ] = None
 

@@ -3,6 +3,7 @@
 import copy
 import json
 import re
+from collections.abc import Callable
 
 from scripts.apigen.clientgen import (
     query_params_model_name,
@@ -51,8 +52,14 @@ def _rename_defs_refs(node: object, renames: dict[str, str]) -> None:
             _rename_defs_refs(child, renames)
 
 
-def preprocess_spec(data: bytes, *, allow_query_and_body: bool = False) -> bytes:
+def preprocess_spec(
+    data: bytes,
+    *,
+    query_and_body_allowed: Callable[[str], bool] | None = None,
+) -> bytes:
     doc = json.loads(data)
+
+    _flatten_parameters(doc)
 
     # datamodel-code-generator has --openapi-scopes for schemas and
     # requestbodies, but not for responses. Hoist inline schemas from
@@ -73,7 +80,7 @@ def preprocess_spec(data: bytes, *, allow_query_and_body: bool = False) -> bytes
     # generates query-parameter models under the paths scope, which drags
     # in unwanted per-operation wrappers). Injected before the V1 rename
     # below so their $refs to enums are rewritten with everything else.
-    _inject_query_params_schemas(doc, allow_query_and_body=allow_query_and_body)
+    _inject_query_params_schemas(doc, query_and_body_allowed=query_and_body_allowed)
 
     # Hoist inline 2xx application/json response schemas into
     # components/schemas so datamodel-code-generator emits a named model the
@@ -99,6 +106,35 @@ def preprocess_spec(data: bytes, *, allow_query_and_body: bool = False) -> bytes
             schemas[new] = schemas.pop(old)
 
     return json.dumps(doc, indent=2).encode()
+
+
+def _flatten_parameters(doc: dict) -> None:
+    # Operations inherit path-item parameters, and either level may reference
+    # components/parameters. Inline both so every downstream step (query
+    # schema injection, client generation) sees concrete parameter objects.
+    component_params = doc.get("components", {}).get("parameters", {})
+
+    def resolve(param: dict) -> dict:
+        ref = param.get("$ref")
+        if ref is None:
+            return param
+        resolved = component_params.get(ref.rsplit("/", 1)[-1])
+        if resolved is None:
+            raise ValueError(f"unresolved parameter reference {ref}")
+        return copy.deepcopy(resolved)
+
+    for path_item in doc.get("paths", {}).values():
+        if not isinstance(path_item, dict):
+            continue
+        item_params = [
+            resolve(p) for p in path_item.pop("parameters", []) if isinstance(p, dict)
+        ]
+        for http_method, op in path_item.items():
+            if http_method == "parameters" or not isinstance(op, dict):
+                continue
+            op["parameters"] = copy.deepcopy(item_params) + [
+                resolve(p) for p in op.get("parameters", []) if isinstance(p, dict)
+            ]
 
 
 def _hoist_component_schemas(doc: dict) -> None:
@@ -181,7 +217,9 @@ def _collect_schema_refs(node: object, out: set[str]) -> None:
             _collect_schema_refs(child, out)
 
 
-def _inject_query_params_schemas(doc: dict, *, allow_query_and_body: bool) -> None:
+def _inject_query_params_schemas(
+    doc: dict, *, query_and_body_allowed: Callable[[str], bool] | None
+) -> None:
     # Build an object schema whose properties are the operation's query
     # parameters, named to match its client method (e.g. get_users ->
     # GetUsersParams). Each parameter's own schema (enum $refs, arrays,
@@ -201,9 +239,9 @@ def _inject_query_params_schemas(doc: dict, *, allow_query_and_body: bool) -> No
             ]
             if not query_params:
                 continue
-            if "requestBody" in op and not allow_query_and_body:
-                # Management and inference enforce query-XOR-body as a
-                # structural invariant; only the sandbox API allows both.
+            if "requestBody" in op and not (
+                query_and_body_allowed and query_and_body_allowed(path)
+            ):
                 raise ValueError(
                     f"{http_method.upper()} {path} has both a request body and "
                     "query parameters, which this API does not allow"
