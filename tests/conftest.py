@@ -13,14 +13,27 @@ class CapturedRequest:
     path: str = ""
     headers: dict[str, str] = field(default_factory=dict)
     body: str = ""
+    body_bytes: bytes = b""
 
 
 class FakeTransport:
-    """Mock HTTP transport that captures requests and returns fixed responses."""
+    """Mock HTTP transport that captures requests and returns fixed responses.
 
-    def __init__(self, status_code: int = 200, response: Any = None) -> None:
+    Set *response* for a JSON body, or *raw_content* (with *content_type*)
+    for a non-JSON body.
+    """
+
+    def __init__(
+        self,
+        status_code: int = 200,
+        response: Any = None,
+        raw_content: bytes | None = None,
+        content_type: str = "",
+    ) -> None:
         self.status_code = status_code
         self.response = response
+        self.raw_content = raw_content
+        self.content_type = content_type
         self.capture = CapturedRequest()
 
     def _build_response(self, request: httpx.Request) -> httpx.Response:
@@ -28,11 +41,16 @@ class FakeTransport:
             method=request.method,
             path=str(request.url.raw_path, "ascii"),
             headers={k: v for k, v in request.headers.items()},
-            body=request.content.decode() if request.content else "",
+            body=request.content.decode(errors="replace") if request.content else "",
+            body_bytes=request.content,
         )
         body = b""
         headers: dict[str, str] = {}
-        if self.response is not None:
+        if self.raw_content is not None:
+            body = self.raw_content
+            if self.content_type:
+                headers["content-type"] = self.content_type
+        elif self.response is not None:
             body = json.dumps(self.response).encode()
             headers["content-type"] = "application/json"
         return httpx.Response(

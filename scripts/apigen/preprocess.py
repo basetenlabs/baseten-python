@@ -4,7 +4,11 @@ import copy
 import json
 import re
 
-from scripts.apigen.clientgen import query_request_model_name, resolve_method_names
+from scripts.apigen.clientgen import (
+    query_params_model_name,
+    resolve_method_names,
+    response_type_model_name,
+)
 
 
 def preprocess_truss_config_schema(data: bytes) -> bytes:
@@ -47,7 +51,7 @@ def _rename_defs_refs(node: object, renames: dict[str, str]) -> None:
             _rename_defs_refs(child, renames)
 
 
-def preprocess_spec(data: bytes) -> bytes:
+def preprocess_spec(data: bytes, *, allow_query_and_body: bool = False) -> bytes:
     doc = json.loads(data)
 
     # datamodel-code-generator has --openapi-scopes for schemas and
@@ -64,12 +68,19 @@ def preprocess_spec(data: bytes) -> bytes:
     # dropped, and the query schemas we add next are never at risk.
     _prune_unused_schemas(doc)
 
-    # Synthesize a request schema per GET operation's query parameters so
+    # Synthesize a params schema per operation's query parameters so
     # datamodel-code-generator emits a typed model for them (it only
     # generates query-parameter models under the paths scope, which drags
     # in unwanted per-operation wrappers). Injected before the V1 rename
     # below so their $refs to enums are rewritten with everything else.
-    _inject_query_request_schemas(doc)
+    _inject_query_params_schemas(doc, allow_query_and_body=allow_query_and_body)
+
+    # Hoist inline 2xx application/json response schemas into
+    # components/schemas so datamodel-code-generator emits a named model the
+    # client can return. Without this, an operation whose success response is
+    # an inline oneOf, array, or free-form object has no resolvable type name.
+    # Injected before the V1 rename, for the same reason as the query schemas.
+    _inject_response_schemas(doc)
 
     # datamodel-code-generator generates empty BaseModel classes for
     # schemas that are bare type: object with no properties (e.g.
@@ -77,8 +88,9 @@ def preprocess_spec(data: bytes) -> bytes:
     # generate dict[str, Any] instead.
     _fix_bare_object_schemas(doc)
 
-    # Management API schemas are suffixed with V1 (e.g. ModelV1). Strip
-    # the suffix so generated class names are cleaner (e.g. Model).
+    # Schema renames: a trailing V1 is stripped (ModelV1 -> Model) and names
+    # that are not valid Python identifiers are folded to PascalCase
+    # (archive.Change -> ArchiveChange).
     schema_renames = _build_v1_renames(doc)
     if schema_renames:
         _rename_refs(doc, schema_renames)
@@ -169,13 +181,12 @@ def _collect_schema_refs(node: object, out: set[str]) -> None:
             _collect_schema_refs(child, out)
 
 
-def _inject_query_request_schemas(doc: dict) -> None:
+def _inject_query_params_schemas(doc: dict, *, allow_query_and_body: bool) -> None:
     # Build an object schema whose properties are the operation's query
     # parameters, named to match its client method (e.g. get_users ->
-    # GetUsersRequest). Each parameter's own schema (enum $refs, arrays,
+    # GetUsersParams). Each parameter's own schema (enum $refs, arrays,
     # nullable wrappers, constraints) is reused verbatim so the third
-    # party types every field. GET carries only query params and every
-    # other method only a body, so this name never collides with a body.
+    # party types every field.
     schemas = doc.setdefault("components", {}).setdefault("schemas", {})
     method_names = resolve_method_names(doc)
 
@@ -190,13 +201,14 @@ def _inject_query_request_schemas(doc: dict) -> None:
             ]
             if not query_params:
                 continue
-            if "requestBody" in op:
+            if "requestBody" in op and not allow_query_and_body:
+                # Management and inference enforce query-XOR-body as a
+                # structural invariant; only the sandbox API allows both.
                 raise ValueError(
                     f"{http_method.upper()} {path} has both a request body and "
-                    "query parameters; the client generator assumes GET carries "
-                    "only query parameters and other methods only a body"
+                    "query parameters, which this API does not allow"
                 )
-            name = query_request_model_name(method_names[(path, http_method)])
+            name = query_params_model_name(method_names[(path, http_method)])
             if name in schemas:
                 raise ValueError(
                     f"injected query schema {name} collides with an existing schema"
@@ -216,6 +228,46 @@ def _inject_query_request_schemas(doc: dict) -> None:
             schemas[name] = obj
 
 
+def _inject_response_schemas(doc: dict) -> None:
+    schemas = doc.setdefault("components", {}).setdefault("schemas", {})
+    method_names = resolve_method_names(doc)
+
+    for path, path_item in doc.get("paths", {}).items():
+        for http_method, op in path_item.items():
+            if http_method == "parameters" or not isinstance(op, dict):
+                continue
+            responses = op.get("responses", {})
+            success_codes = sorted(
+                c
+                for c in responses
+                if c.isdigit()
+                and 200 <= int(c) < 300
+                and isinstance(responses[c], dict)
+            )
+            for code in success_codes:
+                json_content = (
+                    responses[code].get("content", {}).get("application/json")
+                )
+                schema = (
+                    json_content.get("schema")
+                    if isinstance(json_content, dict)
+                    else None
+                )
+                if not isinstance(schema, dict) or "$ref" in schema:
+                    continue
+                base = response_type_model_name(method_names[(path, http_method)])
+                # Only the first success code gets the bare name, so an
+                # operation with several 2xx bodies yields one schema per
+                # code rather than colliding.
+                schema_name = base if code == success_codes[0] else f"{base}{code}"
+                if schema_name in schemas:
+                    raise ValueError(
+                        f"injected response schema {schema_name} collides with an existing schema"
+                    )
+                schemas[schema_name] = schema
+                json_content["schema"] = {"$ref": f"#/components/schemas/{schema_name}"}
+
+
 def _fix_bare_object_schemas(doc: dict) -> None:
     schemas = doc.get("components", {}).get("schemas", {})
     for schema in schemas.values():
@@ -233,15 +285,32 @@ def _fix_bare_object_schemas(doc: dict) -> None:
 
 
 def _build_v1_renames(doc: dict) -> dict[str, str]:
+    # A trailing V1 is dropped, and a name that is not a valid Python
+    # identifier (e.g. archive.Change) is folded into PascalCase so it can
+    # be emitted and imported by name.
     schemas = doc.get("components", {}).get("schemas", {})
-    renames = {}
+    renames: dict[str, str] = {}
     for name in schemas:
-        if name.endswith("V1"):
-            renames[name] = name[:-2]
+        renamed = name.removesuffix("V1")
+        if not re.fullmatch(r"[A-Za-z_]\w*", renamed):
+            renamed = "".join(
+                part[0].upper() + part[1:]
+                for part in re.split(r"[.-]", renamed)
+                if part
+            )
+        if renamed != name:
+            renames[name] = renamed
+    taken = {n for n in schemas if n not in renames}
+    for old, new in renames.items():
+        if new in taken:
+            raise ValueError(
+                f"schema rename {old} -> {new} collides with an existing schema name"
+            )
+        taken.add(new)
     return renames
 
 
-_REF_PATTERN = re.compile(r"#/components/schemas/(\w+)")
+_REF_PATTERN = re.compile(r"#/components/schemas/([^/]+)")
 
 
 def _rename_refs(node: object, renames: dict[str, str]) -> None:

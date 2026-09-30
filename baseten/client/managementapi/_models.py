@@ -7,7 +7,7 @@ from datetime import date as date_aliased
 from enum import StrEnum
 from typing import Annotated, Any, Literal
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, RootModel
+from pydantic import AnyUrl, AwareDatetime, BaseModel, ConfigDict, Field, RootModel
 
 
 class DeploymentConfigOutputFormat(StrEnum):
@@ -309,7 +309,7 @@ class GatewayProvider(StrEnum):
     OPENAI_COMPATIBLE = "OPENAI_COMPATIBLE"
 
 
-class GetVolumesRequest(BaseModel):
+class GetVolumesParams(BaseModel):
     cursor: Annotated[
         str | None,
         Field(
@@ -335,7 +335,7 @@ class GetVolumesRequest(BaseModel):
     ]
 
 
-class GetVolumesNamespacesRequest(BaseModel):
+class GetVolumesNamespacesParams(BaseModel):
     cursor: Annotated[
         str | None,
         Field(
@@ -354,17 +354,40 @@ class GetVolumesNamespacesRequest(BaseModel):
     ] = 100
 
 
-class GetVolumesVersionsRequest(BaseModel):
+class GetVolumesSyncsParams(BaseModel):
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor returned by a previous page. Omit to fetch the first page.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of items to return.",
+            ge=1,
+            le=1000,
+            title="Limit",
+        ),
+    ] = 100
+    ref: Annotated[
+        str | None,
+        Field(description="Exact destination reference to match.", title="Ref"),
+    ] = None
+
+
+class GetVolumesVersionsParams(BaseModel):
     include_tombstoned: Annotated[
         bool,
         Field(
-            description="Whether to include deleted versions. A deleted version carries a TOMBSTONED lifecycle and stays restorable until its recovery deadline passes.",
+            description="Whether to include deleted and expired versions. Such a version carries a TOMBSTONED lifecycle and stays restorable until its recovery deadline passes.",
             title="Include Tombstoned",
         ),
     ] = False
 
 
-class GetTeamsRequest(BaseModel):
+class GetTeamsParams(BaseModel):
     name: Annotated[
         str | None,
         Field(
@@ -374,7 +397,7 @@ class GetTeamsRequest(BaseModel):
     ] = None
 
 
-class GetModelsRequest(BaseModel):
+class GetModelsParams(BaseModel):
     name: Annotated[
         str | None,
         Field(
@@ -384,7 +407,7 @@ class GetModelsRequest(BaseModel):
     ] = None
 
 
-class GetTeamsModelsRequest(BaseModel):
+class GetTeamsModelsParams(BaseModel):
     name: Annotated[
         str | None,
         Field(
@@ -394,7 +417,7 @@ class GetTeamsModelsRequest(BaseModel):
     ] = None
 
 
-class GetModelsDeploymentsRequest(BaseModel):
+class GetModelsDeploymentsParams(BaseModel):
     name: Annotated[
         str | None,
         Field(
@@ -404,7 +427,7 @@ class GetModelsDeploymentsRequest(BaseModel):
     ] = None
 
 
-class GetModelsDeploymentsConfigRequest(BaseModel):
+class GetModelsDeploymentsConfigParams(BaseModel):
     output_format: Annotated[
         DeploymentConfigOutputFormat,
         Field(
@@ -469,7 +492,7 @@ class SearchPattern(RootModel[str]):
     ] = None
 
 
-class GetTrainingProjectsJobsMetricsRequest(BaseModel):
+class GetTrainingProjectsJobsMetricsParams(BaseModel):
     end_epoch_millis: Annotated[
         int | None,
         Field(
@@ -493,7 +516,7 @@ class GetTrainingProjectsJobsMetricsRequest(BaseModel):
     ] = None
 
 
-class GetTrainingProjectsJobsCheckpointFilesRequest(BaseModel):
+class GetTrainingProjectsJobsCheckpointFilesParams(BaseModel):
     page_size: Annotated[
         int,
         Field(
@@ -510,7 +533,19 @@ class GetTrainingProjectsJobsCheckpointFilesRequest(BaseModel):
     ] = 0
 
 
-class GetLoopsRunsRequest(BaseModel):
+class MaxSeqLen(RootModel[int]):
+    root: Annotated[
+        int | None,
+        Field(
+            description="The sequence length the caller intends to train at — the same value they would pass as 'max_seq_len' when creating the run. Models that cannot serve it are reported as not enabled rather than returned with a ceiling the caller cannot use. Omit for the model's highest enabled sequence length.",
+            examples=[32768],
+            ge=1,
+            title="Max Seq Len",
+        ),
+    ] = None
+
+
+class GetLoopsRunsParams(BaseModel):
     run_id: Annotated[
         str | None,
         Field(description="Filter by run ID.", examples=["k4q95w5"], title="Run Id"),
@@ -533,7 +568,7 @@ class GetLoopsRunsRequest(BaseModel):
     ] = None
 
 
-class GetLoopsSamplersRequest(BaseModel):
+class GetLoopsSamplersParams(BaseModel):
     scope: Annotated[
         str | None,
         Field(
@@ -544,7 +579,7 @@ class GetLoopsSamplersRequest(BaseModel):
     ] = None
 
 
-class GetLoopsCheckpointsRequest(BaseModel):
+class GetLoopsCheckpointsParams(BaseModel):
     run_id: Annotated[
         str | None,
         Field(
@@ -571,7 +606,7 @@ class GetLoopsCheckpointsRequest(BaseModel):
     ] = None
 
 
-class GetLoopsCheckpointsFilesRequest(BaseModel):
+class GetLoopsCheckpointsFilesParams(BaseModel):
     page_size: Annotated[
         int,
         Field(
@@ -588,7 +623,7 @@ class GetLoopsCheckpointsFilesRequest(BaseModel):
     ] = 0
 
 
-class GetLoopsDeploymentsRequest(BaseModel):
+class GetLoopsDeploymentsParams(BaseModel):
     scope: Annotated[
         str | None,
         Field(
@@ -599,7 +634,7 @@ class GetLoopsDeploymentsRequest(BaseModel):
     ] = None
 
 
-class GetLoopsDeploymentsDebugArchiveFilesRequest(BaseModel):
+class GetLoopsDeploymentsDebugArchiveFilesParams(BaseModel):
     page_size: Annotated[
         int,
         Field(
@@ -615,7 +650,7 @@ class GetLoopsDeploymentsDebugArchiveFilesRequest(BaseModel):
     ] = None
 
 
-class GetTeamsLoopsRunsRequest(BaseModel):
+class GetTeamsLoopsRunsParams(BaseModel):
     run_id: Annotated[
         str | None,
         Field(description="Filter by run ID.", examples=["k4q95w5"], title="Run Id"),
@@ -638,7 +673,7 @@ class GetTeamsLoopsRunsRequest(BaseModel):
     ] = None
 
 
-class GetTeamsLoopsSamplersRequest(BaseModel):
+class GetTeamsLoopsSamplersParams(BaseModel):
     scope: Annotated[
         str | None,
         Field(
@@ -649,7 +684,20 @@ class GetTeamsLoopsSamplersRequest(BaseModel):
     ] = None
 
 
-class GetModelApisRequest(BaseModel):
+class GetApiKeysParams(BaseModel):
+    type: Annotated[
+        APIKeyCategory | None, Field(description="Filter by API key type")
+    ] = None
+    created_by_me: Annotated[
+        bool,
+        Field(
+            description="Return only keys created by the authenticated user",
+            title="Created By Me",
+        ),
+    ] = False
+
+
+class GetModelApisParams(BaseModel):
     cursor: Annotated[
         str | None,
         Field(
@@ -675,7 +723,7 @@ class GetModelApisRequest(BaseModel):
     ] = False
 
 
-class GetBillingUsageSummaryRequest(BaseModel):
+class GetBillingUsageSummaryParams(BaseModel):
     start_date: Annotated[
         AwareDatetime,
         Field(
@@ -692,7 +740,24 @@ class GetBillingUsageSummaryRequest(BaseModel):
     ]
 
 
-class GetUsersRequest(BaseModel):
+class GetBillingToolCallUsageParams(BaseModel):
+    start_date: Annotated[
+        date_aliased,
+        Field(
+            description="Inclusive UTC calendar day at the start of the query range.",
+            title="Start Date",
+        ),
+    ]
+    end_date: Annotated[
+        date_aliased | None,
+        Field(
+            description="Exclusive UTC calendar day at the end of the query range. Defaults to the day after the current UTC date so current-day usage is included. The date range cannot exceed 90 days.",
+            title="End Date",
+        ),
+    ] = None
+
+
+class GetUsersParams(BaseModel):
     cursor: Annotated[
         str | None,
         Field(
@@ -730,7 +795,7 @@ class Limit5(RootModel[int]):
     ] = None
 
 
-class GetGatewayEventsRequest(BaseModel):
+class GetGatewayEventsParams(BaseModel):
     start_time: Annotated[
         AwareDatetime | None,
         Field(
@@ -772,6 +837,137 @@ class GetGatewayEventsRequest(BaseModel):
     ] = None
 
 
+class GetExploreMetadataParams(BaseModel):
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor returned by a previous page. Omit to fetch the first page.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of items to return.",
+            ge=1,
+            le=1000,
+            title="Limit",
+        ),
+    ] = 100
+    provider: Annotated[
+        str | None,
+        Field(
+            description="Filter to a provider by slug prefix, e.g. 'anthropic'. Preserved by the cursor; if repeated, must match the original filter.",
+            title="Provider",
+        ),
+    ] = None
+    q: Annotated[
+        str | None,
+        Field(
+            description="Case-insensitive substring search over metadata slugs. Preserved by the cursor; if repeated, must match the original filter.",
+            title="Q",
+        ),
+    ] = None
+
+
+class GetRoutesParams(BaseModel):
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor returned by a previous page. Omit to fetch the first page.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of items to return.",
+            ge=1,
+            le=1000,
+            title="Limit",
+        ),
+    ] = 100
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Filter by owning team ID. Preserved by the cursor; if repeated, must match the original filter.",
+            title="Team Id",
+        ),
+    ] = None
+    name: Annotated[
+        str | None,
+        Field(
+            description="Filter by exact route name. Preserved by the cursor; if repeated, must match the original filter.",
+            title="Name",
+        ),
+    ] = None
+
+
+class StatusItem(RootModel[str]):
+    root: Annotated[str, Field(min_length=1)]
+
+
+class ListSandboxesParams(BaseModel):
+    q: Annotated[
+        str | None,
+        Field(
+            description="Search indexed sandbox names and labels. Search is applied before pagination.",
+            examples=["api-review"],
+        ),
+    ] = None
+    status: Annotated[
+        list[StatusItem] | None,
+        Field(
+            description="Deployment statuses. Repeat the query parameter for each status, for example status=DEPLOYED&status=FAILED. Unknown values are rejected. Cannot be combined with external_id.",
+            examples=[["DEPLOYED", "FAILED"]],
+            min_length=1,
+        ),
+    ] = None
+    external_id: Annotated[
+        str | None,
+        Field(
+            description="Filter by a caller-owned external identifier. Cannot be combined with status.",
+            examples=["api-review-20260916-001"],
+        ),
+    ] = None
+
+
+class ListImagesParams(BaseModel):
+    sort: Annotated[
+        str,
+        Field(
+            description="Sort by repository name or creation time: name:asc, name:desc, createdAt:asc, or createdAt:desc. Keep the same sort when following a cursor."
+        ),
+    ] = "createdAt:desc"
+    q: Annotated[
+        str | None,
+        Field(
+            description="Case-sensitive repository name prefix. Search is applied before pagination."
+        ),
+    ] = None
+
+
+class ListImageTagsParams(BaseModel):
+    sort: Annotated[
+        str,
+        Field(
+            description="Sort by tag name: name:asc or name:desc. Keep the same sort when following a cursor."
+        ),
+    ] = "name:asc"
+    q: Annotated[
+        str | None,
+        Field(
+            description="Case-sensitive tag name prefix. Cannot be combined with name. Forces ascending name order."
+        ),
+    ] = None
+    name: Annotated[
+        str | None,
+        Field(
+            description="Exact tag name. Cannot be combined with q. Forces ascending name order."
+        ),
+    ] = None
+
+
 class PaginationResponse(BaseModel):
     has_more: Annotated[
         bool,
@@ -797,6 +993,13 @@ class VolumeTag(BaseModel):
         Field(
             description="Digest of the version the tag points at, as `b3:<hex>`.",
             title="Digest",
+        ),
+    ]
+    expires_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="When the tag stops resolving and leaves the volume, in ISO 8601 format. Null for a tag that never expires. The version it points at is not affected.",
+            title="Expires At",
         ),
     ]
 
@@ -929,6 +1132,448 @@ class ListVolumeNamespacesResponse(BaseModel):
     ]
 
 
+class VolumeSyncAuthenticationAWSAssumeRole(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    role_arn: Annotated[
+        str,
+        Field(
+            description="AWS IAM role ARN to assume.", min_length=1, title="Role Arn"
+        ),
+    ]
+    region: Annotated[
+        str,
+        Field(
+            description="AWS region for the assumed role session.",
+            min_length=1,
+            title="Region",
+        ),
+    ]
+
+
+class VolumeSyncAuthenticationAWSOIDC(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    role_arn: Annotated[
+        str,
+        Field(
+            description="AWS IAM role ARN to assume through OIDC.",
+            min_length=1,
+            title="Role Arn",
+        ),
+    ]
+    region: Annotated[
+        str,
+        Field(
+            description="AWS region for the OIDC role session.",
+            min_length=1,
+            title="Region",
+        ),
+    ]
+
+
+class VolumeSyncAuthenticationGCPOIDC(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    service_account: Annotated[
+        str,
+        Field(
+            description="GCP service account to impersonate through OIDC.",
+            min_length=1,
+            title="Service Account",
+        ),
+    ]
+    workload_identity_provider: Annotated[
+        str,
+        Field(
+            description="Full resource name of the GCP workload identity provider.",
+            min_length=1,
+            title="Workload Identity Provider",
+        ),
+    ]
+
+
+class VolumeSyncDestination(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    ref: Annotated[
+        str,
+        Field(
+            description="Destination as bdn:<namespace>/<volume> with an optional tag.",
+            title="Ref",
+        ),
+    ]
+
+
+class VolumeSyncError(BaseModel):
+    code: Annotated[
+        str,
+        Field(
+            description="Stable machine-readable failure classification.", title="Code"
+        ),
+    ]
+    message: Annotated[
+        str, Field(description="Redacted user-facing failure message.", title="Message")
+    ]
+
+
+class AuthSecretName(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="Optional workspace secret containing credentials for this source.",
+            min_length=1,
+            title="Auth Secret Name",
+        ),
+    ] = None
+
+
+class VolumeSyncSourceAzure(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    uri: Annotated[
+        str,
+        Field(
+            description="Remote source URI to materialize into the destination volume.",
+            title="Uri",
+        ),
+    ]
+    include: Annotated[
+        list[str] | None,
+        Field(description="Glob patterns selecting files to include.", title="Include"),
+    ] = None
+    exclude: Annotated[
+        list[str] | None,
+        Field(description="Glob patterns selecting files to exclude.", title="Exclude"),
+    ] = None
+    auth_secret_name: Annotated[
+        AuthSecretName | None,
+        Field(
+            description="Optional workspace secret containing credentials for this source.",
+            title="Auth Secret Name",
+        ),
+    ] = None
+    type: Annotated[
+        Literal["AZURE"],
+        Field(description="Azure Blob Storage source type.", title="Type"),
+    ]
+
+
+class VolumeSyncSourceBasetenTraining(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    uri: Annotated[
+        str,
+        Field(
+            description="Remote source URI to materialize into the destination volume.",
+            title="Uri",
+        ),
+    ]
+    include: Annotated[
+        list[str] | None,
+        Field(description="Glob patterns selecting files to include.", title="Include"),
+    ] = None
+    exclude: Annotated[
+        list[str] | None,
+        Field(description="Glob patterns selecting files to exclude.", title="Exclude"),
+    ] = None
+    type: Annotated[
+        Literal["BASETEN_TRAINING"],
+        Field(description="Baseten training artifact source type.", title="Type"),
+    ]
+
+
+class VolumeSyncSourceCoreWeave(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    uri: Annotated[
+        str,
+        Field(
+            description="Remote source URI to materialize into the destination volume.",
+            title="Uri",
+        ),
+    ]
+    include: Annotated[
+        list[str] | None,
+        Field(description="Glob patterns selecting files to include.", title="Include"),
+    ] = None
+    exclude: Annotated[
+        list[str] | None,
+        Field(description="Glob patterns selecting files to exclude.", title="Exclude"),
+    ] = None
+    auth_secret_name: Annotated[
+        AuthSecretName | None,
+        Field(
+            description="Optional workspace secret containing credentials for this source.",
+            title="Auth Secret Name",
+        ),
+    ] = None
+    type: Annotated[
+        Literal["COREWEAVE"],
+        Field(description="CoreWeave object storage source type.", title="Type"),
+    ]
+
+
+class VolumeSyncSourceGCS(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    uri: Annotated[
+        str,
+        Field(
+            description="Remote source URI to materialize into the destination volume.",
+            title="Uri",
+        ),
+    ]
+    include: Annotated[
+        list[str] | None,
+        Field(description="Glob patterns selecting files to include.", title="Include"),
+    ] = None
+    exclude: Annotated[
+        list[str] | None,
+        Field(description="Glob patterns selecting files to exclude.", title="Exclude"),
+    ] = None
+    auth_secret_name: Annotated[
+        AuthSecretName | None,
+        Field(
+            description="Optional workspace secret containing credentials for this source.",
+            title="Auth Secret Name",
+        ),
+    ] = None
+    type: Annotated[
+        Literal["GCS"],
+        Field(description="Google Cloud Storage source type.", title="Type"),
+    ]
+    gcp_oidc: Annotated[
+        VolumeSyncAuthenticationGCPOIDC | None,
+        Field(
+            description="GCP OIDC authentication for this source. Cannot be combined with auth_secret_name."
+        ),
+    ] = None
+
+
+class VolumeSyncSourceHuggingFace(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    uri: Annotated[
+        str,
+        Field(
+            description="Remote source URI to materialize into the destination volume.",
+            title="Uri",
+        ),
+    ]
+    include: Annotated[
+        list[str] | None,
+        Field(description="Glob patterns selecting files to include.", title="Include"),
+    ] = None
+    exclude: Annotated[
+        list[str] | None,
+        Field(description="Glob patterns selecting files to exclude.", title="Exclude"),
+    ] = None
+    auth_secret_name: Annotated[
+        AuthSecretName | None,
+        Field(
+            description="Optional workspace secret containing credentials for this source.",
+            title="Auth Secret Name",
+        ),
+    ] = None
+    type: Annotated[
+        Literal["HUGGING_FACE"],
+        Field(description="Hugging Face source type.", title="Type"),
+    ]
+
+
+class VolumeSyncSourceR2(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    uri: Annotated[
+        str,
+        Field(
+            description="Remote source URI to materialize into the destination volume.",
+            title="Uri",
+        ),
+    ]
+    include: Annotated[
+        list[str] | None,
+        Field(description="Glob patterns selecting files to include.", title="Include"),
+    ] = None
+    exclude: Annotated[
+        list[str] | None,
+        Field(description="Glob patterns selecting files to exclude.", title="Exclude"),
+    ] = None
+    auth_secret_name: Annotated[
+        AuthSecretName | None,
+        Field(
+            description="Optional workspace secret containing credentials for this source.",
+            title="Auth Secret Name",
+        ),
+    ] = None
+    type: Annotated[
+        Literal["R2"], Field(description="Cloudflare R2 source type.", title="Type")
+    ]
+
+
+class VolumeSyncSourceS3(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    uri: Annotated[
+        str,
+        Field(
+            description="Remote source URI to materialize into the destination volume.",
+            title="Uri",
+        ),
+    ]
+    include: Annotated[
+        list[str] | None,
+        Field(description="Glob patterns selecting files to include.", title="Include"),
+    ] = None
+    exclude: Annotated[
+        list[str] | None,
+        Field(description="Glob patterns selecting files to exclude.", title="Exclude"),
+    ] = None
+    auth_secret_name: Annotated[
+        AuthSecretName | None,
+        Field(
+            description="Optional workspace secret containing credentials for this source.",
+            title="Auth Secret Name",
+        ),
+    ] = None
+    type: Annotated[
+        Literal["S3"], Field(description="Amazon S3 source type.", title="Type")
+    ]
+    aws_assume_role: Annotated[
+        VolumeSyncAuthenticationAWSAssumeRole | None,
+        Field(
+            description="AWS AssumeRole authentication for this source. Cannot be combined with auth_secret_name."
+        ),
+    ] = None
+    aws_oidc: Annotated[
+        VolumeSyncAuthenticationAWSOIDC | None,
+        Field(
+            description="AWS OIDC authentication for this source. Cannot be combined with other authentication fields."
+        ),
+    ] = None
+
+
+class VolumeSyncStatus(StrEnum):
+    PENDING = "PENDING"
+    SYNCING = "SYNCING"
+    READY = "READY"
+    FAILED = "FAILED"
+    CANCELED = "CANCELED"
+
+
+class VolumeSync(BaseModel):
+    sync_id: Annotated[
+        str, Field(description="Identifier of this sync operation.", title="Sync Id")
+    ]
+    status: Annotated[
+        VolumeSyncStatus, Field(description="Current lifecycle state of the sync.")
+    ]
+    source: Annotated[
+        VolumeSyncSourceHuggingFace
+        | VolumeSyncSourceS3
+        | VolumeSyncSourceGCS
+        | VolumeSyncSourceAzure
+        | VolumeSyncSourceR2
+        | VolumeSyncSourceCoreWeave
+        | VolumeSyncSourceBasetenTraining,
+        Field(
+            description="Remote source being synced.",
+            discriminator="type",
+            title="Source",
+        ),
+    ]
+    destination: Annotated[
+        VolumeSyncDestination, Field(description="BDN volume being populated.")
+    ]
+    volume_version_id: Annotated[
+        str | None,
+        Field(
+            description="Produced artifact identifier; null until the sync is ready.",
+            title="Volume Version Id",
+        ),
+    ] = None
+    version_ref: Annotated[
+        str | None,
+        Field(
+            description="Immutable BDN reference; null until the sync is ready.",
+            title="Version Ref",
+        ),
+    ] = None
+    content_digest: Annotated[
+        str | None,
+        Field(
+            description="BLAKE3 digest of the synced content; null until available.",
+            title="Content Digest",
+        ),
+    ] = None
+    total_size_bytes: Annotated[
+        int | None,
+        Field(
+            description="Total size of the synced content in bytes; null until available.",
+            title="Total Size Bytes",
+        ),
+    ] = None
+    created_at: Annotated[
+        AwareDatetime,
+        Field(description="Time at which the sync was created.", title="Created At"),
+    ]
+    completed_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Time at which the sync reached a terminal state.",
+            title="Completed At",
+        ),
+    ] = None
+    error: Annotated[
+        VolumeSyncError | None,
+        Field(description="Redacted failure details; null unless the sync failed."),
+    ] = None
+
+
+class VolumeSyncs(BaseModel):
+    items: Annotated[
+        list[VolumeSync], Field(description="Items in this page.", title="Items")
+    ]
+    pagination: Annotated[
+        PaginationResponse, Field(description="Pagination metadata for the page.")
+    ]
+
+
+class CreateVolumeSyncRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    source: Annotated[
+        VolumeSyncSourceHuggingFace
+        | VolumeSyncSourceS3
+        | VolumeSyncSourceGCS
+        | VolumeSyncSourceAzure
+        | VolumeSyncSourceR2
+        | VolumeSyncSourceCoreWeave
+        | VolumeSyncSourceBasetenTraining,
+        Field(
+            description="Remote source to sync from.",
+            discriminator="type",
+            title="Source",
+        ),
+    ]
+    destination: Annotated[
+        VolumeSyncDestination, Field(description="BDN volume to sync into.")
+    ]
+
+
 class DeleteVolumeRequest(BaseModel):
     expected_sequence: Annotated[
         int | None,
@@ -1000,7 +1645,7 @@ class VolumeVersion(BaseModel):
     lifecycle: Annotated[
         str,
         Field(
-            description="Lifecycle state of the version, for example ALIVE or TOMBSTONED.",
+            description="Lifecycle state of the version: ALIVE, or TOMBSTONED once it has been deleted or has expired.",
             title="Lifecycle",
         ),
     ]
@@ -1032,10 +1677,17 @@ class VolumeVersion(BaseModel):
             title="Created At",
         ),
     ]
+    expires_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="When the version expires, in ISO 8601 format. At that instant it becomes TOMBSTONED with `tombstoned_at` set to this value, and every tag pointing at it drops. Null for a version that never expires, and null once the lifecycle is TOMBSTONED.",
+            title="Expires At",
+        ),
+    ]
     tombstoned_at: Annotated[
         AwareDatetime | None,
         Field(
-            description="When the version was deleted, in ISO 8601 format. Null unless the lifecycle is TOMBSTONED.",
+            description="When the version was deleted or expired, in ISO 8601 format. Null unless the lifecycle is TOMBSTONED.",
             title="Tombstoned At",
         ),
     ]
@@ -1154,7 +1806,7 @@ class VolumeVersionDetail(BaseModel):
     lifecycle: Annotated[
         str,
         Field(
-            description="Lifecycle state of the version, for example ALIVE or TOMBSTONED.",
+            description="Lifecycle state of the version: ALIVE, or TOMBSTONED once it has been deleted or has expired.",
             title="Lifecycle",
         ),
     ]
@@ -1186,10 +1838,17 @@ class VolumeVersionDetail(BaseModel):
             title="Created At",
         ),
     ]
+    expires_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="When the version expires, in ISO 8601 format. At that instant it becomes TOMBSTONED with `tombstoned_at` set to this value, and every tag pointing at it drops. Null for a version that never expires, and null once the lifecycle is TOMBSTONED.",
+            title="Expires At",
+        ),
+    ]
     tombstoned_at: Annotated[
         AwareDatetime | None,
         Field(
-            description="When the version was deleted, in ISO 8601 format. Null unless the lifecycle is TOMBSTONED.",
+            description="When the version was deleted or expired, in ISO 8601 format. Null unless the lifecycle is TOMBSTONED.",
             title="Tombstoned At",
         ),
     ]
@@ -1263,6 +1922,39 @@ class RestoreVolumeVersionResponse(BaseModel):
         Field(
             description="Revision of the volume after the restore.",
             title="Volume Sequence",
+        ),
+    ]
+
+
+class TokenScope(StrEnum):
+    sandboxes = "sandboxes"
+
+
+class CreateTokenRequest(BaseModel):
+    scopes: Annotated[
+        list[TokenScope],
+        Field(
+            description="What the token should grant access to. Only `sandboxes` is supported today; the token then authenticates against the sandbox API.",
+            examples=[["sandboxes"]],
+            min_length=1,
+            title="Scopes",
+        ),
+    ]
+
+
+class Token(BaseModel):
+    token: Annotated[
+        str,
+        Field(
+            description="Short-lived bearer token for the sandbox API. Send it as Authorization: Bearer <token>.",
+            title="Token",
+        ),
+    ]
+    expires_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="Token expiry in ISO 8601 format. Tokens cannot be renewed; request a new one.",
+            title="Expires At",
         ),
     ]
 
@@ -2230,6 +2922,52 @@ class AuditLogEventModelDeploymentRetried(BaseModel):
     retried: Annotated[bool, Field(title="Retried")]
 
 
+class AuditLogEventModelRenamed(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[Literal["MODEL_RENAMED"], Field(title="Event Type")]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    previous_name: Annotated[str | None, Field(title="Previous Name")]
+
+
+class AuditLogEventProviderConnectionCreated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["PROVIDER_CONNECTION_CREATED"], Field(title="Event Type")
+    ]
+    provider_connection_id: Annotated[str, Field(title="Provider Connection Id")]
+    provider: Annotated[str, Field(title="Provider")]
+    secret_name: Annotated[str, Field(title="Secret Name")]
+
+
+class AuditLogEventProviderConnectionDeleted(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["PROVIDER_CONNECTION_DELETED"], Field(title="Event Type")
+    ]
+    provider_connection_id: Annotated[str, Field(title="Provider Connection Id")]
+    provider: Annotated[str, Field(title="Provider")]
+    secret_name: Annotated[str, Field(title="Secret Name")]
+
+
+class AuditLogEventProviderConnectionUpdated(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    event_type: Annotated[
+        Literal["PROVIDER_CONNECTION_UPDATED"], Field(title="Event Type")
+    ]
+    provider_connection_id: Annotated[str, Field(title="Provider Connection Id")]
+    provider: Annotated[str, Field(title="Provider")]
+    secret_name: Annotated[str, Field(title="Secret Name")]
+
+
 class AuditLogEventReplicaTerminated(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -2298,6 +3036,7 @@ class AuditLogEventType(StrEnum):
     MODEL_DEPLOYMENT_INSTANCE_TYPE_CHANGED = "MODEL_DEPLOYMENT_INSTANCE_TYPE_CHANGED"
     MODEL_DEPLOYMENT_DELETED = "MODEL_DEPLOYMENT_DELETED"
     MODEL_DELETED = "MODEL_DELETED"
+    MODEL_RENAMED = "MODEL_RENAMED"
     CHAIN_DEPLOYED = "CHAIN_DEPLOYED"
     CHAIN_DEPLOYMENT_ACTIVATED = "CHAIN_DEPLOYMENT_ACTIVATED"
     CHAIN_DEPLOYMENT_DEACTIVATED = "CHAIN_DEPLOYMENT_DEACTIVATED"
@@ -2315,6 +3054,9 @@ class AuditLogEventType(StrEnum):
     GATEWAY_ENDPOINT_CREATED = "GATEWAY_ENDPOINT_CREATED"
     GATEWAY_ENDPOINT_UPDATED = "GATEWAY_ENDPOINT_UPDATED"
     GATEWAY_ENDPOINT_DELETED = "GATEWAY_ENDPOINT_DELETED"
+    PROVIDER_CONNECTION_CREATED = "PROVIDER_CONNECTION_CREATED"
+    PROVIDER_CONNECTION_UPDATED = "PROVIDER_CONNECTION_UPDATED"
+    PROVIDER_CONNECTION_DELETED = "PROVIDER_CONNECTION_DELETED"
     USER_INVITED = "USER_INVITED"
     USER_JOINED_ORGANIZATION = "USER_JOINED_ORGANIZATION"
     WEBHOOK_SIGNING_SECRET_CREATED = "WEBHOOK_SIGNING_SECRET_CREATED"
@@ -2477,9 +3219,11 @@ class AuditLogEventTypeGroup(StrEnum):
     ENVIRONMENT_SETTINGS = "ENVIRONMENT_SETTINGS"
     REPLICA_TERMINATED = "REPLICA_TERMINATED"
     DELETED = "DELETED"
+    METADATA = "METADATA"
     SECRETS = "SECRETS"
     API_KEYS = "API_KEYS"
     GATEWAY = "GATEWAY"
+    CODE = "CODE"
     WEBHOOK_SIGNING_SECRETS = "WEBHOOK_SIGNING_SECRETS"
     USER_MANAGEMENT = "USER_MANAGEMENT"
     DIRECTORY_GROUP_MANAGEMENT = "DIRECTORY_GROUP_MANAGEMENT"
@@ -2688,6 +3432,33 @@ class ModelTombstone(BaseModel):
     ]
 
 
+class Name1(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="New name for the model, unique within its team. Renaming does not change the model ID, endpoints, or deployments. Pushes that still use the old model_name create another model or target a model that now uses that name, so update config.yaml after renaming.",
+            examples=["my-model"],
+            max_length=255,
+            min_length=1,
+            title="Name",
+        ),
+    ] = None
+
+
+class UpdateModelRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    name: Annotated[
+        Name1 | None,
+        Field(
+            description="New name for the model, unique within its team. Renaming does not change the model ID, endpoints, or deployments. Pushes that still use the old model_name create another model or target a model that now uses that name, so update config.yaml after renaming.",
+            examples=["my-model"],
+            title="Name",
+        ),
+    ] = None
+
+
 class DeploymentArchiveSource(BaseModel):
     kind: Annotated[Literal["model_archive"], Field(title="Kind")] = "model_archive"
     deployment: Annotated[
@@ -2725,7 +3496,7 @@ class DeploymentTombstone(BaseModel):
     ]
 
 
-class Name1(RootModel[str]):
+class Name2(RootModel[str]):
     root: Annotated[
         str | None,
         Field(
@@ -2743,7 +3514,7 @@ class UpdateDeploymentRequest(BaseModel):
         extra="forbid",
     )
     name: Annotated[
-        Name1 | None,
+        Name2 | None,
         Field(
             description="New name for the deployment, unique among the model's deployments. Only alphanumeric characters, hyphens, underscores, and periods are allowed.",
             examples=["my-deployment"],
@@ -4809,14 +5580,54 @@ class SearchTrainingJobsRequest(BaseModel):
     ] = [OrderBy.model_validate({"field": "created_at", "order": "desc"})]
 
 
+class EnablementDetails(BaseModel):
+    reason: Annotated[
+        str,
+        Field(
+            description="Machine-readable reason the model is not enabled. Currently one of 'needs_approval', 'sequence_length_unsupported' or 'loops_not_enabled'. Deliberately not a closed enum: values are added as the check learns to distinguish cases that call for a different action, so treat an unrecognized value as 'not enabled, reason unknown' rather than an error.",
+            examples=["needs_approval"],
+            title="Reason",
+        ),
+    ]
+    reason_detail: Annotated[
+        str,
+        Field(
+            description="Human-readable explanation of the reason.",
+            title="Reason Detail",
+        ),
+    ]
+    remediation: Annotated[
+        str,
+        Field(
+            description="Human-readable next step to enable the model.",
+            title="Remediation",
+        ),
+    ]
+
+
 class SupportedModel(BaseModel):
     model_name: Annotated[
         str, Field(description="The name of the supported model.", title="Model Name")
     ]
+    max_seq_len: Annotated[
+        int,
+        Field(
+            description="The longest sequence length Baseten supports for this model. Independent of the caller: see 'max_enabled_seq_len' for what this workspace can actually train at. Named to match the 'max_seq_len' query parameter and the field of the same name on run creation, so one name follows the value through the API.",
+            title="Max Seq Len",
+        ),
+    ]
+    max_enabled_seq_len: Annotated[
+        int,
+        Field(
+            description="The longest sequence length this workspace can train at. Lower than 'max_seq_len' when the longer configurations need hardware the workspace is not approved for — a model's longer sequence lengths often need a bigger SKU of the same GPU. Zero when the workspace cannot run the model at all, so a client can compare against a required length without a null case.",
+            title="Max Enabled Seq Len",
+        ),
+    ] = 0
     max_context_length: Annotated[
         int,
         Field(
-            description="The maximum context length (in tokens) supported by this model.",
+            deprecated=True,
+            description="Deprecated. Use 'max_seq_len', which carries the same value. Kept so existing clients keep working.",
             title="Max Context Length",
         ),
     ]
@@ -4827,16 +5638,34 @@ class SupportedModel(BaseModel):
             title="Supports Vision Language",
         ),
     ]
+    enabled: Annotated[
+        bool,
+        Field(
+            description="Whether this workspace can start a run with this model now. False means Baseten supports it but the workspace cannot use it yet; 'not_enabled' says why. Capacity is resolved when the run is created, so true is not a guarantee that GPUs are free.",
+            title="Enabled",
+        ),
+    ] = True
+    enablement_details: Annotated[
+        EnablementDetails | None,
+        Field(
+            description="Why the model is not enabled, and what would change it. Present only when 'enabled' is false — an enabled model has nothing to explain. Read 'enabled' for the state; this is the detail behind it."
+        ),
+    ] = None
 
 
 class GetLoopsCapabilitiesResponse(BaseModel):
     supported_models: Annotated[
         list[SupportedModel],
         Field(
-            description="List of models available on the server.",
+            description="Models Baseten supports for this use case, each carrying an 'enabled' flag saying whether this workspace can run it now, and 'enablement_details' when it cannot. Filter on 'enabled' to get the models you can use.",
             title="Supported Models",
         ),
     ]
+
+
+class LoopsUseCase(StrEnum):
+    rl = "rl"
+    sft = "sft"
 
 
 class LoopsSession(BaseModel):
@@ -4912,7 +5741,7 @@ class LoopsSampler(BaseModel):
     ] = 1
 
 
-class Name2(RootModel[str]):
+class Name3(RootModel[str]):
     root: Annotated[
         str | None,
         Field(
@@ -4937,7 +5766,7 @@ class CreateLoopsRunRequest(BaseModel):
         Field(description="Base model ID (e.g. 'Qwen/Qwen3-8B').", title="Base Model"),
     ]
     name: Annotated[
-        Name2 | None,
+        Name3 | None,
         Field(
             description="Optional display name for the run. Defaults to the base model name when omitted.",
             title="Name",
@@ -5023,6 +5852,12 @@ class ListLoopsSamplersResponse(BaseModel):
 
 
 class CreateLoopsSamplerRequest(BaseModel):
+    availability_model: Annotated[
+        V1AvailabilityModel | None,
+        Field(
+            description="Capacity the sampler runs on. 'spot' allows preemption when its GPUs are reclaimed. Defaults to 'dedicated' for standalone samplers. Paired samplers inherit their run's availability model; an explicit value must match it."
+        ),
+    ] = None
     session_id: Annotated[
         str,
         Field(
@@ -5170,6 +6005,39 @@ class LoopsCheckpointFilesResponse(BaseModel):
         Field(
             description="Total number of checkpoint files available.",
             title="Total Count",
+        ),
+    ]
+
+
+class LoopsCheckpointS3Source(BaseModel):
+    kind: Annotated[Literal["s3"], Field(title="Kind")] = "s3"
+
+
+class LoopsCheckpointVolumeSource(BaseModel):
+    kind: Annotated[Literal["volume"], Field(title="Kind")] = "volume"
+    volume_ref: Annotated[
+        str,
+        Field(
+            description="Ref of the volume version holding the checkpoint, as `bdn:<namespace>/<volume>:<tag>`.",
+            title="Volume Ref",
+        ),
+    ]
+    path: Annotated[
+        str,
+        Field(
+            description="Directory inside that version holding the checkpoint's files.",
+            title="Path",
+        ),
+    ]
+
+
+class LoopsCheckpointSourceResponse(BaseModel):
+    source: Annotated[
+        LoopsCheckpointS3Source | LoopsCheckpointVolumeSource,
+        Field(
+            description="`s3` means the files endpoint serves presigned URLs for this checkpoint; `volume` carries the ref to pull instead.",
+            discriminator="kind",
+            title="Source",
         ),
     ]
 
@@ -5749,6 +6617,9 @@ class APIKeyTombstone(BaseModel):
 class LimitType(StrEnum):
     REQUEST = "REQUEST"
     TOKEN = "TOKEN"
+    CONCURRENT_REQUEST = "CONCURRENT_REQUEST"
+    UNCACHED_INPUT_TOKEN = "UNCACHED_INPUT_TOKEN"
+    OUTPUT_TOKEN = "OUTPUT_TOKEN"
 
 
 class ModelAPIOrgDetails(BaseModel):
@@ -6679,6 +7550,39 @@ class Subtotal8(RootModel[str]):
     ]
 
 
+class ToolCallUsageBucket(BaseModel):
+    date: Annotated[
+        date_aliased,
+        Field(description="UTC day the usage was recorded on.", title="Date"),
+    ]
+    provider: Annotated[
+        str,
+        Field(description="Tool provider, such as exa or parallel.", title="Provider"),
+    ]
+    sku: Annotated[
+        str,
+        Field(
+            description="Charge unit, as `<provider>/<unit>`. The unit is what the provider reported, or the tool name when it reported none. Its meaning varies by provider.",
+            title="Sku",
+        ),
+    ]
+    model: Annotated[
+        str, Field(description="Model that made the tool calls.", title="Model")
+    ]
+    calls: Annotated[int, Field(description="Number of tool calls.", title="Calls")]
+    quantity: Annotated[
+        float,
+        Field(
+            description="Billable quantity in the provider's sku unit, summed over the calls.",
+            title="Quantity",
+        ),
+    ]
+
+
+class ToolCallUsageResponse(BaseModel):
+    items: Annotated[list[ToolCallUsageBucket] | None, Field(title="Items")] = None
+
+
 class UserInfo(BaseModel):
     user_id: Annotated[
         str, Field(description="Unique identifier for the user", title="User Id")
@@ -6785,6 +7689,333 @@ class GatewayEventsResponse(BaseModel):
     pagination: Annotated[
         PaginationResponse, Field(description="Pagination metadata for the page.")
     ]
+
+
+class ExploreCostValues(BaseModel):
+    input: Annotated[
+        float | None,
+        Field(description="USD per 1M input tokens, when available.", title="Input"),
+    ] = None
+    output: Annotated[
+        float | None,
+        Field(description="USD per 1M output tokens, when available.", title="Output"),
+    ] = None
+    cache_read: Annotated[
+        float | None,
+        Field(
+            description="USD per 1M input tokens read from cache, when available.",
+            title="Cache Read",
+        ),
+    ] = None
+    cache_write: Annotated[
+        float | None,
+        Field(
+            description="USD per 1M input tokens written to cache, when available.",
+            title="Cache Write",
+        ),
+    ] = None
+
+
+class ExploreMetadataAPIFormats(BaseModel):
+    messages: Annotated[
+        bool, Field(description="Anthropic Messages API support.", title="Messages")
+    ] = False
+    responses: Annotated[
+        bool, Field(description="OpenAI Responses API support.", title="Responses")
+    ] = False
+    chat_completions: Annotated[
+        bool,
+        Field(
+            description="OpenAI Chat Completions API support.", title="Chat Completions"
+        ),
+    ] = False
+
+
+class RouteTargetAnthropic(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    type: Annotated[
+        Literal["ANTHROPIC"],
+        Field(description="Target kind for Anthropic.", title="Type"),
+    ]
+    model: Annotated[
+        str,
+        Field(
+            description="Model name sent to the provider.", min_length=1, title="Model"
+        ),
+    ]
+    secret_name: Annotated[
+        str,
+        Field(
+            description="Name of a credential secret owned by the route's team.",
+            min_length=1,
+            title="Secret Name",
+        ),
+    ]
+
+
+class RouteTargetBasetenModelAPI(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    type: Annotated[
+        Literal["BASETEN_MODEL_API"],
+        Field(description="Target kind for a Baseten Model API.", title="Type"),
+    ]
+    model: Annotated[
+        str,
+        Field(description="Name of the target Model API.", min_length=1, title="Model"),
+    ]
+
+
+class RouteTargetOpenAI(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    type: Annotated[
+        Literal["OPENAI"], Field(description="Target kind for OpenAI.", title="Type")
+    ]
+    model: Annotated[
+        str,
+        Field(
+            description="Model name sent to the provider.", min_length=1, title="Model"
+        ),
+    ]
+    secret_name: Annotated[
+        str,
+        Field(
+            description="Name of a credential secret owned by the route's team.",
+            min_length=1,
+            title="Secret Name",
+        ),
+    ]
+
+
+class RouteTargetXAI(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    type: Annotated[
+        Literal["XAI"], Field(description="Target kind for xAI.", title="Type")
+    ]
+    model: Annotated[
+        str,
+        Field(
+            description="Model name sent to the provider.", min_length=1, title="Model"
+        ),
+    ]
+    secret_name: Annotated[
+        str,
+        Field(
+            description="Name of a credential secret owned by the route's team.",
+            min_length=1,
+            title="Secret Name",
+        ),
+    ]
+
+
+class TeamId1(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="Identifier of the team that owns the route. When omitted, uses your organization's default team.",
+            examples=["abc1234"],
+            min_length=1,
+            title="Team Id",
+        ),
+    ] = None
+
+
+class DisplayName(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="Display label. Omit to use the route name; null is not accepted.",
+            examples=["Assistant"],
+            max_length=255,
+            min_length=1,
+            title="Display Name",
+        ),
+    ] = None
+
+
+class Description(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="Short description of the route. Omit for no description; null is not accepted.",
+            examples=["Assistant for code review and debugging."],
+            max_length=1000,
+            title="Description",
+        ),
+    ] = None
+
+
+class CreateRouteRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    team_id: Annotated[
+        TeamId1 | None,
+        Field(
+            description="Identifier of the team that owns the route. When omitted, uses your organization's default team.",
+            examples=["abc1234"],
+            title="Team Id",
+        ),
+    ] = None
+    display_name: Annotated[
+        DisplayName | None,
+        Field(
+            description="Display label. Omit to use the route name; null is not accepted.",
+            examples=["Assistant"],
+            title="Display Name",
+        ),
+    ] = None
+    target: Annotated[
+        RouteTargetBasetenModelAPI
+        | RouteTargetAnthropic
+        | RouteTargetOpenAI
+        | RouteTargetXAI,
+        Field(
+            description="Upstream target for the route.",
+            discriminator="type",
+            examples=[{"model": "zai-org/GLM-5.3", "type": "BASETEN_MODEL_API"}],
+            title="Target",
+        ),
+    ]
+    description: Annotated[
+        Description | None,
+        Field(
+            description="Short description of the route. Omit for no description; null is not accepted.",
+            examples=["Assistant for code review and debugging."],
+            title="Description",
+        ),
+    ] = None
+
+
+class RouteProvider(StrEnum):
+    BASETEN_MODEL_API = "BASETEN_MODEL_API"
+    OPENAI = "OPENAI"
+    ANTHROPIC = "ANTHROPIC"
+    XAI = "XAI"
+    VERTEX = "VERTEX"
+    OPENAI_COMPATIBLE = "OPENAI_COMPATIBLE"
+
+
+class RoutesUsageResult(BaseModel):
+    user_id: Annotated[
+        str | None,
+        Field(
+            description="ID of the user who created the Routes key. Null when not grouping by USER.",
+            title="User Id",
+        ),
+    ] = None
+    model: Annotated[
+        str | None,
+        Field(
+            description="Model name. For external providers, the model name sent to the provider. Null when not grouping by MODEL.",
+            title="Model",
+        ),
+    ] = None
+    provider: Annotated[
+        RouteProvider | None,
+        Field(
+            description="Provider that served the requests. Null when not grouping by PROVIDER."
+        ),
+    ] = None
+    cost_usd: Annotated[
+        str,
+        Field(
+            description="Estimated cost in USD, returned as an exact decimal string. Costs for OpenAI, Anthropic, and xAI estimate what you pay those providers; they are not Baseten charges.",
+            examples=["0.00035625"],
+            title="Cost Usd",
+        ),
+    ]
+    input_tokens: Annotated[
+        int,
+        Field(
+            description="Input tokens, including cached input tokens.",
+            title="Input Tokens",
+        ),
+    ]
+    cached_input_tokens: Annotated[
+        int,
+        Field(
+            description="Input tokens read from the prompt cache.",
+            title="Cached Input Tokens",
+        ),
+    ]
+    uncached_input_tokens: Annotated[
+        int,
+        Field(
+            description="Input tokens not read from the prompt cache, including tokens written to the cache.",
+            title="Uncached Input Tokens",
+        ),
+    ]
+    output_tokens: Annotated[
+        int, Field(description="Output tokens.", title="Output Tokens")
+    ]
+
+
+class RouteUsageDimension(StrEnum):
+    USER = "USER"
+    MODEL = "MODEL"
+    PROVIDER = "PROVIDER"
+
+
+class RouteTombstone(BaseModel):
+    id: Annotated[
+        str, Field(description="Stable identifier of the deleted route.", title="Id")
+    ]
+    name: Annotated[str, Field(description="Name of the deleted route.", title="Name")]
+
+
+class Description1(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="New description. Omit to keep the current description; use an empty string to clear it. Null is not accepted.",
+            examples=["Assistant for code review and debugging."],
+            max_length=1000,
+            title="Description",
+        ),
+    ] = None
+
+
+class DisplayName1(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="New display label. Omit to keep the current label; null is not accepted.",
+            examples=["Assistant"],
+            max_length=255,
+            min_length=1,
+            title="Display Name",
+        ),
+    ] = None
+
+
+class UpdateRouteRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    description: Annotated[
+        Description1 | None,
+        Field(
+            description="New description. Omit to keep the current description; use an empty string to clear it. Null is not accepted.",
+            examples=["Assistant for code review and debugging."],
+            title="Description",
+        ),
+    ] = None
+    display_name: Annotated[
+        DisplayName1 | None,
+        Field(
+            description="New display label. Omit to keep the current label; null is not accepted.",
+            examples=["Assistant"],
+            title="Display Name",
+        ),
+    ] = None
 
 
 class SharedEndpointRegion(StrEnum):
@@ -7022,7 +8253,7 @@ class EffectiveRateLimit(BaseModel):
     ]
 
 
-class Name3(RootModel[str]):
+class Name4(RootModel[str]):
     root: Annotated[
         str | None,
         Field(
@@ -7036,7 +8267,7 @@ class Name3(RootModel[str]):
 
 class GroupMetadata(BaseModel):
     name: Annotated[
-        Name3 | None,
+        Name4 | None,
         Field(
             description="Optional display name for the group.",
             examples=["Acme prod"],
@@ -7099,7 +8330,7 @@ class CreateGroupHierarchy(BaseModel):
 
 class UpdateGroupMetadata(BaseModel):
     name: Annotated[
-        Name3 | None,
+        Name4 | None,
         Field(
             description="Optional display name for the group.",
             examples=["Acme prod"],
@@ -7177,6 +8408,339 @@ class RegisterAPIKeyResponse(BaseModel):
     ]
 
 
+class SandboxDuration(RootModel[str]):
+    root: Annotated[
+        str,
+        Field(
+            description="Duration using seconds, minutes, hours, or composite durations such as 1h30m. Whole days and weeks are also supported, for example 7d or 2w.",
+            examples=["24h"],
+            pattern="^[+-]?(0|[0-9]+[dw]|([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h)(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))*)$",
+        ),
+    ]
+
+
+class Action(StrEnum):
+    DELETE = "DELETE"
+
+
+class Type(StrEnum):
+    TTL_IDLE = "TTL_IDLE"
+
+
+class SandboxTTLIdleExpirationPolicy(BaseModel):
+    action: Action
+    type: Literal["TTL_IDLE"]
+    value: SandboxDuration
+
+
+class Type1(StrEnum):
+    TTL_MAX_AGE = "TTL_MAX_AGE"
+
+
+class SandboxTTLMaxAgeExpirationPolicy(BaseModel):
+    action: Action
+    type: Literal["TTL_MAX_AGE"]
+    value: SandboxDuration
+
+
+class Type2(StrEnum):
+    DATE = "DATE"
+
+
+class SandboxDateExpirationPolicy(BaseModel):
+    action: Action
+    type: Literal["DATE"]
+    value: Annotated[AwareDatetime, Field(examples=["2026-09-23T21:26:58Z"])]
+
+
+class SandboxProxyTarget(BaseModel):
+    body: Annotated[
+        dict[str, str] | None,
+        Field(
+            description="Body fields to inject into matching requests. Values may contain {{SECRET:name}} references resolved from this rule's secrets.",
+            examples=[{"user": "baseten-api-review-0916"}],
+        ),
+    ] = None
+    destinations: Annotated[
+        list[str] | None,
+        Field(
+            description='Destination domains this rule applies to. Use ["*"] for a global rule that matches all destinations.',
+            examples=[["api.openai.com"]],
+        ),
+    ] = None
+    headers: Annotated[
+        dict[str, str] | None,
+        Field(
+            description="Headers to inject into matching requests. Values may contain {{SECRET:name}} references resolved from this rule's secrets.",
+            examples=[{"Authorization": "Bearer {{SECRET:openai-key}}"}],
+        ),
+    ] = None
+    secrets: Annotated[
+        dict[str, str] | None,
+        Field(
+            description="Named secret values for this routing rule, referenced in headers/body via {{SECRET:name}}. Stored encrypted at rest. Write-only: never returned in API responses.",
+            examples=[{"openai-key": "sk-proj-demo-not-a-valid-api-key"}],
+        ),
+    ] = None
+
+
+class SandboxEnv(BaseModel):
+    name: Annotated[
+        str | None,
+        Field(description="Name of the environment variable", examples=["NODE_ENV"]),
+    ] = None
+    secret: Annotated[
+        bool | None,
+        Field(description="Whether the value is a secret", examples=[False]),
+    ] = None
+    value: Annotated[
+        str | None,
+        Field(description="Value of the environment variable", examples=["production"]),
+    ] = None
+
+
+class Protocol(StrEnum):
+    HTTP = "HTTP"
+    TCP = "TCP"
+    UDP = "UDP"
+    TLS = "TLS"
+
+
+class SandboxPort(BaseModel):
+    name: Annotated[
+        str | None, Field(description="The name of the port", examples=["http"])
+    ] = None
+    protocol: Annotated[
+        Protocol | None,
+        Field(description="The protocol of the port", examples=["HTTP"]),
+    ] = None
+    target: Annotated[
+        int,
+        Field(
+            description="The target port of the port", examples=[3000], ge=1, le=65535
+        ),
+    ]
+
+
+class SandboxMetadataLabels(RootModel[dict[str, str]]):
+    root: dict[str, str]
+
+
+class State(StrEnum):
+    RUNNING = "RUNNING"
+    STANDBY = "STANDBY"
+
+
+class SandboxStatus(StrEnum):
+    DEPLOYING = "DEPLOYING"
+    DEPLOYED = "DEPLOYED"
+    FAILED = "FAILED"
+    DEACTIVATING = "DEACTIVATING"
+    DEACTIVATED = "DEACTIVATED"
+    DELETING = "DELETING"
+    TERMINATED = "TERMINATED"
+    ARCHIVING = "ARCHIVING"
+    ARCHIVED = "ARCHIVED"
+    UNARCHIVING = "UNARCHIVING"
+    BUILDING = "BUILDING"
+    UPLOADING = "UPLOADING"
+
+
+class SandboxApiPagination(BaseModel):
+    has_more: Annotated[
+        bool, Field(description="Whether another page is available.", examples=[True])
+    ]
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor to pass to the next list request. Keep the same filters.",
+            examples=[
+                "eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ"
+            ],
+            min_length=1,
+        ),
+    ] = None
+
+
+class ImageStatus(StrEnum):
+    UPLOADING = "UPLOADING"
+    BUILDING = "BUILDING"
+    BUILT = "BUILT"
+    FAILED = "FAILED"
+
+
+class ImageTag(BaseModel):
+    name: Annotated[str, Field(description="Image tag name.", examples=["latest"])]
+    created_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Time the tag was created.", examples=["2026-09-16T21:20:00Z"]
+        ),
+    ] = None
+    updated_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Time the tag was last updated.",
+            examples=["2026-09-16T21:25:00Z"],
+        ),
+    ] = None
+    size: Annotated[
+        int | None,
+        Field(description="Image size in bytes.", examples=[134217728], ge=0),
+    ] = None
+
+
+class Image(BaseModel):
+    name: Annotated[
+        str,
+        Field(
+            description="Stable repository name supplied when pushing the image.",
+            examples=["base-image"],
+        ),
+    ]
+    display_name: Annotated[
+        str | None,
+        Field(
+            description="Human-readable image repository name.",
+            examples=["b10/base-image"],
+        ),
+    ] = None
+    status: Annotated[
+        ImageStatus,
+        Field(
+            description="Image processing status. Only BUILT images are ready to use.",
+            examples=["BUILT"],
+        ),
+    ]
+    created_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Time the image was created.", examples=["2026-09-15T21:20:00Z"]
+        ),
+    ] = None
+    updated_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Time the image was last updated.",
+            examples=["2026-09-16T21:25:00Z"],
+        ),
+    ] = None
+    last_deployed_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Most recent deployment time across all tags, if deployed.",
+            examples=["2026-09-16T21:26:58.545765901Z"],
+        ),
+    ] = None
+    size: Annotated[
+        int | None,
+        Field(
+            description="Total repository size in bytes.", examples=[260046848], ge=0
+        ),
+    ] = None
+    tag_count: Annotated[
+        int | None,
+        Field(
+            description="Number of image versions in the repository.",
+            examples=[2],
+            ge=0,
+        ),
+    ] = None
+    tags: Annotated[
+        list[ImageTag],
+        Field(
+            description="Empty for list and get summary responses. Use GET /sandboxes/images/{image_name}/tags to retrieve paginated image versions.",
+            examples=[
+                [
+                    {
+                        "name": "latest",
+                        "created_at": "2026-09-16T21:20:00Z",
+                        "updated_at": "2026-09-16T21:25:00Z",
+                        "size": 134217728,
+                    },
+                    {
+                        "name": "20260915212000",
+                        "created_at": "2026-09-15T21:20:00Z",
+                        "updated_at": "2026-09-15T21:25:00Z",
+                        "size": 125829120,
+                    },
+                ]
+            ],
+        ),
+    ]
+
+
+class PushImageRequest(BaseModel):
+    name: Annotated[
+        str,
+        Field(
+            description="Target image repository name. Reusing a name pushes a new version to the existing repository.",
+            examples=["base-image"],
+            min_length=1,
+        ),
+    ]
+    image: Annotated[
+        str | None,
+        Field(
+            description="Optional source registry image reference including a registry hostname. When omitted, the response provides an archive upload URL.",
+            examples=["docker.io/b10/base-image:latest"],
+        ),
+    ] = None
+    docker_config: Annotated[
+        str | None,
+        Field(
+            description="Optional serialized registry authentication configuration for importing a private image. Used only when image is supplied; never returned.",
+            examples=[
+                '{"auths":{"https://index.docker.io/v1/":{"auth":"YjEwLXJldmlldzpkZW1vLW5vdC1hLXZhbGlkLXJlZ2lzdHJ5LXRva2Vu"}}}'
+            ],
+        ),
+    ] = None
+
+
+class PushImageResponse(BaseModel):
+    name: Annotated[
+        str, Field(description="Target image repository name.", examples=["base-image"])
+    ]
+    status: Annotated[
+        ImageStatus,
+        Field(
+            description="Image processing status. Only BUILT images are ready to use.",
+            examples=["BUILDING"],
+        ),
+    ]
+    upload_url: Annotated[
+        AnyUrl | None,
+        Field(
+            description="Temporary signed URL for uploading the source ZIP archive with HTTP PUT. Present only when no source image was supplied. Uploading starts asynchronous processing. This storage upload is separate from the API endpoints.",
+            examples=[
+                "https://uploads.b10.run/images/base-image/20260916212658/source.zip?expires=2026-09-16T22%3A26%3A58Z&signature=demo-not-a-valid-upload-signature"
+            ],
+        ),
+    ] = None
+    image: Annotated[
+        str | None,
+        Field(
+            description="Registered image reference including its tag, when available. Tags are assigned by the service; GET /sandboxes/images/{image_name} returns the available tags once processing completes.",
+            examples=["b10/base-image:latest"],
+        ),
+    ] = None
+
+
+class CleanupImagesResponse(BaseModel):
+    deleted: Annotated[
+        int, Field(description="Number of image versions removed.", examples=[3], ge=0)
+    ]
+    message: Annotated[
+        str,
+        Field(
+            description="Human-readable cleanup result.",
+            examples=[
+                "Removed 3 unused image versions. Image versions used by active sandboxes were retained."
+            ],
+        ),
+    ]
+
+
 class Checkpoints(
     RootModel[
         BasetenLatestCheckpointConfig
@@ -7210,7 +8774,7 @@ class LoadCheckpointConfig(BaseModel):
     ] = None
 
 
-class GetAuditLogsRequest(BaseModel):
+class GetAuditLogsParams(BaseModel):
     cursor: Annotated[
         str | None,
         Field(
@@ -7298,7 +8862,7 @@ class GetAuditLogsRequest(BaseModel):
     ] = None
 
 
-class GetModelsAuditLogsRequest(BaseModel):
+class GetModelsAuditLogsParams(BaseModel):
     cursor: Annotated[
         str | None,
         Field(
@@ -7386,7 +8950,7 @@ class GetModelsAuditLogsRequest(BaseModel):
     ] = None
 
 
-class GetModelsDeploymentsLogsRequest(BaseModel):
+class GetModelsDeploymentsLogsParams(BaseModel):
     start_epoch_millis: Annotated[
         int | None,
         Field(
@@ -7461,7 +9025,7 @@ class GetModelsDeploymentsLogsRequest(BaseModel):
     ] = None
 
 
-class GetModelsDeploymentsMetricsRequest(BaseModel):
+class GetModelsDeploymentsMetricsParams(BaseModel):
     mode: Annotated[
         ModelMetricMode,
         Field(
@@ -7491,7 +9055,7 @@ class GetModelsDeploymentsMetricsRequest(BaseModel):
     ] = None
 
 
-class GetModelsEnvironmentsLogsRequest(BaseModel):
+class GetModelsEnvironmentsLogsParams(BaseModel):
     start_epoch_millis: Annotated[
         int | None,
         Field(
@@ -7566,7 +9130,7 @@ class GetModelsEnvironmentsLogsRequest(BaseModel):
     ] = None
 
 
-class GetModelsEnvironmentsMetricsRequest(BaseModel):
+class GetModelsEnvironmentsMetricsParams(BaseModel):
     mode: Annotated[
         ModelMetricMode,
         Field(
@@ -7596,7 +9160,7 @@ class GetModelsEnvironmentsMetricsRequest(BaseModel):
     ] = None
 
 
-class GetChainsAuditLogsRequest(BaseModel):
+class GetChainsAuditLogsParams(BaseModel):
     cursor: Annotated[
         str | None,
         Field(
@@ -7684,7 +9248,7 @@ class GetChainsAuditLogsRequest(BaseModel):
     ] = None
 
 
-class GetChainsDeploymentsChainletsLogsRequest(BaseModel):
+class GetChainsDeploymentsChainletsLogsParams(BaseModel):
     start_epoch_millis: Annotated[
         int | None,
         Field(
@@ -7759,7 +9323,7 @@ class GetChainsDeploymentsChainletsLogsRequest(BaseModel):
     ] = None
 
 
-class GetTrainingProjectsJobsLogsRequest(BaseModel):
+class GetTrainingProjectsJobsLogsParams(BaseModel):
     start_epoch_millis: Annotated[
         int | None,
         Field(
@@ -7793,7 +9357,33 @@ class GetTrainingProjectsJobsLogsRequest(BaseModel):
     ] = None
 
 
-class GetLoopsDeploymentsLogsRequest(BaseModel):
+class GetLoopsCapabilitiesParams(BaseModel):
+    model: Annotated[
+        str | None,
+        Field(
+            description="Restrict the response to one model, identified by its HuggingFace repo id. A supported model comes back with its 'enabled' flag and, when false, its 'enablement_details'. An empty list means Baseten does not support that model. Omit to list every supported model.",
+            examples=["Qwen/Qwen3-8B"],
+            title="Model",
+        ),
+    ] = None
+    use_case: Annotated[
+        LoopsUseCase,
+        Field(
+            description="What the caller intends to run. Defaults to 'rl', the stricter of the two: an RL run needs both a trainer and a sampler, so anything enabled for 'rl' is also enabled for 'sft'.",
+            examples=["rl"],
+        ),
+    ] = LoopsUseCase.rl
+    max_seq_len: Annotated[
+        MaxSeqLen | None,
+        Field(
+            description="The sequence length the caller intends to train at — the same value they would pass as 'max_seq_len' when creating the run. Models that cannot serve it are reported as not enabled rather than returned with a ceiling the caller cannot use. Omit for the model's highest enabled sequence length.",
+            examples=[32768],
+            title="Max Seq Len",
+        ),
+    ] = None
+
+
+class GetLoopsDeploymentsLogsParams(BaseModel):
     start_epoch_millis: Annotated[
         int | None,
         Field(
@@ -7827,7 +9417,7 @@ class GetLoopsDeploymentsLogsRequest(BaseModel):
     ] = None
 
 
-class GetModelApisUsageRequest(BaseModel):
+class GetModelApisUsageParams(BaseModel):
     start_time: Annotated[
         AwareDatetime | None,
         Field(
@@ -7890,7 +9480,7 @@ class GetModelApisUsageRequest(BaseModel):
     ] = None
 
 
-class GetBillingModelApisRequest(BaseModel):
+class GetBillingModelApisParams(BaseModel):
     cursor: Annotated[
         str | None,
         Field(
@@ -7958,6 +9548,67 @@ class GetBillingModelApisRequest(BaseModel):
     ] = None
 
 
+class GetRoutesUsageParams(BaseModel):
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor returned by a previous page. Omit to fetch the first page.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Number of daily buckets to return. Defaults to 7; maximum 31.",
+            ge=1,
+            le=31,
+            title="Limit",
+        ),
+    ] = 7
+    start_date: Annotated[
+        date_aliased | None,
+        Field(
+            description="Inclusive UTC calendar day at the start of the query range. Defaults to the previous UTC date, and is ignored when you pass a cursor.",
+            title="Start Date",
+        ),
+    ] = None
+    end_date: Annotated[
+        date_aliased | None,
+        Field(
+            description="Exclusive UTC calendar day at the end of the query range. Defaults to the day after the current UTC date so current-day usage is included.",
+            title="End Date",
+        ),
+    ] = None
+    group_by: Annotated[
+        list[RouteUsageDimension] | None,
+        Field(
+            description="Dimensions to break usage down by, repeated once per dimension: USER, MODEL, or PROVIDER. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. Defaults to MODEL.",
+            title="Group By",
+        ),
+    ] = None
+    user_ids: Annotated[
+        list[str] | None,
+        Field(
+            description="Return only usage from Routes keys created by these user IDs, repeated once per ID.",
+            title="User Ids",
+        ),
+    ] = None
+    models: Annotated[
+        list[str] | None,
+        Field(
+            description="Return only usage for these exact model names, repeated once per model.",
+            title="Models",
+        ),
+    ] = None
+    providers: Annotated[
+        list[RouteProvider] | None,
+        Field(
+            description="Return only usage for these providers, repeated once per provider.",
+            title="Providers",
+        ),
+    ] = None
+
+
 class Volume(BaseModel):
     namespace: Annotated[
         str,
@@ -7979,55 +9630,77 @@ class Volume(BaseModel):
     sequence: Annotated[
         int,
         Field(
-            description="Revision counter for the volume, incremented on every commit and tag change. Use it to detect that a volume changed.",
+            description="Revision counter for the volume, incremented on every commit, tag change, delete, and restore. A tag or version that expires leaves without changing it; the next write then increments it once. Use it to detect that a volume was written to.",
             title="Sequence",
         ),
     ]
     updated_at: Annotated[
         AwareDatetime,
         Field(
-            description="When the volume last changed, in ISO 8601 format.",
+            description="When the volume was last written to, in ISO 8601 format. An expiry does not update it.",
             title="Updated At",
+        ),
+    ]
+    expires_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="When the whole volume expires, in ISO 8601 format. At that instant every live version is deleted, every tag drops, and the volume leaves the volume listing; each version then stays restorable until its recovery deadline passes. Null for a volume that never expires.",
+            title="Expires At",
         ),
     ]
     head: Annotated[
         VolumeVersionSummary | None,
         Field(
-            description="Version that the reserved `head` tag points at, which a reference with no tag or digest resolves to. Null when the volume has no head, or when your API key cannot read it."
+            description="Version that the reserved `head` tag points at, which a reference with no tag or digest resolves to. Never an expiring version. Null when the volume has no head, or when your API key cannot read it."
         ),
     ]
     tags: Annotated[
         list[VolumeTag],
         Field(
-            description="Tags on the volume that your API key can read.", title="Tags"
+            description="Tags on the volume that your API key can read. A tag with `expires_at` leaves this list at that instant.",
+            title="Tags",
         ),
     ]
     tag_count: Annotated[
         int,
         Field(
-            description="Total number of tags on the volume, which can exceed the length of `tags` when your API key cannot read all of them.",
+            description="Total number of tags on the volume, which can exceed the length of `tags` when your API key cannot read all of them. Counts only tags that have not expired.",
             title="Tag Count",
         ),
     ]
     versions_alive: Annotated[
         int,
         Field(
-            description="Number of versions that have not been deleted.",
+            description="Number of versions that have not been deleted or expired.",
             title="Versions Alive",
         ),
     ]
     versions_tombstoned: Annotated[
         int,
         Field(
-            description="Number of versions that have been deleted.",
+            description="Number of versions that have been deleted or expired and are still within their recovery window.",
             title="Versions Tombstoned",
         ),
     ]
     versions_untagged: Annotated[
         int,
         Field(
-            description="Number of versions that no tag points at.",
+            description="Number of live versions that no tag points at.",
             title="Versions Untagged",
+        ),
+    ]
+    versions_expiring: Annotated[
+        int,
+        Field(
+            description="Number of live versions with an expiry still ahead of them. A version that has already expired counts in `versions_tombstoned` instead.",
+            title="Versions Expiring",
+        ),
+    ]
+    versions_earliest_expires_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Earliest expiry among the live versions, in ISO 8601 format. Null when no live version is scheduled to expire.",
+            title="Versions Earliest Expires At",
         ),
     ]
 
@@ -8566,14 +10239,14 @@ class CreateEnvironmentRequest(BaseModel):
     promotion_settings: Annotated[
         UpdatePromotionSettings | None,
         Field(
-            description="Promotion settings for the environment",
+            description="Promotion settings for the environment. New Model environments use rolling promotions by default. Set `rolling_deploy` to `false` to opt out.",
             examples=[
                 {
                     "promotion_cleanup_strategy": None,
                     "ramp_up_duration_seconds": 600,
                     "ramp_up_while_promoting": True,
                     "redeploy_on_promotion": True,
-                    "rolling_deploy": True,
+                    "rolling_deploy": False,
                     "rolling_deploy_config": None,
                 }
             ],
@@ -9370,6 +11043,7 @@ class APIKeyInfo(BaseModel):
             description="Type of the API key.",
             examples=[
                 "PERSONAL",
+                "ROUTES",
                 "WORKSPACE_MANAGE_API_KEYS",
                 "WORKSPACE_EXPORT_METRICS",
                 "WORKSPACE_INVOKE",
@@ -9390,6 +11064,17 @@ class APIKeyInfo(BaseModel):
         Field(
             description="The name of the team associated with the API key",
             title="Team Name",
+        ),
+    ] = None
+    created_at: Annotated[
+        AwareDatetime,
+        Field(description="Creation time in ISO 8601 format", title="Created At"),
+    ]
+    last_used_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Last recorded use in ISO 8601 format, or null if unavailable. Updates may be delayed.",
+            title="Last Used At",
         ),
     ] = None
     owner: Annotated[
@@ -9821,6 +11506,207 @@ class UsageSummary(BaseModel):
     ] = None
 
 
+class ExploreCost(BaseModel):
+    input: Annotated[
+        float | None,
+        Field(description="USD per 1M input tokens, when available.", title="Input"),
+    ] = None
+    output: Annotated[
+        float | None,
+        Field(description="USD per 1M output tokens, when available.", title="Output"),
+    ] = None
+    cache_read: Annotated[
+        float | None,
+        Field(
+            description="USD per 1M input tokens read from cache, when available.",
+            title="Cache Read",
+        ),
+    ] = None
+    cache_write: Annotated[
+        float | None,
+        Field(
+            description="USD per 1M input tokens written to cache, when available.",
+            title="Cache Write",
+        ),
+    ] = None
+    long_context: Annotated[
+        ExploreCostValues | None,
+        Field(
+            description="Prices for long-context requests, when the provider tiers by context length."
+        ),
+    ] = None
+
+
+class ExploreMetadata(BaseModel):
+    slug: Annotated[
+        str | None,
+        Field(
+            description="Metadata slug, e.g. 'anthropic/claude-opus-4'; null for rows without one.",
+            title="Slug",
+        ),
+    ]
+    display_name: Annotated[
+        str | None,
+        Field(description="Model display name, when available.", title="Display Name"),
+    ]
+    release_date: Annotated[
+        date_aliased | None,
+        Field(
+            description="Model release date. Month-only source dates use the first day of that month.",
+            title="Release Date",
+        ),
+    ]
+    provider: Annotated[
+        str | None,
+        Field(
+            description="Provider key derived from the slug prefix, e.g. 'anthropic'; null for unprefixed slugs.",
+            title="Provider",
+        ),
+    ]
+    context_window: Annotated[
+        int | None,
+        Field(description="Total context window in tokens.", title="Context Window"),
+    ]
+    max_output_tokens: Annotated[
+        int | None,
+        Field(
+            description="Maximum output tokens per response.", title="Max Output Tokens"
+        ),
+    ]
+    input_modalities: Annotated[
+        list[str],
+        Field(description="Accepted input modalities.", title="Input Modalities"),
+    ]
+    tools: Annotated[
+        bool | None,
+        Field(description="Whether the model supports tool calling.", title="Tools"),
+    ]
+    reasoning_effort_levels: Annotated[
+        list[str] | None,
+        Field(
+            description="Reasoning effort levels the model supports.",
+            title="Reasoning Effort Levels",
+        ),
+    ]
+    parallel_tool_calls: Annotated[
+        bool | None,
+        Field(
+            description="Whether the model supports parallel tool calls.",
+            title="Parallel Tool Calls",
+        ),
+    ]
+    supported_api_formats: Annotated[
+        ExploreMetadataAPIFormats | None,
+        Field(description="API formats the model supports."),
+    ]
+    cost: Annotated[
+        ExploreCost | None,
+        Field(description="Provider list prices in USD per 1M tokens, when available."),
+    ]
+
+
+class ExploreMetadataResponse(BaseModel):
+    items: Annotated[
+        list[ExploreMetadata], Field(description="Items in this page.", title="Items")
+    ]
+    pagination: Annotated[
+        PaginationResponse, Field(description="Pagination metadata for the page.")
+    ]
+
+
+class Route(BaseModel):
+    id: Annotated[str, Field(description="Stable route identifier.", title="Id")]
+    name: Annotated[
+        str,
+        Field(
+            description="Name to send in the inference request's model field.",
+            title="Name",
+        ),
+    ]
+    team_id: Annotated[
+        str, Field(description="Identifier of the owning team.", title="Team Id")
+    ]
+    team_name: Annotated[
+        str, Field(description="Name of the owning team.", title="Team Name")
+    ]
+    display_name: Annotated[
+        str,
+        Field(
+            description="Display label, defaulting to the route name.",
+            title="Display Name",
+        ),
+    ]
+    description: Annotated[
+        str,
+        Field(
+            description="Short description of the route, empty when unset.",
+            title="Description",
+        ),
+    ]
+    target: Annotated[
+        RouteTargetBasetenModelAPI
+        | RouteTargetAnthropic
+        | RouteTargetOpenAI
+        | RouteTargetXAI,
+        Field(
+            description="Configured upstream target.",
+            discriminator="type",
+            title="Target",
+        ),
+    ]
+    metadata: Annotated[
+        ExploreMetadata | None,
+        Field(
+            description="Resolved model metadata; null when the route has no linked metadata row."
+        ),
+    ]
+    invoke_url: Annotated[
+        str,
+        Field(
+            description="Base URL for inference requests using this route.",
+            title="Invoke Url",
+        ),
+    ]
+    created_at: Annotated[
+        AwareDatetime, Field(description="Creation time, ISO 8601.", title="Created At")
+    ]
+
+
+class RoutesResponse(BaseModel):
+    items: Annotated[
+        list[Route], Field(description="Items in this page.", title="Items")
+    ]
+    pagination: Annotated[
+        PaginationResponse, Field(description="Pagination metadata for the page.")
+    ]
+
+
+class RoutesUsageBucket(BaseModel):
+    date: Annotated[
+        date_aliased,
+        Field(
+            description="UTC calendar date for this bucket, from midnight inclusive to the next midnight exclusive.",
+            title="Date",
+        ),
+    ]
+    results: Annotated[
+        list[RoutesUsageResult],
+        Field(
+            description="Usage broken down by the requested dimensions. Empty when there is no usage.",
+            title="Results",
+        ),
+    ]
+
+
+class RoutesUsageResponse(BaseModel):
+    items: Annotated[
+        list[RoutesUsageBucket], Field(description="Items in this page.", title="Items")
+    ]
+    pagination: Annotated[
+        PaginationResponse, Field(description="Pagination metadata for the page.")
+    ]
+
+
 class EndpointTarget(BaseModel):
     provider: Annotated[GatewayProvider, Field(description="Upstream provider.")]
     secret_id: Annotated[
@@ -9970,6 +11856,91 @@ class UpdateGroupRequest(BaseModel):
     ] = None
 
 
+class SandboxExpirationPolicy(
+    RootModel[
+        SandboxTTLIdleExpirationPolicy
+        | SandboxTTLMaxAgeExpirationPolicy
+        | SandboxDateExpirationPolicy
+    ]
+):
+    root: Annotated[
+        SandboxTTLIdleExpirationPolicy
+        | SandboxTTLMaxAgeExpirationPolicy
+        | SandboxDateExpirationPolicy,
+        Field(
+            description="Expiration policy. The type determines whether value is a duration or an absolute timestamp.",
+            discriminator="type",
+        ),
+    ]
+
+
+class SandboxProxyConfig(BaseModel):
+    allowed_domains: Annotated[
+        list[str] | None,
+        Field(
+            description="List of allowed external domains (allowlist). When set, only these domains are reachable. Supports wildcards (e.g. *.storage.example.com).",
+            examples=[
+                [
+                    "api.openai.com",
+                    "pypi.org",
+                    "files.pythonhosted.org",
+                    "registry.npmjs.org",
+                ]
+            ],
+        ),
+    ] = None
+    bypass: Annotated[
+        list[str] | None,
+        Field(
+            description="Domains that bypass the proxy entirely via the NO_PROXY directive. Traffic to these destinations goes direct, not through the CONNECT tunnel. Supports wildcards. Note that localhost, private ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), 169.254.169.254, .local and .internal are always bypassed by default.",
+            examples=[["registry.npmjs.org"]],
+        ),
+    ] = None
+    forbidden_domains: Annotated[
+        list[str] | None,
+        Field(
+            description="List of forbidden external domains (denylist). When set, all domains except these are reachable. Supports wildcards (e.g. *.malware.com). If both allowed_domains and forbidden_domains are set, allowed_domains takes precedence.",
+            examples=[["facebook.com", "*.facebook.com"]],
+        ),
+    ] = None
+    routing: Annotated[
+        list[SandboxProxyTarget] | None,
+        Field(
+            description='Per-destination routing rules with header/body injection and secrets. Use destinations ["*"] for global rules that apply to all destinations.',
+            examples=[
+                [
+                    {
+                        "destinations": ["api.openai.com"],
+                        "headers": {"Authorization": "Bearer {{SECRET:openai-key}}"},
+                        "body": {"user": "baseten-api-review-0916"},
+                        "secrets": {"openai-key": "sk-proj-demo-not-a-valid-api-key"},
+                    }
+                ]
+            ],
+        ),
+    ] = None
+
+
+class SandboxPorts(RootModel[list[SandboxPort]]):
+    root: Annotated[
+        list[SandboxPort],
+        Field(
+            description="Set of ports for a resource",
+            examples=[[{"name": "http", "protocol": "HTTP", "target": 3000}]],
+        ),
+    ]
+
+
+class ListImagesResponse(BaseModel):
+    items: Annotated[list[Image], Field(description="Image repositories on this page.")]
+    pagination: SandboxApiPagination
+
+
+class ListImageTagsResponse(BaseModel):
+    items: list[ImageTag]
+    pagination: SandboxApiPagination
+
+
 class AuditLogEntry(BaseModel):
     id: Annotated[
         str, Field(description="Unique identifier of the audit-log entry.", title="Id")
@@ -9994,6 +11965,7 @@ class AuditLogEntry(BaseModel):
         | AuditLogEventModelDeploymentInstanceTypeChanged
         | AuditLogEventModelDeploymentDeleted
         | AuditLogEventModelDeleted
+        | AuditLogEventModelRenamed
         | AuditLogEventChainDeployed
         | AuditLogEventChainDeploymentActivated
         | AuditLogEventChainDeploymentDeactivated
@@ -10011,6 +11983,9 @@ class AuditLogEntry(BaseModel):
         | AuditLogEventGatewayEndpointCreated
         | AuditLogEventGatewayEndpointUpdated
         | AuditLogEventGatewayEndpointDeleted
+        | AuditLogEventProviderConnectionCreated
+        | AuditLogEventProviderConnectionUpdated
+        | AuditLogEventProviderConnectionDeleted
         | AuditLogEventUserInvited
         | AuditLogEventUserJoinedOrganization
         | AuditLogEventWebhookSigningSecretCreated
@@ -10152,6 +12127,10 @@ class ChainEnvironment(BaseModel):
         Field(
             description="Candidate chain deployment being promoted to the environment, if a promotion is in progress"
         ),
+    ] = None
+    in_progress_promotion: Annotated[
+        InProgressPromotion | None,
+        Field(description="Details of the in-progress promotion, if any"),
     ] = None
 
 
@@ -10314,6 +12293,597 @@ class GroupsResponse(BaseModel):
     ]
     pagination: Annotated[
         PaginationResponse, Field(description="Pagination metadata for the page.")
+    ]
+
+
+class SandboxLifecycle(BaseModel):
+    expiration_policies: Annotated[
+        list[SandboxExpirationPolicy] | None,
+        Field(
+            description="List of expiration policies. Multiple policies can be combined; whichever condition is met first triggers the action.",
+            examples=[
+                [
+                    {"action": "DELETE", "type": "TTL_IDLE", "value": "24h"},
+                    {"action": "DELETE", "type": "TTL_MAX_AGE", "value": "7d"},
+                    {
+                        "action": "DELETE",
+                        "type": "DATE",
+                        "value": "2026-09-23T21:26:58Z",
+                    },
+                ]
+            ],
+        ),
+    ] = None
+    terminated_retention: Annotated[
+        str | None,
+        Field(
+            description="Duration to keep the sandbox record after termination for log access (e.g., '1h', '24h', '7d'). Defaults to 5m. Subject to maximum quota limits.",
+            examples=["24h"],
+        ),
+    ] = None
+
+
+class SandboxNetwork(BaseModel):
+    proxy: Annotated[
+        SandboxProxyConfig | None,
+        Field(
+            description="Proxy configuration for routing sandbox HTTP traffic through the platform proxy with MITM inspection and per-destination header/body injection",
+            examples=[
+                {
+                    "allowed_domains": [
+                        "api.openai.com",
+                        "pypi.org",
+                        "files.pythonhosted.org",
+                        "registry.npmjs.org",
+                    ],
+                    "bypass": ["registry.npmjs.org"],
+                    "forbidden_domains": ["facebook.com", "*.facebook.com"],
+                    "routing": [
+                        {
+                            "destinations": ["api.openai.com"],
+                            "headers": {
+                                "Authorization": "Bearer {{SECRET:openai-key}}"
+                            },
+                            "body": {"user": "baseten-api-review-0916"},
+                            "secrets": {
+                                "openai-key": "sk-proj-demo-not-a-valid-api-key"
+                            },
+                        }
+                    ],
+                }
+            ],
+        ),
+    ] = None
+    subnet: Annotated[
+        str | None,
+        Field(
+            description='Subnet name for the sandbox. Defaults to "default" at creation.',
+            examples=["default"],
+        ),
+    ] = None
+
+
+class SandboxConfiguration(BaseModel):
+    enabled: Annotated[
+        bool,
+        Field(
+            description="When false, the sandbox is disabled and will not accept connections",
+            examples=[True],
+        ),
+    ] = True
+    lifecycle: Annotated[
+        SandboxLifecycle | None,
+        Field(
+            description="Lifecycle configuration controlling automatic sandbox deletion based on idle time, max age, or specific dates",
+            examples=[
+                {
+                    "expiration_policies": [
+                        {"action": "DELETE", "type": "TTL_IDLE", "value": "24h"},
+                        {"action": "DELETE", "type": "TTL_MAX_AGE", "value": "7d"},
+                        {
+                            "action": "DELETE",
+                            "type": "DATE",
+                            "value": "2026-09-23T21:26:58Z",
+                        },
+                    ],
+                    "terminated_retention": "24h",
+                }
+            ],
+        ),
+    ] = None
+    network: Annotated[
+        SandboxNetwork | None,
+        Field(
+            description="Network configuration for a sandbox including subnet, domain filtering, and proxy settings",
+            examples=[
+                {
+                    "proxy": {
+                        "allowed_domains": [
+                            "api.openai.com",
+                            "pypi.org",
+                            "files.pythonhosted.org",
+                            "registry.npmjs.org",
+                        ],
+                        "bypass": ["registry.npmjs.org"],
+                        "forbidden_domains": ["facebook.com", "*.facebook.com"],
+                        "routing": [
+                            {
+                                "destinations": ["api.openai.com"],
+                                "headers": {
+                                    "Authorization": "Bearer {{SECRET:openai-key}}"
+                                },
+                                "body": {"user": "baseten-api-review-0916"},
+                                "secrets": {
+                                    "openai-key": "sk-proj-demo-not-a-valid-api-key"
+                                },
+                            }
+                        ],
+                    },
+                    "subnet": "default",
+                }
+            ],
+        ),
+    ] = None
+    region: Annotated[
+        str | None,
+        Field(
+            description="Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the closest region is selected.",
+            examples=["us-pdx-1"],
+        ),
+    ] = None
+    envs: Annotated[
+        list[SandboxEnv] | None,
+        Field(
+            description="Environment variables injected into the sandbox.",
+            examples=[
+                [
+                    {"name": "NODE_ENV", "secret": False, "value": "production"},
+                    {"name": "PORT", "secret": False, "value": "3000"},
+                ]
+            ],
+        ),
+    ] = None
+    image: Annotated[
+        str | None,
+        Field(
+            description="Image reference including its tag. Use blaxel/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.",
+            examples=["blaxel/base-image:latest"],
+        ),
+    ] = None
+    memory: Annotated[
+        int | None,
+        Field(
+            description="Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs).",
+            examples=[4096],
+            ge=1,
+        ),
+    ] = None
+    ports: Annotated[
+        SandboxPorts | None,
+        Field(
+            description="Set of ports for a resource",
+            examples=[[{"name": "http", "protocol": "HTTP", "target": 3000}]],
+        ),
+    ] = None
+    display_name: Annotated[
+        str | None,
+        Field(
+            description="Human-readable name for display in the UI. Can contain spaces and special characters, max 63 characters.",
+            examples=["Baseten API review"],
+            max_length=63,
+        ),
+    ] = None
+    external_id: Annotated[
+        str | None,
+        Field(
+            description="Caller-owned identifier for external lookups. Max 64 chars, alphanumeric + dash.",
+            examples=["api-review-20260916-001"],
+            max_length=64,
+            pattern="^[A-Za-z0-9-]+$",
+        ),
+    ] = None
+    labels: Annotated[
+        SandboxMetadataLabels | None,
+        Field(
+            description="Key-value pairs for organizing and filtering resources. Labels can be used to categorize resources by environment, project, team, or any custom taxonomy.",
+            examples=[
+                {"env": "development", "project": "api-review", "team": "engineering"}
+            ],
+        ),
+    ] = None
+
+
+class CreateSandboxRequest(BaseModel):
+    name: Annotated[
+        str | None,
+        Field(
+            description="Optional unique sandbox name. Generated by the server when omitted; immutable after creation.",
+            examples=["baseten-api-review-0916"],
+            min_length=1,
+        ),
+    ] = None
+    lifecycle: Annotated[
+        SandboxLifecycle | None,
+        Field(
+            description="Lifecycle configuration controlling automatic sandbox deletion based on idle time, max age, or specific dates",
+            examples=[
+                {
+                    "expiration_policies": [
+                        {"action": "DELETE", "type": "TTL_IDLE", "value": "24h"},
+                        {"action": "DELETE", "type": "TTL_MAX_AGE", "value": "7d"},
+                        {
+                            "action": "DELETE",
+                            "type": "DATE",
+                            "value": "2026-09-23T21:26:58Z",
+                        },
+                    ],
+                    "terminated_retention": "24h",
+                }
+            ],
+        ),
+    ] = None
+    network: Annotated[
+        SandboxNetwork | None,
+        Field(
+            description="Network configuration for a sandbox including subnet, domain filtering, and proxy settings",
+            examples=[
+                {
+                    "proxy": {
+                        "allowed_domains": [
+                            "api.openai.com",
+                            "pypi.org",
+                            "files.pythonhosted.org",
+                            "registry.npmjs.org",
+                        ],
+                        "bypass": ["registry.npmjs.org"],
+                        "forbidden_domains": ["facebook.com", "*.facebook.com"],
+                        "routing": [
+                            {
+                                "destinations": ["api.openai.com"],
+                                "headers": {
+                                    "Authorization": "Bearer {{SECRET:openai-key}}"
+                                },
+                                "body": {"user": "baseten-api-review-0916"},
+                                "secrets": {
+                                    "openai-key": "sk-proj-demo-not-a-valid-api-key"
+                                },
+                            }
+                        ],
+                    },
+                    "subnet": "default",
+                }
+            ],
+        ),
+    ] = None
+    region: Annotated[
+        str | None,
+        Field(
+            description="Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the closest region is selected.",
+            examples=["us-pdx-1"],
+        ),
+    ] = None
+    envs: Annotated[
+        list[SandboxEnv] | None,
+        Field(
+            description="Environment variables injected into the sandbox.",
+            examples=[
+                [
+                    {"name": "NODE_ENV", "secret": False, "value": "production"},
+                    {"name": "PORT", "secret": False, "value": "3000"},
+                ]
+            ],
+        ),
+    ] = None
+    image: Annotated[
+        str | None,
+        Field(
+            description="Image reference including its tag. Use blaxel/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.",
+            examples=["blaxel/base-image:latest"],
+        ),
+    ] = None
+    memory: Annotated[
+        int | None,
+        Field(
+            description="Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs).",
+            examples=[4096],
+            ge=1,
+        ),
+    ] = None
+    ports: Annotated[
+        SandboxPorts | None,
+        Field(
+            description="Set of ports for a resource",
+            examples=[[{"name": "http", "protocol": "HTTP", "target": 3000}]],
+        ),
+    ] = None
+    display_name: Annotated[
+        str | None,
+        Field(
+            description="Human-readable name for display in the UI. Can contain spaces and special characters, max 63 characters.",
+            examples=["Baseten API review"],
+            max_length=63,
+        ),
+    ] = None
+    external_id: Annotated[
+        str | None,
+        Field(
+            description="Caller-owned identifier for external lookups. Max 64 chars, alphanumeric + dash.",
+            examples=["api-review-20260916-001"],
+            max_length=64,
+            pattern="^[A-Za-z0-9-]+$",
+        ),
+    ] = None
+    labels: Annotated[
+        SandboxMetadataLabels | None,
+        Field(
+            description="Key-value pairs for organizing and filtering resources. Labels can be used to categorize resources by environment, project, team, or any custom taxonomy.",
+            examples=[
+                {"env": "development", "project": "api-review", "team": "engineering"}
+            ],
+        ),
+    ] = None
+
+
+class UpdateSandboxRequest(BaseModel):
+    enabled: Annotated[
+        bool | None,
+        Field(
+            description="When false, the sandbox is disabled and will not accept connections",
+            examples=[True],
+        ),
+    ] = None
+    lifecycle: Annotated[
+        SandboxLifecycle | None,
+        Field(
+            description="Lifecycle configuration controlling automatic sandbox deletion based on idle time, max age, or specific dates",
+            examples=[
+                {
+                    "expiration_policies": [
+                        {"action": "DELETE", "type": "TTL_IDLE", "value": "24h"},
+                        {"action": "DELETE", "type": "TTL_MAX_AGE", "value": "7d"},
+                        {
+                            "action": "DELETE",
+                            "type": "DATE",
+                            "value": "2026-09-23T21:26:58Z",
+                        },
+                    ],
+                    "terminated_retention": "24h",
+                }
+            ],
+        ),
+    ] = None
+    region: Annotated[
+        str | None,
+        Field(
+            description="Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the closest region is selected.",
+            examples=["us-pdx-1"],
+        ),
+    ] = None
+    envs: Annotated[
+        list[SandboxEnv] | None,
+        Field(
+            description="Environment variables injected into the sandbox.",
+            examples=[
+                [
+                    {"name": "NODE_ENV", "secret": False, "value": "production"},
+                    {"name": "PORT", "secret": False, "value": "3000"},
+                ]
+            ],
+        ),
+    ] = None
+    image: Annotated[
+        str | None,
+        Field(
+            description="Image reference including its tag. Use blaxel/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.",
+            examples=["blaxel/base-image:latest"],
+        ),
+    ] = None
+    ports: Annotated[
+        SandboxPorts | None,
+        Field(
+            description="Set of ports for a resource",
+            examples=[[{"name": "http", "protocol": "HTTP", "target": 3000}]],
+        ),
+    ] = None
+    display_name: Annotated[
+        str | None,
+        Field(
+            description="Human-readable name for display in the UI. Can contain spaces and special characters, max 63 characters.",
+            examples=["Baseten API review - revised"],
+            max_length=63,
+        ),
+    ] = None
+    external_id: Annotated[
+        str | None,
+        Field(
+            description="Caller-owned identifier for external lookups. Max 64 chars, alphanumeric + dash.",
+            examples=["api-review-20260916-001"],
+            max_length=64,
+            pattern="^[A-Za-z0-9-]+$",
+        ),
+    ] = None
+    labels: Annotated[
+        SandboxMetadataLabels | None,
+        Field(
+            description="Key-value pairs for organizing and filtering resources. Labels can be used to categorize resources by environment, project, team, or any custom taxonomy.",
+            examples=[
+                {
+                    "env": "development",
+                    "project": "api-review",
+                    "team": "engineering",
+                    "revision": "2",
+                }
+            ],
+        ),
+    ] = None
+
+
+class Sandbox(SandboxConfiguration):
+    name: Annotated[
+        str,
+        Field(
+            description="Immutable sandbox name, provided by the client or generated by the server, used in sandbox_name path parameters.",
+            examples=["baseten-api-review-0916"],
+        ),
+    ]
+    url: Annotated[
+        AnyUrl | None,
+        Field(
+            description='Base URL of this sandbox\'s execution API. Use this exact returned URL; do not reconstruct its hostname. Authenticate requests with the same Authorization: Bearer <api_key> header used to create the sandbox. No additional routing headers are required. Fetch GET {url}/swagger/doc.json with that header for the API reference served by this sandbox. For example, POST {url}/process with Content-Type: application/json and {"command":"echo hello","waitForCompletion":true} executes a command and waits for its result. Execution API fields use camelCase, independently of this API\'s snake_case fields.',
+            examples=["https://sbx-baseten-api-review-0916-esb1qo.us-pdx-1.b10.run"],
+        ),
+    ] = None
+    status: Annotated[
+        SandboxStatus,
+        Field(description="Sandbox deployment status.", examples=["DEPLOYED"]),
+    ]
+    state: Annotated[
+        State | None,
+        Field(
+            description="Current execution state when available.", examples=["RUNNING"]
+        ),
+    ] = None
+    created_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="Time the sandbox was created.",
+            examples=["2026-09-16T21:26:58.545765901Z"],
+        ),
+    ]
+    updated_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Time the sandbox was last updated.",
+            examples=["2026-09-16T21:31:13Z"],
+        ),
+    ] = None
+    created_by: Annotated[
+        str | None,
+        Field(
+            description="User or service account that created the sandbox.",
+            examples=["sandbox-automation"],
+        ),
+    ] = None
+    updated_by: Annotated[
+        str | None,
+        Field(
+            description="User or service account that last updated the sandbox.",
+            examples=["sandbox-automation"],
+        ),
+    ] = None
+    last_used_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Time the sandbox was last used.",
+            examples=["2026-09-16T21:31:13Z"],
+        ),
+    ] = None
+    expires_in: Annotated[
+        int | None,
+        Field(
+            description="Seconds remaining before automatic deletion, when expiration is configured.",
+            examples=[86400],
+            ge=0,
+        ),
+    ] = None
+
+
+class ListSandboxesResponse(BaseModel):
+    items: Annotated[
+        list[Sandbox],
+        Field(
+            description="Resources on this page.",
+            examples=[
+                [
+                    {
+                        "enabled": True,
+                        "lifecycle": {
+                            "expiration_policies": [
+                                {
+                                    "action": "DELETE",
+                                    "type": "TTL_IDLE",
+                                    "value": "24h",
+                                },
+                                {
+                                    "action": "DELETE",
+                                    "type": "TTL_MAX_AGE",
+                                    "value": "7d",
+                                },
+                                {
+                                    "action": "DELETE",
+                                    "type": "DATE",
+                                    "value": "2026-09-23T21:26:58Z",
+                                },
+                            ],
+                            "terminated_retention": "24h",
+                        },
+                        "network": {
+                            "proxy": {
+                                "allowed_domains": [
+                                    "api.openai.com",
+                                    "pypi.org",
+                                    "files.pythonhosted.org",
+                                    "registry.npmjs.org",
+                                ],
+                                "bypass": ["registry.npmjs.org"],
+                                "forbidden_domains": ["facebook.com", "*.facebook.com"],
+                                "routing": [
+                                    {
+                                        "destinations": ["api.openai.com"],
+                                        "headers": {
+                                            "Authorization": "Bearer {{SECRET:openai-key}}"
+                                        },
+                                        "body": {"user": "baseten-api-review-0916"},
+                                    }
+                                ],
+                            },
+                            "subnet": "default",
+                        },
+                        "region": "us-pdx-1",
+                        "envs": [
+                            {
+                                "name": "NODE_ENV",
+                                "secret": False,
+                                "value": "production",
+                            },
+                            {"name": "PORT", "secret": False, "value": "3000"},
+                        ],
+                        "image": "blaxel/base-image:latest",
+                        "memory": 4096,
+                        "ports": [{"name": "http", "protocol": "HTTP", "target": 3000}],
+                        "display_name": "Baseten API review",
+                        "external_id": "api-review-20260916-001",
+                        "labels": {
+                            "env": "development",
+                            "project": "api-review",
+                            "team": "engineering",
+                        },
+                        "name": "baseten-api-review-0916",
+                        "url": "https://sbx-baseten-api-review-0916-esb1qo.us-pdx-1.b10.run",
+                        "status": "DEPLOYED",
+                        "state": "RUNNING",
+                        "created_at": "2026-09-16T21:26:58.545765901Z",
+                        "updated_at": "2026-09-16T21:31:13Z",
+                        "created_by": "sandbox-automation",
+                        "updated_by": "sandbox-automation",
+                        "last_used_at": "2026-09-16T21:31:13Z",
+                        "expires_in": 86400,
+                    }
+                ]
+            ],
+        ),
+    ]
+    pagination: Annotated[
+        SandboxApiPagination,
+        Field(
+            description="Cursor pagination information. The cursor is present only when another page is available.",
+            examples=[
+                {
+                    "has_more": True,
+                    "cursor": "eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ",
+                }
+            ],
+        ),
     ]
 
 
