@@ -6,7 +6,7 @@ import contextlib
 import urllib.parse
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import IO, Any, Literal, TypeVar
+from typing import IO, Any, Literal, TypeVar, cast
 
 import httpx
 from pydantic import BaseModel, ValidationError
@@ -357,8 +357,8 @@ class ApiClient:
         params: GetFilesystemParams | None = None,
         accept: Literal["application/json", "application/octet-stream"],
     ) -> httpx.Response:
-        """Get file or directory information. Returns the response unread, in the requested content type."""
-        return self._do(
+        """Get file or directory information. Returns the response unread, in the requested content type. The caller must close the response."""
+        return self._do_raw(
             _ApiRequest(
                 method="GET",
                 path_fmt="/filesystem/{}",
@@ -577,8 +577,8 @@ class ApiClient:
         )
 
     def get_process_logs_stream(self, *, identifier: str) -> httpx.Response:
-        """Stream process logs in real time. Returns the response unread, in the requested content type."""
-        return self._do(
+        """Stream process logs in real time. Returns the response unread, in the requested content type. The caller must close the response."""
+        return self._do_raw(
             _ApiRequest(
                 method="GET",
                 path_fmt="/process/{}/logs/stream",
@@ -594,8 +594,8 @@ class ApiClient:
     def get_watch_filesystem(
         self, *, path: str, params: GetWatchFilesystemParams | None = None
     ) -> httpx.Response:
-        """Stream file modification events in a directory. Returns the response unread, in the requested content type."""
-        return self._do(
+        """Stream file modification events in a directory. Returns the response unread, in the requested content type. The caller must close the response."""
+        return self._do_raw(
             _ApiRequest(
                 method="GET",
                 path_fmt="/watch/filesystem/{}",
@@ -763,8 +763,8 @@ class ApiClient:
         request: ProcessRequest,
         accept: Literal["application/json", "text/event-stream"],
     ) -> httpx.Response:
-        """Execute a command. Returns the response unread, in the requested content type."""
-        return self._do(
+        """Execute a command. Returns the response unread, in the requested content type. The caller must close the response."""
+        return self._do_raw(
             _ApiRequest(
                 method="POST",
                 path_fmt="/process",
@@ -924,7 +924,7 @@ class ApiClient:
             ),
         )
 
-    def _do(self, request: _ApiRequest) -> httpx.Response:
+    def _build_request(self, request: _ApiRequest) -> httpx.Request:
         path = request.path_fmt.format(
             *[urllib.parse.quote(a, safe="") for a in request.path_args]
         )
@@ -940,7 +940,11 @@ class ApiClient:
                     # Only fields the caller set are sent, so unset fields fall
                     # back to the server default rather than being reset here.
                     # An explicit None is kept, since null can mean "clear".
-                    json_body = request.body.model_dump(mode="json", exclude_unset=True)
+                    # by_alias: a field renamed for Python (e.g. async_ for
+                    # "async") must serialize under its API name.
+                    json_body = request.body.model_dump(
+                        mode="json", exclude_unset=True, by_alias=True
+                    )
                 else:
                     json_body = request.body
             elif request.body_content_type == "multipart/form-data":
@@ -955,11 +959,11 @@ class ApiClient:
                 # As above, plus dropping None: a null query parameter is
                 # meaningless and would otherwise serialize as an empty string.
                 params = request.query.model_dump(
-                    mode="json", exclude_unset=True, exclude_none=True
+                    mode="json", exclude_unset=True, exclude_none=True, by_alias=True
                 )
             else:
                 params = request.query
-        response = self._http_client.request(
+        return self._http_client.build_request(
             request.method,
             path,
             json=json_body,
@@ -968,7 +972,31 @@ class ApiClient:
             params=params,
             headers=headers,
         )
+
+    def _do(self, request: _ApiRequest) -> httpx.Response:
+        response = self._http_client.send(self._build_request(request))
         if response.status_code not in request.success_codes:
+            if request.error_codes and response.status_code in request.error_codes:
+                error_name = request.error_codes[response.status_code]
+                if error_name in _ERROR_TYPES:
+                    model_cls, exc_cls, field_name = _ERROR_TYPES[error_name]
+                    # A body that does not match the declared error schema
+                    # falls through to the generic ResponseError below.
+                    model = None
+                    with contextlib.suppress(ValidationError):
+                        model = model_cls.model_validate_json(response.content)
+                    if model is not None:
+                        raise exc_cls(
+                            status_code=response.status_code,  # ty: ignore[unknown-argument]
+                            **{field_name: model},
+                        )
+            raise ResponseError(status_code=response.status_code, body=response.text)
+        return response
+
+    def _do_raw(self, request: _ApiRequest) -> httpx.Response:
+        response = self._http_client.send(self._build_request(request), stream=True)
+        if response.status_code not in request.success_codes:
+            response.read()
             if request.error_codes and response.status_code in request.error_codes:
                 error_name = request.error_codes[response.status_code]
                 if error_name in _ERROR_TYPES:
@@ -1001,9 +1029,10 @@ class ApiClient:
         response = self._do(request)
         response_type = response_types.get(response.status_code)
         if response_type is None:
-            raise ValueError(
-                f"no JSON response schema declared for HTTP {response.status_code}"
-            )
+            # A bodyless success code, such as 204 alongside a JSON 200. The
+            # call site's return type includes None only when one is declared,
+            # so this cast is unreachable otherwise.
+            return cast(_T, None)
         content_type = response.headers.get("content-type", "")
         if not content_type.startswith("application/json"):
             raise ValueError(
@@ -1270,8 +1299,8 @@ class AsyncApiClient:
         params: GetFilesystemParams | None = None,
         accept: Literal["application/json", "application/octet-stream"],
     ) -> httpx.Response:
-        """Get file or directory information. Returns the response unread, in the requested content type."""
-        return await self._do(
+        """Get file or directory information. Returns the response unread, in the requested content type. The caller must close the response."""
+        return await self._do_raw(
             _ApiRequest(
                 method="GET",
                 path_fmt="/filesystem/{}",
@@ -1492,8 +1521,8 @@ class AsyncApiClient:
         )
 
     async def get_process_logs_stream(self, *, identifier: str) -> httpx.Response:
-        """Stream process logs in real time. Returns the response unread, in the requested content type."""
-        return await self._do(
+        """Stream process logs in real time. Returns the response unread, in the requested content type. The caller must close the response."""
+        return await self._do_raw(
             _ApiRequest(
                 method="GET",
                 path_fmt="/process/{}/logs/stream",
@@ -1509,8 +1538,8 @@ class AsyncApiClient:
     async def get_watch_filesystem(
         self, *, path: str, params: GetWatchFilesystemParams | None = None
     ) -> httpx.Response:
-        """Stream file modification events in a directory. Returns the response unread, in the requested content type."""
-        return await self._do(
+        """Stream file modification events in a directory. Returns the response unread, in the requested content type. The caller must close the response."""
+        return await self._do_raw(
             _ApiRequest(
                 method="GET",
                 path_fmt="/watch/filesystem/{}",
@@ -1680,8 +1709,8 @@ class AsyncApiClient:
         request: ProcessRequest,
         accept: Literal["application/json", "text/event-stream"],
     ) -> httpx.Response:
-        """Execute a command. Returns the response unread, in the requested content type."""
-        return await self._do(
+        """Execute a command. Returns the response unread, in the requested content type. The caller must close the response."""
+        return await self._do_raw(
             _ApiRequest(
                 method="POST",
                 path_fmt="/process",
@@ -1843,7 +1872,7 @@ class AsyncApiClient:
             ),
         )
 
-    async def _do(self, request: _ApiRequest) -> httpx.Response:
+    def _build_request(self, request: _ApiRequest) -> httpx.Request:
         path = request.path_fmt.format(
             *[urllib.parse.quote(a, safe="") for a in request.path_args]
         )
@@ -1859,7 +1888,11 @@ class AsyncApiClient:
                     # Only fields the caller set are sent, so unset fields fall
                     # back to the server default rather than being reset here.
                     # An explicit None is kept, since null can mean "clear".
-                    json_body = request.body.model_dump(mode="json", exclude_unset=True)
+                    # by_alias: a field renamed for Python (e.g. async_ for
+                    # "async") must serialize under its API name.
+                    json_body = request.body.model_dump(
+                        mode="json", exclude_unset=True, by_alias=True
+                    )
                 else:
                     json_body = request.body
             elif request.body_content_type == "multipart/form-data":
@@ -1874,11 +1907,11 @@ class AsyncApiClient:
                 # As above, plus dropping None: a null query parameter is
                 # meaningless and would otherwise serialize as an empty string.
                 params = request.query.model_dump(
-                    mode="json", exclude_unset=True, exclude_none=True
+                    mode="json", exclude_unset=True, exclude_none=True, by_alias=True
                 )
             else:
                 params = request.query
-        response = await self._http_client.request(
+        return self._http_client.build_request(
             request.method,
             path,
             json=json_body,
@@ -1887,7 +1920,33 @@ class AsyncApiClient:
             params=params,
             headers=headers,
         )
+
+    async def _do(self, request: _ApiRequest) -> httpx.Response:
+        response = await self._http_client.send(self._build_request(request))
         if response.status_code not in request.success_codes:
+            if request.error_codes and response.status_code in request.error_codes:
+                error_name = request.error_codes[response.status_code]
+                if error_name in _ERROR_TYPES:
+                    model_cls, exc_cls, field_name = _ERROR_TYPES[error_name]
+                    # A body that does not match the declared error schema
+                    # falls through to the generic ResponseError below.
+                    model = None
+                    with contextlib.suppress(ValidationError):
+                        model = model_cls.model_validate_json(response.content)
+                    if model is not None:
+                        raise exc_cls(
+                            status_code=response.status_code,  # ty: ignore[unknown-argument]
+                            **{field_name: model},
+                        )
+            raise ResponseError(status_code=response.status_code, body=response.text)
+        return response
+
+    async def _do_raw(self, request: _ApiRequest) -> httpx.Response:
+        response = await self._http_client.send(
+            self._build_request(request), stream=True
+        )
+        if response.status_code not in request.success_codes:
+            await response.aread()
             if request.error_codes and response.status_code in request.error_codes:
                 error_name = request.error_codes[response.status_code]
                 if error_name in _ERROR_TYPES:
@@ -1920,9 +1979,10 @@ class AsyncApiClient:
         response = await self._do(request)
         response_type = response_types.get(response.status_code)
         if response_type is None:
-            raise ValueError(
-                f"no JSON response schema declared for HTTP {response.status_code}"
-            )
+            # A bodyless success code, such as 204 alongside a JSON 200. The
+            # call site's return type includes None only when one is declared,
+            # so this cast is unreachable otherwise.
+            return cast(_T, None)
         content_type = response.headers.get("content-type", "")
         if not content_type.startswith("application/json"):
             raise ValueError(

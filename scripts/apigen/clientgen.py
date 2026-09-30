@@ -258,7 +258,10 @@ def _path_fmt(path: str) -> str:
 
 def _render_client(ops: list[_Operation]) -> str:
     has_typed_resp = any(op.json_responses for op in ops)
-    has_status_resp = any(len(op.json_responses) > 1 for op in ops)
+    # Status dispatch covers an operation with more than one success code and
+    # at least one JSON schema among them, since the others may be bodyless.
+    has_status_resp = any(op.json_responses and len(op.success_codes) > 1 for op in ops)
+    has_raw = any(op.raw_accepts for op in ops)
     has_no_resp = any(not op.json_responses and not op.raw_accepts for op in ops)
 
     error_refs = sorted({ref for op in ops for ref in (op.error_codes or {}).values()})
@@ -283,7 +286,7 @@ import contextlib
 import urllib.parse
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, IO, Literal, TypeVar
+from typing import Any, IO, Literal, TypeVar, cast
 
 import httpx
 from pydantic import BaseModel, ValidationError
@@ -345,10 +348,10 @@ class _ApiRequest:
 """
 
     src += "\n\n" + _render_client_class(
-        ops, has_typed_resp, has_status_resp, has_no_resp, is_async=False
+        ops, has_typed_resp, has_status_resp, has_raw, has_no_resp, is_async=False
     )
     src += "\n\n" + _render_client_class(
-        ops, has_typed_resp, has_status_resp, has_no_resp, is_async=True
+        ops, has_typed_resp, has_status_resp, has_raw, has_no_resp, is_async=True
     )
     src += "\n"
     return src
@@ -358,6 +361,7 @@ def _render_client_class(
     ops: list[_Operation],
     has_typed_resp: bool,
     has_status_resp: bool,
+    has_raw: bool,
     has_no_resp: bool,
     *,
     is_async: bool,
@@ -411,7 +415,7 @@ class {cls}:
 """
 
     src += f"""
-    {adef} _do(self, request: _ApiRequest) -> httpx.Response:
+    def _build_request(self, request: _ApiRequest) -> httpx.Request:
         path = request.path_fmt.format(
             *[urllib.parse.quote(a, safe="") for a in request.path_args]
         )
@@ -427,7 +431,11 @@ class {cls}:
                     # Only fields the caller set are sent, so unset fields fall
                     # back to the server default rather than being reset here.
                     # An explicit None is kept, since null can mean "clear".
-                    json_body = request.body.model_dump(mode="json", exclude_unset=True)
+                    # by_alias: a field renamed for Python (e.g. async_ for
+                    # "async") must serialize under its API name.
+                    json_body = request.body.model_dump(
+                        mode="json", exclude_unset=True, by_alias=True
+                    )
                 else:
                     json_body = request.body
             elif request.body_content_type == "{_MULTIPART_CONTENT}":
@@ -442,11 +450,11 @@ class {cls}:
                 # As above, plus dropping None: a null query parameter is
                 # meaningless and would otherwise serialize as an empty string.
                 params = request.query.model_dump(
-                    mode="json", exclude_unset=True, exclude_none=True
+                    mode="json", exclude_unset=True, exclude_none=True, by_alias=True
                 )
             else:
                 params = request.query
-        response = {aw}self._http_client.request(
+        return self._http_client.build_request(
             request.method,
             path,
             json=json_body,
@@ -455,7 +463,22 @@ class {cls}:
             params=params,
             headers=headers,
         )
+
+    {adef} _do(self, request: _ApiRequest) -> httpx.Response:
+        response = {aw}self._http_client.send(self._build_request(request))
         if response.status_code not in request.success_codes:
+{error_dispatch}\
+            raise ResponseError(status_code=response.status_code, body=response.text)
+        return response
+"""
+
+    if has_raw:
+        resp_read = "await response.aread()" if is_async else "response.read()"
+        src += f"""
+    {adef} _do_raw(self, request: _ApiRequest) -> httpx.Response:
+        response = {aw}self._http_client.send(self._build_request(request), stream=True)
+        if response.status_code not in request.success_codes:
+            {resp_read}
 {error_dispatch}\
             raise ResponseError(status_code=response.status_code, body=response.text)
         return response
@@ -479,7 +502,10 @@ class {cls}:
         response = {aw}self._do(request)
         response_type = response_types.get(response.status_code)
         if response_type is None:
-            raise ValueError(f"no JSON response schema declared for HTTP {{response.status_code}}")
+            # A bodyless success code, such as 204 alongside a JSON 200. The
+            # call site's return type includes None only when one is declared,
+            # so this cast is unreachable otherwise.
+            return cast(_T, None)
         content_type = response.headers.get("content-type", "")
         if not content_type.startswith("application/json"):
             raise ValueError(f"unexpected content type {{content_type!r}}, expected application/json")
@@ -574,13 +600,18 @@ def _render_method(op: _Operation, *, is_async: bool, is_raw: bool) -> str:
 
     if is_raw:
         ret = "httpx.Response"
-        body = f"return {aw}self._do({req})"
-    elif len(op.json_responses) > 1:
+        body = f"return {aw}self._do_raw({req})"
+    elif op.json_responses and len(op.success_codes) > 1:
+        # Success codes without a JSON schema (e.g. a 204 alongside a JSON
+        # 200) yield None.
+        json_refs = dict(op.json_responses)
         types_expr = (
             "{" + ", ".join(f"{code}: {ref}" for code, ref in op.json_responses) + "}"
         )
-        union = " | ".join(dict.fromkeys(ref for _, ref in op.json_responses))
-        ret = union
+        refs = list(dict.fromkeys(ref for _, ref in op.json_responses))
+        if any(code not in json_refs for code in op.success_codes):
+            refs.append("None")
+        ret = " | ".join(refs)
         body = f"return {aw}self._do_json_with_status({types_expr}, {req})"
     elif op.json_responses:
         ret = op.json_responses[0][1]
@@ -593,6 +624,9 @@ def _render_method(op: _Operation, *, is_async: bool, is_raw: bool) -> str:
     if op.summary:
         summary = op.summary
         if is_raw:
-            summary += ". Returns the response unread, in the requested content type."
+            summary += (
+                ". Returns the response unread, in the requested content"
+                " type. The caller must close the response."
+            )
         sig += f'\n        """{summary}"""'
     return f"{sig}\n        {body}\n"

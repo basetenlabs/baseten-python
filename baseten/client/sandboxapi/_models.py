@@ -619,6 +619,8 @@ class DriveListResponse(BaseModel):
 
 
 class ExportOptions(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     async_: Annotated[
         bool | None,
         Field(

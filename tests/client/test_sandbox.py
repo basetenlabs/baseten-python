@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import httpx
 import pytest
 
@@ -87,7 +89,12 @@ def test_raw_returns_response_unread_with_accept() -> None:
     )
 
     assert isinstance(response, httpx.Response)
+    # MockTransport responses are buffered, so the unread-ness of a streamed
+    # response (send(stream=True) in the generated _do_raw) is not
+    # observable here; the caller contract of read + close still holds.
+    response.read()
     assert response.content == b"file bytes"
+    response.close()
     assert fake.capture.headers["accept"] == "application/octet-stream"
     client.close()
 
@@ -98,8 +105,25 @@ def test_raw_only_stream_keeps_plain_name() -> None:
 
     response = client.api.get_process_logs_stream(identifier="proc-1")
 
+    response.read()
     assert response.content == b"log line\n"
+    response.close()
     assert fake.capture.headers["accept"] == "text/plain"
+    client.close()
+
+
+def test_aliased_field_passed_and_sent_by_api_name() -> None:
+    fake = FakeTransport(
+        200, {"manifest": {"createdAt": "now", "root": "/", "version": 1}}
+    )
+    client = make_sync_client(fake)
+
+    client.api.post_archive_export(
+        request=baseten.client.sandboxapi.ExportOptions(async_=True)
+    )
+
+    # The field renamed for Python (async_) serializes under its API name.
+    assert json.loads(fake.capture.body) == {"async": True}
     client.close()
 
 
@@ -195,6 +219,8 @@ async def test_async_raw_sibling() -> None:
         accept="text/event-stream",
     )
 
+    await response.aread()
     assert response.content == b"event: done"
+    await response.aclose()
     assert fake.capture.headers["accept"] == "text/event-stream"
     await client.close()

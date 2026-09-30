@@ -4090,7 +4090,7 @@ class ApiClient:
             ),
         )
 
-    def _do(self, request: _ApiRequest) -> httpx.Response:
+    def _build_request(self, request: _ApiRequest) -> httpx.Request:
         path = request.path_fmt.format(
             *[urllib.parse.quote(a, safe="") for a in request.path_args]
         )
@@ -4106,7 +4106,11 @@ class ApiClient:
                     # Only fields the caller set are sent, so unset fields fall
                     # back to the server default rather than being reset here.
                     # An explicit None is kept, since null can mean "clear".
-                    json_body = request.body.model_dump(mode="json", exclude_unset=True)
+                    # by_alias: a field renamed for Python (e.g. async_ for
+                    # "async") must serialize under its API name.
+                    json_body = request.body.model_dump(
+                        mode="json", exclude_unset=True, by_alias=True
+                    )
                 else:
                     json_body = request.body
             elif request.body_content_type == "multipart/form-data":
@@ -4121,11 +4125,11 @@ class ApiClient:
                 # As above, plus dropping None: a null query parameter is
                 # meaningless and would otherwise serialize as an empty string.
                 params = request.query.model_dump(
-                    mode="json", exclude_unset=True, exclude_none=True
+                    mode="json", exclude_unset=True, exclude_none=True, by_alias=True
                 )
             else:
                 params = request.query
-        response = self._http_client.request(
+        return self._http_client.build_request(
             request.method,
             path,
             json=json_body,
@@ -4134,6 +4138,9 @@ class ApiClient:
             params=params,
             headers=headers,
         )
+
+    def _do(self, request: _ApiRequest) -> httpx.Response:
+        response = self._http_client.send(self._build_request(request))
         if response.status_code not in request.success_codes:
             raise ResponseError(status_code=response.status_code, body=response.text)
         return response
@@ -7967,7 +7974,7 @@ class AsyncApiClient:
             ),
         )
 
-    async def _do(self, request: _ApiRequest) -> httpx.Response:
+    def _build_request(self, request: _ApiRequest) -> httpx.Request:
         path = request.path_fmt.format(
             *[urllib.parse.quote(a, safe="") for a in request.path_args]
         )
@@ -7983,7 +7990,11 @@ class AsyncApiClient:
                     # Only fields the caller set are sent, so unset fields fall
                     # back to the server default rather than being reset here.
                     # An explicit None is kept, since null can mean "clear".
-                    json_body = request.body.model_dump(mode="json", exclude_unset=True)
+                    # by_alias: a field renamed for Python (e.g. async_ for
+                    # "async") must serialize under its API name.
+                    json_body = request.body.model_dump(
+                        mode="json", exclude_unset=True, by_alias=True
+                    )
                 else:
                     json_body = request.body
             elif request.body_content_type == "multipart/form-data":
@@ -7998,11 +8009,11 @@ class AsyncApiClient:
                 # As above, plus dropping None: a null query parameter is
                 # meaningless and would otherwise serialize as an empty string.
                 params = request.query.model_dump(
-                    mode="json", exclude_unset=True, exclude_none=True
+                    mode="json", exclude_unset=True, exclude_none=True, by_alias=True
                 )
             else:
                 params = request.query
-        response = await self._http_client.request(
+        return self._http_client.build_request(
             request.method,
             path,
             json=json_body,
@@ -8011,6 +8022,9 @@ class AsyncApiClient:
             params=params,
             headers=headers,
         )
+
+    async def _do(self, request: _ApiRequest) -> httpx.Response:
+        response = await self._http_client.send(self._build_request(request))
         if response.status_code not in request.success_codes:
             raise ResponseError(status_code=response.status_code, body=response.text)
         return response
