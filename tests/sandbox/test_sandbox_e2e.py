@@ -1,10 +1,11 @@
 """End-to-end tests against a live environment.
 
-Skipped unless BASETEN_E2E_TEST_API_KEY and BASETEN_E2E_TEST_DOMAIN are set.
-The key must belong to an organization with sandboxes enabled.
-BASETEN_E2E_TEST_SANDBOXES_DOMAIN optionally points the /v1/sandboxes calls
-at a different host than the token exchange, which stays on the management
-domain. Mirrors the JS suite's environment contract.
+Skipped unless all of BASETEN_E2E_TEST_API_KEY, BASETEN_E2E_TEST_DOMAIN,
+and BASETEN_E2E_TEST_SANDBOXES_DOMAIN are set. The key must belong to an
+organization with sandboxes enabled, and the sandbox management API must
+be served on its own host: today no environment serves /v1/sandboxes on
+the token-exchange domain, so the split is required rather than optional.
+Mirrors the JS suite's environment contract.
 """
 
 from __future__ import annotations
@@ -19,12 +20,11 @@ from baseten.sandbox import AsyncSandboxClient, SandboxClient
 
 API_KEY = os.environ.get("BASETEN_E2E_TEST_API_KEY", "")
 MANAGEMENT_DOMAIN = os.environ.get("BASETEN_E2E_TEST_DOMAIN", "")
-SANDBOXES_DOMAIN = (
-    os.environ.get("BASETEN_E2E_TEST_SANDBOXES_DOMAIN") or MANAGEMENT_DOMAIN
-)
+SANDBOXES_DOMAIN = os.environ.get("BASETEN_E2E_TEST_SANDBOXES_DOMAIN", "")
 
 e2e_required = pytest.mark.skipif(
-    not (API_KEY and MANAGEMENT_DOMAIN), reason="e2e environment not set"
+    not (API_KEY and MANAGEMENT_DOMAIN and SANDBOXES_DOMAIN),
+    reason="sandbox e2e environment not set",
 )
 
 # The one region where the execution plane accepts staging-minted tokens
@@ -40,11 +40,7 @@ def make_client() -> SandboxClient:
     return SandboxClient(
         api_key=API_KEY,
         base_url_override=f"https://{MANAGEMENT_DOMAIN}",
-        sandboxes_base_url_override=(
-            f"https://{SANDBOXES_DOMAIN}"
-            if SANDBOXES_DOMAIN != MANAGEMENT_DOMAIN
-            else None
-        ),
+        sandboxes_base_url_override=f"https://{SANDBOXES_DOMAIN}",
     )
 
 
@@ -78,11 +74,7 @@ async def test_async_create_and_list() -> None:
     client = AsyncSandboxClient(
         api_key=API_KEY,
         base_url_override=f"https://{MANAGEMENT_DOMAIN}",
-        sandboxes_base_url_override=(
-            f"https://{SANDBOXES_DOMAIN}"
-            if SANDBOXES_DOMAIN != MANAGEMENT_DOMAIN
-            else None
-        ),
+        sandboxes_base_url_override=f"https://{SANDBOXES_DOMAIN}",
     )
     try:
         sandbox = await client.create(name=name, region=E2E_REGION)
