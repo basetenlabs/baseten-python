@@ -21,9 +21,7 @@ from scripts.apigen.clientgen import generate_client
 from scripts.apigen.postprocess import postprocess_models
 from scripts.apigen.preprocess import preprocess_spec, preprocess_truss_config_schema
 
-# Staging, not prod: the /v1/sandboxes surface ships there first. Switch back
-# once api.baseten.co/v1/spec serves it too.
-MANAGEMENT_SPEC_URL = "https://api.staging.baseten.co/v1/spec"
+MANAGEMENT_SPEC_URL = "https://api.baseten.co/v1/spec"
 INFERENCE_SPEC_URL = "https://api.baseten.co/inference-spec"
 TRUSS_CONFIG_SCHEMA_URL = (
     "https://raw.githubusercontent.com/basetenlabs/truss/main/truss/config.schema.json"

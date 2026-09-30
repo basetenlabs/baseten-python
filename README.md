@@ -38,16 +38,3 @@ async with AsyncManagementClient(api_key="my-api-key") as client:
 
 Version 0.9.0 is a rewrite and shares no API with the earlier `baseten` releases.
 Code written against 0.8.2 or earlier will not work. Pin `baseten<0.9` to keep it.
-
-## Upgrading from 0.11.0 and earlier
-
-Version 0.12.0 splits request arguments. Query parameters now go on `params`, and
-request bodies stay on `request`. Before, both used `request`. Rename the keyword on
-calls that pass query parameters:
-
-```python
-# 0.11.0 and earlier
-client.api.get_model_apis(request=GetModelApisRequest(added_only=True))
-# 0.12.0
-client.api.get_model_apis(params=GetModelApisParams(added_only=True))
-```
