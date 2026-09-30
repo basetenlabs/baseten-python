@@ -3,7 +3,6 @@
 import copy
 import json
 import re
-from collections.abc import Callable
 
 from scripts.apigen.clientgen import (
     query_params_model_name,
@@ -52,11 +51,7 @@ def _rename_defs_refs(node: object, renames: dict[str, str]) -> None:
             _rename_defs_refs(child, renames)
 
 
-def preprocess_spec(
-    data: bytes,
-    *,
-    query_and_body_allowed: Callable[[str], bool] | None = None,
-) -> bytes:
+def preprocess_spec(data: bytes) -> bytes:
     doc = json.loads(data)
 
     _flatten_parameters(doc)
@@ -80,7 +75,7 @@ def preprocess_spec(
     # generates query-parameter models under the paths scope, which drags
     # in unwanted per-operation wrappers). Injected before the V1 rename
     # below so their $refs to enums are rewritten with everything else.
-    _inject_query_params_schemas(doc, query_and_body_allowed=query_and_body_allowed)
+    _inject_query_params_schemas(doc)
 
     # Hoist inline 2xx application/json response schemas into
     # components/schemas so datamodel-code-generator emits a named model the
@@ -217,9 +212,7 @@ def _collect_schema_refs(node: object, out: set[str]) -> None:
             _collect_schema_refs(child, out)
 
 
-def _inject_query_params_schemas(
-    doc: dict, *, query_and_body_allowed: Callable[[str], bool] | None
-) -> None:
+def _inject_query_params_schemas(doc: dict) -> None:
     # Build an object schema whose properties are the operation's query
     # parameters, named to match its client method (e.g. get_users ->
     # GetUsersParams). Each parameter's own schema (enum $refs, arrays,
@@ -239,13 +232,6 @@ def _inject_query_params_schemas(
             ]
             if not query_params:
                 continue
-            if "requestBody" in op and not (
-                query_and_body_allowed and query_and_body_allowed(path)
-            ):
-                raise ValueError(
-                    f"{http_method.upper()} {path} has both a request body and "
-                    "query parameters, which this API does not allow"
-                )
             name = query_params_model_name(method_names[(path, http_method)])
             if name in schemas:
                 raise ValueError(
