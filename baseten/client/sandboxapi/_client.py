@@ -1728,7 +1728,7 @@ class AsyncApiClient:
         )
 
     async def post_process_stdin(
-        self, *, identifier: str, content: bytes | IO[bytes] | str
+        self, *, identifier: str, content: bytes | str
     ) -> SuccessResponse:
         """Write to a process's stdin"""
         return await self._do_json(

@@ -538,7 +538,10 @@ def _render_method(op: _Operation, *, is_async: bool, is_raw: bool) -> str:
         if op.body_content_type == _MULTIPART_CONTENT:
             kwargs.append("files: Any")
         elif op.body_content_type:
-            kwargs.append("content: bytes | IO[bytes] | str")
+            # AsyncClient cannot send a sync file object, so the async
+            # signature advertises only what it can deliver.
+            content_type = "bytes | str" if is_async else "bytes | IO[bytes] | str"
+            kwargs.append(f"content: {content_type}")
         elif op.req_body_ref:
             kwargs.append(f"request: {op.req_body_ref}")
         else:
