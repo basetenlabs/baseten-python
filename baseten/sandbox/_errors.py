@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+from pydantic import BaseModel
+
 import baseten.client.managementapi
 import baseten.client.sandboxapi
 
@@ -83,6 +85,9 @@ def to_sandbox_api_error(error: object, plane: str) -> Exception:
             body = next(iter(model_fields.values()))
         else:  # pragma: no cover - generated errors carry exactly one model
             body = model_fields
+    if isinstance(body, BaseModel):
+        # The curated error reads code and details off a plain dict.
+        body = body.model_dump()
     if plane == "exec" and status in _GATEWAY_STATUSES:
         return SandboxGatewayError(status, body)
     return SandboxApiError(status, body)

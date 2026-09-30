@@ -467,3 +467,76 @@ async def test_async_list_paginates() -> None:
 
     assert names == ["sb-1", "sb-2"]
     await client.close()
+
+
+def test_create_without_name_omits_the_field() -> None:
+    transport = RoutingTransport(
+        routes={"POST /v1/sandboxes/instances": created_response()}
+    )
+    client = make_sync_client(transport)
+
+    client.create()
+
+    body = json.loads(transport.requests[1][3])
+    assert body == {}
+    client.close()
+
+
+def test_fs_read_retries_gateway_errors() -> None:
+    transport = RoutingTransport(
+        routes={
+            "GET /filesystem/file.txt": [
+                httpx.Response(502, text="bad gateway"),
+                httpx.Response(503, text="unavailable"),
+                file_record(),
+            ]
+        }
+    )
+    client = make_full_client(transport)
+
+    sandbox = client.create(name="sb-1")
+    content = sandbox.fs.read("file.txt")
+
+    assert content == "file text"
+    assert transport.count("GET", "/filesystem/file.txt") == 3
+    client.close()
+
+
+def test_persistent_revocation_returns_last_response() -> None:
+    transport = RoutingTransport(
+        routes={
+            "GET /v1/sandboxes/instances/sb-1": lambda request: revoked_token_response(
+                "revoked"
+            )
+        },
+        mint_tokens=["tok-1", "tok-2", "tok-3"],
+    )
+    client = make_sync_client(transport)
+
+    with pytest.raises(SandboxApiError) as exc_info:
+        client.get_info("sb-1")
+
+    # Exhaustion surfaces the final 401 as a converted error, and every
+    # minted token was tried.
+    assert exc_info.value.status == 401
+    assert transport.mint_count == 3
+    client.close()
+
+
+def test_typed_error_body_becomes_a_dict() -> None:
+    transport = RoutingTransport(
+        routes={
+            "GET /v1/sandboxes/instances/sb-1": httpx.Response(
+                404,
+                json={"code": "NOT_FOUND", "message": "no such sandbox"},
+            )
+        }
+    )
+    client = make_sync_client(transport)
+
+    with pytest.raises(SandboxApiError) as exc_info:
+        client.get_info("sb-1")
+
+    assert exc_info.value.code == "NOT_FOUND"
+    assert isinstance(exc_info.value.body, dict)
+    client.close()

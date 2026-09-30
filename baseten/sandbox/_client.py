@@ -110,7 +110,9 @@ def _sandbox_create_request(
     mean "clear" on updates. Creation must send nothing instead, so the
     server-side defaults apply.
     """
-    create_fields: dict[str, Any] = {"name": name}
+    create_fields: dict[str, Any] = {}
+    if name is not None:
+        create_fields["name"] = name
     if image is not None:
         create_fields["image"] = image
     if memory is not None:
@@ -188,6 +190,7 @@ class SandboxClient:
                 self._options,
                 f"Bearer {api_key}" if api_key != "" else None,
             ),
+            timeout=self._timeout,
         )
         self._token_source = SyncTokenSource(
             api_key=api_key,
@@ -240,6 +243,17 @@ class SandboxClient:
         not covered by stability guarantees and may change between versions.
         """
         return self._api
+
+    @property
+    def sandbox_api(self) -> baseten.client.managementapi.ApiClient:
+        """The generated client bound to where /v1/sandboxes is served.
+
+        With no override set this is :attr:`api`; with one set, raw sandbox
+        operations go to the override host while :attr:`api` stays on the
+        management domain. The generated API surface is not covered by
+        stability guarantees and may change between versions.
+        """
+        return self._sandbox_api
 
     def create(
         self,
@@ -448,6 +462,7 @@ class AsyncSandboxClient:
         self._timeout = self._options.timeout or DEFAULT_TIMEOUT
         self._mint_http_client = httpx.AsyncClient(
             transport=self._pool,
+            timeout=self._timeout,
             base_url=_management_base_url(self._options),
             headers=_request_headers(
                 self._options,
@@ -504,6 +519,17 @@ class AsyncSandboxClient:
         not covered by stability guarantees and may change between versions.
         """
         return self._api
+
+    @property
+    def sandbox_api(self) -> baseten.client.managementapi.AsyncApiClient:
+        """The generated client bound to where /v1/sandboxes is served.
+
+        With no override set this is :attr:`api`; with one set, raw sandbox
+        operations go to the override host while :attr:`api` stays on the
+        management domain. The generated API surface is not covered by
+        stability guarantees and may change between versions.
+        """
+        return self._sandbox_api
 
     async def create(
         self,
