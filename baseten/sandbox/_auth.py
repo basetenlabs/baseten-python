@@ -54,27 +54,29 @@ def resolve_http2_flag(http2: bool | None) -> bool:
 
 
 class _TokenCache:
-    """A cached minted token, guarded so concurrent callers share one mint."""
+    """A cached minted token, guarded so concurrent callers share one mint.
+
+    The lock spans the miss check and the mint, so a burst on a cold cache
+    sends a single exchange.
+    """
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._token: str | None = None
         self._expires_at: datetime | None = None
 
-    def get(self) -> tuple[str, datetime] | None:
+    def get_or_mint(
+        self, mint: Callable[[], tuple[str, datetime]]
+    ) -> tuple[str, datetime]:
         with self._lock:
-            if self._token is None or self._expires_at is None:
-                return None
-            if datetime.now(UTC) >= self._expires_at - _TOKEN_EXPIRY_LEEWAY:
-                self._token = None
-                self._expires_at = None
-                return None
+            if (
+                self._token is not None
+                and self._expires_at is not None
+                and datetime.now(UTC) < self._expires_at - _TOKEN_EXPIRY_LEEWAY
+            ):
+                return self._token, self._expires_at
+            self._token, self._expires_at = mint()
             return self._token, self._expires_at
-
-    def put(self, token: str, expires_at: datetime) -> None:
-        with self._lock:
-            self._token = token
-            self._expires_at = expires_at
 
     def drop(self, token: str) -> None:
         """Drop a token the server rejected, so the next request gets a new one.
@@ -118,11 +120,7 @@ class SyncTokenSource:
             return self._provider()
         if self._mint is None:
             return None
-        cached = self._cache.get()
-        if cached is not None:
-            return cached[0]
-        token, expires_at = self._mint()
-        self._cache.put(token, expires_at)
+        token, _ = self._cache.get_or_mint(self._mint)
         return token
 
     def invalidate(self, token: str) -> None:
@@ -194,20 +192,26 @@ class _SyncAuthTransport(httpx.BaseTransport):
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         request.read()
-        for _ in range(_TOKEN_INVALIDATION_MAX_RETRIES + 1):
+        for attempt in range(_TOKEN_INVALIDATION_MAX_RETRIES + 1):
             token = self._token_source.token()
             if token is not None:
                 request.headers["Authorization"] = f"Bearer {token}"
             response = self._inner.handle_request(request)
-            if (
-                token is None
-                or response.status_code != 401
-                or response.headers.get("x-blaxel-error-code") != _TOKEN_REVOKED_CODE
-            ):
+            revoked = (
+                token is not None
+                and response.status_code == 401
+                and response.headers.get("x-blaxel-error-code") == _TOKEN_REVOKED_CODE
+            )
+            # The last attempt's response is returned even when still
+            # revoked, so the generated client raises a meaningful error.
+            if not revoked or attempt == _TOKEN_INVALIDATION_MAX_RETRIES:
                 return response
             self._token_source.invalidate(token)
             response.close()
         raise AssertionError  # pragma: no cover - loop returns first
+
+    def close(self) -> None:
+        self._inner.close()
 
 
 class _AsyncAuthTransport(httpx.AsyncBaseTransport):
@@ -221,17 +225,23 @@ class _AsyncAuthTransport(httpx.AsyncBaseTransport):
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         request.read()
-        for _ in range(_TOKEN_INVALIDATION_MAX_RETRIES + 1):
+        for attempt in range(_TOKEN_INVALIDATION_MAX_RETRIES + 1):
             token = await self._token_source.token()
             if token is not None:
                 request.headers["Authorization"] = f"Bearer {token}"
             response = await self._inner.handle_async_request(request)
-            if (
-                token is None
-                or response.status_code != 401
-                or response.headers.get("x-blaxel-error-code") != _TOKEN_REVOKED_CODE
-            ):
+            revoked = (
+                token is not None
+                and response.status_code == 401
+                and response.headers.get("x-blaxel-error-code") == _TOKEN_REVOKED_CODE
+            )
+            # The last attempt's response is returned even when still
+            # revoked, so the generated client raises a meaningful error.
+            if not revoked or attempt == _TOKEN_INVALIDATION_MAX_RETRIES:
                 return response
             await self._token_source.invalidate(token)
             await response.aclose()
         raise AssertionError  # pragma: no cover - loop returns first
+
+    async def aclose(self) -> None:
+        await self._inner.aclose()

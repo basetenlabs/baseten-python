@@ -8,6 +8,7 @@ import httpx
 import baseten.client.sandboxapi
 from baseten.client._user_agent import with_user_agent
 from baseten.sandbox._auth import (
+    AsyncSandboxTokenProvider,
     AsyncTokenSource,
     SandboxTokenProvider,
     SyncTokenSource,
@@ -206,7 +207,7 @@ class AsyncSandbox:
         *,
         name: str,
         url: str,
-        token_provider: SandboxTokenProvider | None = None,
+        token_provider: SandboxTokenProvider | AsyncSandboxTokenProvider | None = None,
         headers: Mapping[str, str] | None = None,
         http2: bool | None = None,
         timeout: httpx.Timeout | None = None,
@@ -355,14 +356,20 @@ class SandboxFileSystem:
         Retries dropped connections and edge gateway errors, since a read is
         safe to repeat.
         """
-        try:
-            result = retry_idempotent(
-                lambda: self._api.get_filesystem(path=path),
-                max_retries=self._retries.read_max_retries,
-                gateway_max_retries=self._retries.gateway_max_retries,
-            )
-        except Exception as error:
-            raise to_sandbox_api_error(error, "exec") from error
+
+        def attempt() -> baseten.client.sandboxapi.GetFilesystemResponse:
+            # Errors convert per attempt, so the retry helper sees
+            # SandboxGatewayError instead of the generated ResponseError.
+            try:
+                return self._api.get_filesystem(path=path)
+            except Exception as error:
+                raise to_sandbox_api_error(error, "exec") from error
+
+        result = retry_idempotent(
+            attempt,
+            max_retries=self._retries.read_max_retries,
+            gateway_max_retries=self._retries.gateway_max_retries,
+        )
         root = result.root
         if isinstance(root, baseten.client.sandboxapi.FileWithContent):
             return root.content
@@ -398,14 +405,20 @@ class AsyncSandboxFileSystem:
         Retries dropped connections and edge gateway errors, since a read is
         safe to repeat.
         """
-        try:
-            result = await retry_idempotent_async(
-                lambda: self._api.get_filesystem(path=path),
-                max_retries=self._retries.read_max_retries,
-                gateway_max_retries=self._retries.gateway_max_retries,
-            )
-        except Exception as error:
-            raise to_sandbox_api_error(error, "exec") from error
+
+        async def attempt() -> baseten.client.sandboxapi.GetFilesystemResponse:
+            # Errors convert per attempt, so the retry helper sees
+            # SandboxGatewayError instead of the generated ResponseError.
+            try:
+                return await self._api.get_filesystem(path=path)
+            except Exception as error:
+                raise to_sandbox_api_error(error, "exec") from error
+
+        result = await retry_idempotent_async(
+            attempt,
+            max_retries=self._retries.read_max_retries,
+            gateway_max_retries=self._retries.gateway_max_retries,
+        )
         root = result.root
         if isinstance(root, baseten.client.sandboxapi.FileWithContent):
             return root.content
