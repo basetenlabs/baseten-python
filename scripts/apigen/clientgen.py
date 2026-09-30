@@ -526,9 +526,8 @@ def _render_method(op: _Operation, *, is_async: bool, is_raw: bool) -> str:
     aw = "await " if is_async else ""
 
     # Query params go on `params`, request bodies on `request` (JSON) or
-    # `files`/`content` for non-JSON bodies. A request body is always
-    # required so an empty body still sends `{{}}`. Query params are
-    # optional unless the spec marks one required.
+    # `files`/`content` for non-JSON. Bodies are always required so an empty
+    # body still sends `{{}}`; query params only when the spec marks one.
     kwargs: list[str] = [f"{_camel_to_snake(p)}: str" for p in op.path_params]
     if op.query_ref:
         if op.query_required:

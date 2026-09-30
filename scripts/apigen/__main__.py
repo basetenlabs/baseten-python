@@ -56,9 +56,8 @@ def main() -> None:
         SPECS_DIR / "management.json",
         CLIENT_DIR / "managementapi",
         "Management",
-        # Sandbox management operations take a team selector as a query
-        # parameter alongside the request body; the rest of the management
-        # API keeps query parameters and request bodies separated.
+        # Sandbox management ops carry a team selector query param beside the
+        # body; the rest of the management API keeps query and body separated.
         query_and_body_allowed=lambda path: path.startswith("/v1/sandboxes"),
     )
     generate_api(SPECS_DIR / "inference.json", CLIENT_DIR / "inferenceapi", "Inference")

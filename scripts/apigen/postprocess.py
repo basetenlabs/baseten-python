@@ -48,9 +48,9 @@ def postprocess_models(src: str) -> str:
 
 
 def _allow_population_by_field_name(src: str) -> str:
-    # Pydantic accepts only a field's alias by default, so a field renamed for
-    # Python (e.g. async_ for the API's "async") could not be passed by its
-    # Python name. Generated classes with aliased fields accept both.
+    # Pydantic accepts only the alias by default, so a Python-renamed field
+    # (async_ for the API's "async") was not passable; generated classes with
+    # aliased fields accept both names.
     tree = ast.parse(src)
     lines = src.splitlines(keepends=True)
     for node in reversed(tree.body):

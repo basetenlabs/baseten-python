@@ -109,9 +109,9 @@ def preprocess_spec(
 
 
 def _flatten_parameters(doc: dict) -> None:
-    # Operations inherit path-item parameters, and either level may reference
-    # components/parameters. Inline both so every downstream step (query
-    # schema injection, client generation) sees concrete parameter objects.
+    # Operations inherit path-item parameters, and either level may $ref
+    # components/parameters; inline both so downstream steps see concrete
+    # parameter objects.
     component_params = doc.get("components", {}).get("parameters", {})
 
     def resolve(param: dict) -> dict:
@@ -294,9 +294,8 @@ def _inject_response_schemas(doc: dict) -> None:
                 if not isinstance(schema, dict) or "$ref" in schema:
                     continue
                 base = response_type_model_name(method_names[(path, http_method)])
-                # Only the first success code gets the bare name, so an
-                # operation with several 2xx bodies yields one schema per
-                # code rather than colliding.
+                # Only the first success code gets the bare name, so several
+                # 2xx bodies yield one schema per code, not a collision.
                 schema_name = base if code == success_codes[0] else f"{base}{code}"
                 if schema_name in schemas:
                     raise ValueError(
