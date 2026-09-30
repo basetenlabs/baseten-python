@@ -439,7 +439,7 @@ class ApiClient:
         request: PredictInput,
         accept: Literal["application/json", "application/octet-stream"],
     ) -> httpx.Response:
-        """Call the model deployment associated with a specified environment.. Returns the response unread, in the requested content type. The caller must close the response."""
+        """Call the model deployment associated with a specified environment. Returns the response unread, in the requested content type. The caller must close the response."""
         return self._do_raw(
             _ApiRequest(
                 method="POST",
@@ -491,7 +491,7 @@ class ApiClient:
         request: PredictInput,
         accept: Literal["application/json", "application/octet-stream"],
     ) -> httpx.Response:
-        """Call a specific deployment of a model by deployment ID.. Returns the response unread, in the requested content type. The caller must close the response."""
+        """Call a specific deployment of a model by deployment ID. Returns the response unread, in the requested content type. The caller must close the response."""
         return self._do_raw(
             _ApiRequest(
                 method="POST",
@@ -540,7 +540,7 @@ class ApiClient:
         request: PredictInput,
         accept: Literal["application/json", "application/octet-stream"],
     ) -> httpx.Response:
-        """Call the development deployment of a model.. Returns the response unread, in the requested content type. The caller must close the response."""
+        """Call the development deployment of a model. Returns the response unread, in the requested content type. The caller must close the response."""
         return self._do_raw(
             _ApiRequest(
                 method="POST",
@@ -589,7 +589,7 @@ class ApiClient:
         request: PredictInput,
         accept: Literal["application/json", "application/octet-stream"],
     ) -> httpx.Response:
-        """Call the production environment of a model.. Returns the response unread, in the requested content type. The caller must close the response."""
+        """Call the production environment of a model. Returns the response unread, in the requested content type. The caller must close the response."""
         return self._do_raw(
             _ApiRequest(
                 method="POST",
@@ -638,7 +638,7 @@ class ApiClient:
         request: PredictInput,
         accept: Literal["application/json", "application/octet-stream"],
     ) -> httpx.Response:
-        """Call a regional environment of a model.. Returns the response unread, in the requested content type. The caller must close the response."""
+        """Call a regional environment of a model. Returns the response unread, in the requested content type. The caller must close the response."""
         return self._do_raw(
             _ApiRequest(
                 method="POST",
@@ -1323,7 +1323,7 @@ class AsyncApiClient:
         request: PredictInput,
         accept: Literal["application/json", "application/octet-stream"],
     ) -> httpx.Response:
-        """Call the model deployment associated with a specified environment.. Returns the response unread, in the requested content type. The caller must close the response."""
+        """Call the model deployment associated with a specified environment. Returns the response unread, in the requested content type. The caller must close the response."""
         return await self._do_raw(
             _ApiRequest(
                 method="POST",
@@ -1375,7 +1375,7 @@ class AsyncApiClient:
         request: PredictInput,
         accept: Literal["application/json", "application/octet-stream"],
     ) -> httpx.Response:
-        """Call a specific deployment of a model by deployment ID.. Returns the response unread, in the requested content type. The caller must close the response."""
+        """Call a specific deployment of a model by deployment ID. Returns the response unread, in the requested content type. The caller must close the response."""
         return await self._do_raw(
             _ApiRequest(
                 method="POST",
@@ -1424,7 +1424,7 @@ class AsyncApiClient:
         request: PredictInput,
         accept: Literal["application/json", "application/octet-stream"],
     ) -> httpx.Response:
-        """Call the development deployment of a model.. Returns the response unread, in the requested content type. The caller must close the response."""
+        """Call the development deployment of a model. Returns the response unread, in the requested content type. The caller must close the response."""
         return await self._do_raw(
             _ApiRequest(
                 method="POST",
@@ -1473,7 +1473,7 @@ class AsyncApiClient:
         request: PredictInput,
         accept: Literal["application/json", "application/octet-stream"],
     ) -> httpx.Response:
-        """Call the production environment of a model.. Returns the response unread, in the requested content type. The caller must close the response."""
+        """Call the production environment of a model. Returns the response unread, in the requested content type. The caller must close the response."""
         return await self._do_raw(
             _ApiRequest(
                 method="POST",
@@ -1522,7 +1522,7 @@ class AsyncApiClient:
         request: PredictInput,
         accept: Literal["application/json", "application/octet-stream"],
     ) -> httpx.Response:
-        """Call a regional environment of a model.. Returns the response unread, in the requested content type. The caller must close the response."""
+        """Call a regional environment of a model. Returns the response unread, in the requested content type. The caller must close the response."""
         return await self._do_raw(
             _ApiRequest(
                 method="POST",

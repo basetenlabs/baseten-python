@@ -623,6 +623,7 @@ def _render_method(op: _Operation, *, is_async: bool, is_raw: bool) -> str:
     if op.summary:
         summary = op.summary
         if is_raw:
+            summary = summary.rstrip(".")
             summary += (
                 ". Returns the response unread, in the requested content"
                 " type. The caller must close the response."

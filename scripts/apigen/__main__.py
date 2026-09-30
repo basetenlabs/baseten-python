@@ -11,7 +11,6 @@ import json
 import subprocess
 import sys
 import urllib.request
-from datetime import datetime
 from pathlib import Path
 
 import yaml
@@ -69,7 +68,7 @@ def _read_spec(spec_file: Path) -> bytes:
     # to ISO strings, matching how js-yaml keeps them for the JS SDK.
     if spec_file.suffix in (".yml", ".yaml"):
         doc = yaml.safe_load(spec_file.read_text())
-        return json.dumps(doc, default=datetime.isoformat).encode()
+        return json.dumps(doc, default=lambda value: value.isoformat()).encode()
     return spec_file.read_bytes()
 
 
