@@ -58,6 +58,10 @@ class SandboxClientOptions:
     base_url_override: str | None = None
     """Explicit management API base URL, or None to use the default."""
 
+    sandboxes_base_url_override: str | None = None
+    """Where /v1/sandboxes is served, when that differs from the management
+    API. The token exchange still goes to the management API."""
+
     headers: Mapping[str, str] | None = None
     """Additional headers to send on every request."""
 
@@ -139,6 +143,7 @@ class SandboxClient:
         token_provider: SandboxTokenProvider | None = None,
         team_id: str | None = None,
         base_url_override: str | None = None,
+        sandboxes_base_url_override: str | None = None,
         headers: Mapping[str, str] | None = None,
         http2: bool | None = None,
         timeout: httpx.Timeout | None = None,
@@ -155,6 +160,7 @@ class SandboxClient:
             token_provider=token_provider,
             team_id=team_id,
             base_url_override=base_url_override,
+            sandboxes_base_url_override=sandboxes_base_url_override,
             headers=headers,
             http2=http2,
             timeout=timeout,
@@ -196,6 +202,17 @@ class SandboxClient:
             timeout=self._timeout,
         )
         self._api = baseten.client.managementapi.ApiClient(self._http_client)
+        self._sandbox_api = self._api
+        if self._options.sandboxes_base_url_override is not None:
+            self._sandboxes_http_client = httpx.Client(
+                transport=self._auth_transport,
+                base_url=self._options.sandboxes_base_url_override,
+                headers=_request_headers(self._options, None),
+                timeout=self._timeout,
+            )
+            self._sandbox_api = baseten.client.managementapi.ApiClient(
+                self._sandboxes_http_client
+            )
         self._sandbox_http_clients: list[httpx.Client] = []
 
     def _mint(self) -> tuple[str, datetime]:
@@ -242,7 +259,7 @@ class SandboxClient:
         for what the caller leaves unset.
         """
         try:
-            sandbox = self._api.create_sandbox(
+            sandbox = self._sandbox_api.create_sandbox(
                 params=baseten.client.managementapi.CreateSandboxParams(
                     team_id=self._options.team_id
                 ),
@@ -265,7 +282,7 @@ class SandboxClient:
     def get_info(self, name: str) -> SandboxInfo:
         """Get a sandbox's current record."""
         try:
-            sandbox = self._api.get_sandbox(
+            sandbox = self._sandbox_api.get_sandbox(
                 sandbox_name=name,
                 params=baseten.client.managementapi.GetSandboxParams(
                     team_id=self._options.team_id
@@ -297,7 +314,7 @@ class SandboxClient:
         cursor: str | None = None
         while True:
             try:
-                response = self._api.list_sandboxes(
+                response = self._sandbox_api.list_sandboxes(
                     params=baseten.client.managementapi.ListSandboxesParams(
                         team_id=self._options.team_id,
                         cursor=cursor,
@@ -331,7 +348,7 @@ class SandboxClient:
         shows the sandbox as still deleting.
         """
         try:
-            sandbox = self._api.delete_sandbox(
+            sandbox = self._sandbox_api.delete_sandbox(
                 sandbox_name=name,
                 params=baseten.client.managementapi.DeleteSandboxParams(
                     team_id=self._options.team_id
@@ -345,6 +362,8 @@ class SandboxClient:
         """Close the client and the connections every sandbox shares."""
         for http_client in self._sandbox_http_clients:
             http_client.close()
+        if self._options.sandboxes_base_url_override is not None:
+            self._sandboxes_http_client.close()
         self._http_client.close()
         self._mint_http_client.close()
 
@@ -391,6 +410,7 @@ class AsyncSandboxClient:
         token_provider: SandboxTokenProvider | AsyncSandboxTokenProvider | None = None,
         team_id: str | None = None,
         base_url_override: str | None = None,
+        sandboxes_base_url_override: str | None = None,
         headers: Mapping[str, str] | None = None,
         http2: bool | None = None,
         timeout: httpx.Timeout | None = None,
@@ -408,6 +428,7 @@ class AsyncSandboxClient:
             token_provider=token_provider,
             team_id=team_id,
             base_url_override=base_url_override,
+            sandboxes_base_url_override=sandboxes_base_url_override,
             headers=headers,
             http2=http2,
             timeout=timeout,
@@ -457,6 +478,17 @@ class AsyncSandboxClient:
             timeout=self._timeout,
         )
         self._api = baseten.client.managementapi.AsyncApiClient(self._http_client)
+        self._sandbox_api = self._api
+        if self._options.sandboxes_base_url_override is not None:
+            self._sandboxes_http_client = httpx.AsyncClient(
+                transport=self._auth_transport,
+                base_url=self._options.sandboxes_base_url_override,
+                headers=_request_headers(self._options, None),
+                timeout=self._timeout,
+            )
+            self._sandbox_api = baseten.client.managementapi.AsyncApiClient(
+                self._sandboxes_http_client
+            )
         self._sandbox_http_clients: list[httpx.AsyncClient] = []
 
     @property
@@ -491,7 +523,7 @@ class AsyncSandboxClient:
         for what the caller leaves unset.
         """
         try:
-            sandbox = await self._api.create_sandbox(
+            sandbox = await self._sandbox_api.create_sandbox(
                 params=baseten.client.managementapi.CreateSandboxParams(
                     team_id=self._options.team_id
                 ),
@@ -514,7 +546,7 @@ class AsyncSandboxClient:
     async def get_info(self, name: str) -> SandboxInfo:
         """Get a sandbox's current record."""
         try:
-            sandbox = await self._api.get_sandbox(
+            sandbox = await self._sandbox_api.get_sandbox(
                 sandbox_name=name,
                 params=baseten.client.managementapi.GetSandboxParams(
                     team_id=self._options.team_id
@@ -546,7 +578,7 @@ class AsyncSandboxClient:
         cursor: str | None = None
         while True:
             try:
-                response = await self._api.list_sandboxes(
+                response = await self._sandbox_api.list_sandboxes(
                     params=baseten.client.managementapi.ListSandboxesParams(
                         team_id=self._options.team_id,
                         cursor=cursor,
@@ -581,7 +613,7 @@ class AsyncSandboxClient:
         shows the sandbox as still deleting.
         """
         try:
-            sandbox = await self._api.delete_sandbox(
+            sandbox = await self._sandbox_api.delete_sandbox(
                 sandbox_name=name,
                 params=baseten.client.managementapi.DeleteSandboxParams(
                     team_id=self._options.team_id
@@ -595,6 +627,8 @@ class AsyncSandboxClient:
         """Close the client and the connections every sandbox shares."""
         for http_client in self._sandbox_http_clients:
             await http_client.aclose()
+        if self._options.sandboxes_base_url_override is not None:
+            await self._sandboxes_http_client.aclose()
         await self._http_client.aclose()
         await self._mint_http_client.aclose()
 
