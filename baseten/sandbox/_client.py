@@ -30,8 +30,8 @@ from baseten.sandbox._sandbox import AsyncSandbox, Sandbox
 
 DEFAULT_MANAGEMENT_BASE_URL = "https://api.baseten.co"
 
-# Only connect time is bounded by default: a sandbox call can run for as long
-# as the operation needs, and callers pass a stricter `timeout` when wanted.
+# Only connect time is bounded: a sandbox call runs as long as the operation
+# needs. Callers pass a stricter `timeout` when wanted.
 DEFAULT_TIMEOUT = httpx.Timeout(None, connect=10.0)
 
 
@@ -166,16 +166,15 @@ class SandboxClient:
                 http2=resolve_http2_flag(self._options.http2)
             )
         elif isinstance(transport_override, httpx.BaseTransport):
-            # MockTransport implements both interfaces, so an async-only
-            # transport (not a BaseTransport) is what must fall through.
+            # MockTransport implements both interfaces; only an async-only
+            # transport fails this isinstance.
             self._pool = transport_override
         else:
             raise TypeError(
                 "SandboxClient needs a sync transport in transport_override"
             )
         self._timeout = self._options.timeout or DEFAULT_TIMEOUT
-        # The mint client authenticates with the API key directly; every
-        # other client goes through the auth transport below.
+        # API-key auth, not the auth transport: minting must not need a token.
         self._mint_http_client = httpx.Client(
             transport=self._pool,
             base_url=_management_base_url(self._options),
@@ -200,8 +199,8 @@ class SandboxClient:
         self._sandbox_http_clients: list[httpx.Client] = []
 
     def _mint(self) -> tuple[str, datetime]:
-        # The mint client authenticates with the API key, not with a token,
-        # so this does not go back through the auth transport.
+        # The mint client carries the API key, so minting cannot recurse
+        # through the auth transport.
         minted = baseten.client.managementapi.ApiClient(
             self._mint_http_client
         ).post_token(
