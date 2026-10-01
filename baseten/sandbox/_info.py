@@ -99,6 +99,16 @@ class SandboxProcessInfo:
 
 
 @dataclass
+class SandboxProcessLogs:
+    """A process's captured output."""
+
+    stdout: str
+    stderr: str
+    logs: str
+    """Standard output and standard error, interleaved."""
+
+
+@dataclass
 class LibraryImagePort:
     """One port a starter image's services listen on."""
 
@@ -147,15 +157,19 @@ def library_image_from_api(
     return LibraryImage(
         name=image.name,
         image=image.image,
-        display_name=image.displayName,
+        display_name=image.display_name,
         description=image.description,
-        long_description=image.longDescription,
+        long_description=image.long_description,
         memory=image.memory,
         categories=image.categories or [],
         tags=image.tags or [],
         ports=[
-            LibraryImagePort(name=port.name, target=port.target, protocol=port.protocol)
-            for port in image.ports or []
+            LibraryImagePort(
+                name=port.name,
+                target=port.target,
+                protocol=str(port.protocol) if port.protocol else None,
+            )
+            for port in (image.ports.root if image.ports else [])
         ],
         icon_url=image.icon,
         project_url=image.url,
@@ -222,6 +236,13 @@ def process_info_from_api(
             parse_exec_timestamp(process.completedAt) if process.completedAt else None
         ),
     )
+
+
+def process_logs_from_api(
+    logs: baseten.client.sandboxapi.ProcessLogs,
+) -> SandboxProcessLogs:
+    """Convert the execution plane's captured process output."""
+    return SandboxProcessLogs(stdout=logs.stdout, stderr=logs.stderr, logs=logs.logs)
 
 
 def parse_exec_timestamp(value: str) -> datetime:

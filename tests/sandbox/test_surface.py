@@ -369,6 +369,66 @@ def test_fs_read_directory_raises() -> None:
     client.close()
 
 
+def test_process_list_and_logs() -> None:
+    def process_list_response(request: httpx.Request) -> httpx.Response:
+        # Callable route: a bare list payload would be consumed one entry per request.
+        return httpx.Response(
+            200, json=[process_record()], headers={"content-type": "application/json"}
+        )
+
+    transport = RoutingTransport(
+        routes={
+            "GET /process": process_list_response,
+            "GET /process/123/logs": {"logs": "hi\n", "stdout": "hi\n", "stderr": ""},
+        }
+    )
+    client = make_full_client(transport)
+
+    sandbox = client.create(name="sb-1")
+    processes = sandbox.process.list()
+    logs = sandbox.process.logs("123")
+
+    assert [process.pid for process in processes] == ["123"]
+    assert processes[0].status == "completed"
+    assert logs.logs == "hi\n"
+    assert logs.stderr == ""
+    client.close()
+
+
+async def _async_sandbox(transport: RoutingTransport):
+    client = AsyncSandboxClient(
+        api_key="test-key",
+        base_url_override=MANAGEMENT_URL,
+        transport_override=transport.async_transport,
+    )
+    return client, await client.create(name="sb-1")
+
+
+@pytest.mark.asyncio
+async def test_async_process_list_and_logs() -> None:
+    def process_list_response(request: httpx.Request) -> httpx.Response:
+        # Callable route: a bare list payload would be consumed one entry per request.
+        return httpx.Response(
+            200, json=[process_record()], headers={"content-type": "application/json"}
+        )
+
+    transport = RoutingTransport(
+        routes={
+            "POST /v1/sandboxes/instances": created_response(),
+            "GET /process": process_list_response,
+            "GET /process/123/logs": {"logs": "hi\n", "stdout": "hi\n", "stderr": ""},
+        }
+    )
+    client, sandbox = await _async_sandbox(transport)
+
+    processes = await sandbox.process.list()
+    logs = await sandbox.process.logs("123")
+
+    assert [process.pid for process in processes] == ["123"]
+    assert logs.logs == "hi\n"
+    await client.close()
+
+
 def test_process_exec_returns_curated_info() -> None:
     transport = RoutingTransport(routes={})
     client = make_full_client(transport)
@@ -543,20 +603,23 @@ def test_typed_error_body_becomes_a_dict() -> None:
 
 
 def library_catalog_response(request: httpx.Request) -> httpx.Response:
-    # Callable route: a bare list payload would be consumed one entry per request.
+    # Callable route: a dict payload would be consumed as a scripted response.
     return httpx.Response(
-        200, json=library_catalog(), headers={"content-type": "application/json"}
+        200,
+        json={"items": library_catalog()},
+        headers={"content-type": "application/json"},
     )
 
 
 def library_catalog() -> list[dict[str, Any]]:
+    # The server drops hidden and coming-soon entries before listing.
     return [
         {
             "name": "expo",
-            "image": "blaxel/expo:latest",
-            "displayName": "Expo",
+            "image": "baseten/expo:latest",
+            "display_name": "Expo",
             "description": "Expo app development",
-            "longDescription": "Build and run Expo apps.",
+            "long_description": "Build and run Expo apps.",
             "memory": 4096,
             "categories": ["web"],
             "tags": ["react-native"],
@@ -564,22 +627,13 @@ def library_catalog() -> list[dict[str, Any]]:
             "icon": "https://images.b10.co/expo.svg",
             "url": "https://expo.dev",
             "enterprise": False,
-            "hidden": False,
-            "coming_soon": False,
-        },
-        {"name": "hidden-one", "image": "blaxel/hidden:latest", "hidden": True},
-        {
-            "name": "soon-one",
-            "image": "blaxel/soon:latest",
-            "hidden": False,
-            "coming_soon": True,
-        },
+        }
     ]
 
 
-def test_library_images_filters_and_translates() -> None:
+def test_library_images_translates_the_served_catalog() -> None:
     transport = RoutingTransport(
-        routes={"GET /v0/sandbox/hub": library_catalog_response}
+        routes={"GET /v1/sandboxes/library_images": library_catalog_response}
     )
     client = make_sync_client(transport)
 
@@ -587,7 +641,7 @@ def test_library_images_filters_and_translates() -> None:
 
     assert [image.name for image in images] == ["expo"]
     image = images[0]
-    assert image.image == "blaxel/expo:latest"
+    assert image.image == "baseten/expo:latest"
     assert image.display_name == "Expo"
     assert image.memory == 4096
     assert image.categories == ["web"]
@@ -598,9 +652,9 @@ def test_library_images_filters_and_translates() -> None:
 
 
 @pytest.mark.asyncio
-async def test_async_library_images_filters() -> None:
+async def test_async_library_images_translates() -> None:
     transport = RoutingTransport(
-        routes={"GET /v0/sandbox/hub": library_catalog_response}
+        routes={"GET /v1/sandboxes/library_images": library_catalog_response}
     )
     client = AsyncSandboxClient(
         api_key="test-key",
