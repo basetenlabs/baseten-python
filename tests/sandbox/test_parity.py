@@ -37,10 +37,11 @@ INTENTIONALLY_NOT_TRANSLATED_FILE = {"isDirectory", "permissions"}
 
 # Starter-image fields not on the curated record: icon variants, plus the flags driving the library_images filter.
 INTENTIONALLY_NOT_TRANSLATED_LIBRARY_IMAGE = {
-    "iconLight",
-    "iconDark",
+    "icon_light",
+    "icon_dark",
     "hidden",
     "coming_soon",
+    "creation_options",
 }
 
 
@@ -119,6 +120,12 @@ def test_process_record_translation_covers_every_translated_field() -> None:
     assert fields - translated == INTENTIONALLY_NOT_TRANSLATED_PROCESS_RECORD
 
 
+def test_process_logs_translation_covers_every_field() -> None:
+    translated = {"logs", "stderr", "stdout"}
+    fields = set(baseten.client.sandboxapi.ProcessLogs.model_fields)
+    assert fields == translated
+
+
 def test_fs_write_forwards_every_translated_field() -> None:
     forwarded = {"content"}
     fields = set(baseten.client.sandboxapi.FileRequest.model_fields)
@@ -129,10 +136,10 @@ def test_fs_write_forwards_every_translated_field() -> None:
 def test_library_image_translation_covers_every_translated_field() -> None:
     translated = {
         "name",
-        "displayName",
+        "display_name",
         "image",
         "description",
-        "longDescription",
+        "long_description",
         "memory",
         "categories",
         "tags",

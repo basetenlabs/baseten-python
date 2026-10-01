@@ -18,6 +18,7 @@ from baseten.sandbox._info import (
     SandboxEnvValue,
     SandboxInfo,
     SandboxProcessInfo,
+    SandboxProcessLogs,
 )
 from baseten.sandbox._retry import SandboxRetryOptions
 from baseten.sandbox._sandbox import (
@@ -47,6 +48,7 @@ __all__ = [
     "SandboxInfo",
     "SandboxProcess",
     "SandboxProcessInfo",
+    "SandboxProcessLogs",
     "SandboxRetryOptions",
     "SandboxTokenProvider",
 ]

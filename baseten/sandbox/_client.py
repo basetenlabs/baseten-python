@@ -375,20 +375,19 @@ class SandboxClient:
         return sandbox_info_from_api(sandbox)
 
     def library_images(self) -> Sequence[LibraryImage]:
-        """List the platform's starter images from the platform starter-image library.
+        """List the platform's starter images from the starter-image library.
 
-        Hidden and coming-soon entries are dropped, matching what the
-        console's create form shows.
+        The server drops hidden and coming-soon entries.
         """
         try:
-            catalog = self._sandbox_api.list_sandbox_library_images()
+            catalog = self._sandbox_api.list_sandbox_library_images(
+                params=baseten.client.managementapi.ListSandboxLibraryImagesParams(
+                    team_id=self._options.team_id
+                )
+            )
         except Exception as error:
             raise to_sandbox_api_error(error, "control") from error
-        return [
-            library_image_from_api(image)
-            for image in catalog.root
-            if not image.hidden and not image.coming_soon
-        ]
+        return [library_image_from_api(image) for image in catalog.items]
 
     def close(self) -> None:
         """Close the client and the connections every sandbox shares."""
@@ -668,20 +667,19 @@ class AsyncSandboxClient:
         return sandbox_info_from_api(sandbox)
 
     async def library_images(self) -> Sequence[LibraryImage]:
-        """List the platform's starter images from the platform starter-image library.
+        """List the platform's starter images from the starter-image library.
 
-        Hidden and coming-soon entries are dropped, matching what the
-        console's create form shows.
+        The server drops hidden and coming-soon entries.
         """
         try:
-            catalog = await self._sandbox_api.list_sandbox_library_images()
+            catalog = await self._sandbox_api.list_sandbox_library_images(
+                params=baseten.client.managementapi.ListSandboxLibraryImagesParams(
+                    team_id=self._options.team_id
+                )
+            )
         except Exception as error:
             raise to_sandbox_api_error(error, "control") from error
-        return [
-            library_image_from_api(image)
-            for image in catalog.root
-            if not image.hidden and not image.coming_soon
-        ]
+        return [library_image_from_api(image) for image in catalog.items]
 
     async def close(self) -> None:
         """Close the client and the connections every sandbox shares."""

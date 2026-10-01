@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Self
 
 import httpx
@@ -20,7 +20,9 @@ from baseten.sandbox._errors import to_sandbox_api_error
 from baseten.sandbox._info import (
     SandboxInfo,
     SandboxProcessInfo,
+    SandboxProcessLogs,
     process_info_from_api,
+    process_logs_from_api,
 )
 from baseten.sandbox._retry import (
     SandboxRetryOptions,
@@ -473,6 +475,22 @@ class SandboxProcess:
             raise to_sandbox_api_error(error, "exec") from error
         return process_info_from_api(response)
 
+    def list(self) -> Sequence[SandboxProcessInfo]:
+        """List the sandbox's processes."""
+        try:
+            response = self._api.get_process()
+        except Exception as error:
+            raise to_sandbox_api_error(error, "exec") from error
+        return [process_info_from_api(process) for process in response.root]
+
+    def logs(self, identifier: str) -> SandboxProcessLogs:
+        """Get one process's captured output, by pid or name."""
+        try:
+            response = self._api.get_process_logs(identifier=identifier)
+        except Exception as error:
+            raise to_sandbox_api_error(error, "exec") from error
+        return process_logs_from_api(response)
+
 
 class AsyncSandboxProcess:
     """Processes in a sandbox. Async variant."""
@@ -509,3 +527,19 @@ class AsyncSandboxProcess:
         except Exception as error:
             raise to_sandbox_api_error(error, "exec") from error
         return process_info_from_api(response)
+
+    async def list(self) -> Sequence[SandboxProcessInfo]:
+        """List the sandbox's processes."""
+        try:
+            response = await self._api.get_process()
+        except Exception as error:
+            raise to_sandbox_api_error(error, "exec") from error
+        return [process_info_from_api(process) for process in response.root]
+
+    async def logs(self, identifier: str) -> SandboxProcessLogs:
+        """Get one process's captured output, by pid or name."""
+        try:
+            response = await self._api.get_process_logs(identifier=identifier)
+        except Exception as error:
+            raise to_sandbox_api_error(error, "exec") from error
+        return process_logs_from_api(response)
