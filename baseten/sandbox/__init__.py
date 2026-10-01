@@ -13,6 +13,8 @@ from baseten.sandbox._client import (
 )
 from baseten.sandbox._errors import SandboxApiError, SandboxGatewayError
 from baseten.sandbox._info import (
+    LibraryImage,
+    LibraryImagePort,
     SandboxEnvValue,
     SandboxInfo,
     SandboxProcessInfo,
@@ -33,6 +35,8 @@ __all__ = [
     "AsyncSandboxFileSystem",
     "AsyncSandboxProcess",
     "AsyncSandboxTokenProvider",
+    "LibraryImage",
+    "LibraryImagePort",
     "Sandbox",
     "SandboxApiError",
     "SandboxClient",

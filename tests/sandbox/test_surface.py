@@ -540,3 +540,75 @@ def test_typed_error_body_becomes_a_dict() -> None:
     assert exc_info.value.code == "NOT_FOUND"
     assert isinstance(exc_info.value.body, dict)
     client.close()
+
+
+def library_catalog_response(request: httpx.Request) -> httpx.Response:
+    # Callable route: a bare list payload would be consumed one entry per request.
+    return httpx.Response(
+        200, json=library_catalog(), headers={"content-type": "application/json"}
+    )
+
+
+def library_catalog() -> list[dict[str, Any]]:
+    return [
+        {
+            "name": "expo",
+            "image": "blaxel/expo:latest",
+            "displayName": "Expo",
+            "description": "Expo app development",
+            "longDescription": "Build and run Expo apps.",
+            "memory": 4096,
+            "categories": ["web"],
+            "tags": ["react-native"],
+            "ports": [{"name": "http", "target": 3000, "protocol": "HTTP"}],
+            "icon": "https://images.b10.co/expo.svg",
+            "url": "https://expo.dev",
+            "enterprise": False,
+            "hidden": False,
+            "coming_soon": False,
+        },
+        {"name": "hidden-one", "image": "blaxel/hidden:latest", "hidden": True},
+        {
+            "name": "soon-one",
+            "image": "blaxel/soon:latest",
+            "hidden": False,
+            "coming_soon": True,
+        },
+    ]
+
+
+def test_library_images_filters_and_translates() -> None:
+    transport = RoutingTransport(
+        routes={"GET /v0/sandbox/hub": library_catalog_response}
+    )
+    client = make_sync_client(transport)
+
+    images = client.library_images()
+
+    assert [image.name for image in images] == ["expo"]
+    image = images[0]
+    assert image.image == "blaxel/expo:latest"
+    assert image.display_name == "Expo"
+    assert image.memory == 4096
+    assert image.categories == ["web"]
+    assert image.ports[0].target == 3000
+    assert image.icon_url == "https://images.b10.co/expo.svg"
+    assert image.project_url == "https://expo.dev"
+    client.close()
+
+
+@pytest.mark.asyncio
+async def test_async_library_images_filters() -> None:
+    transport = RoutingTransport(
+        routes={"GET /v0/sandbox/hub": library_catalog_response}
+    )
+    client = AsyncSandboxClient(
+        api_key="test-key",
+        base_url_override=MANAGEMENT_URL,
+        transport_override=transport.async_transport,
+    )
+
+    images = await client.library_images()
+
+    assert [image.name for image in images] == ["expo"]
+    await client.close()
