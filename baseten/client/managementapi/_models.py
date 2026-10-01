@@ -319,7 +319,7 @@ class Port(BaseModel):
     )
 
 
-class SandboxHubImage(BaseModel):
+class SandboxLibraryImage(BaseModel):
     name: Annotated[str, Field(description="Stable identifier of the starter image.")]
     displayName: Annotated[
         str | None, Field(description="Human-readable name for display.")
@@ -374,9 +374,9 @@ class SandboxHubImage(BaseModel):
     ] = None
 
 
-class SandboxHubImageList(RootModel[list[SandboxHubImage]]):
+class SandboxLibraryImageList(RootModel[list[SandboxLibraryImage]]):
     root: Annotated[
-        list[SandboxHubImage], Field(description="The starter-image catalog.")
+        list[SandboxLibraryImage], Field(description="The starter-image catalog.")
     ]
 
 
