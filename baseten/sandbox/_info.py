@@ -98,6 +98,71 @@ class SandboxProcessInfo:
     completed_at: datetime | None = None
 
 
+@dataclass
+class LibraryImagePort:
+    """One port a starter image's services listen on."""
+
+    name: str | None = None
+    target: int | None = None
+    """Port number inside the sandbox."""
+
+    protocol: str | None = None
+
+
+@dataclass
+class LibraryImage:
+    """One starter image from the platform's starter-image library.
+
+    Available to any sandbox without building or pushing; pass
+    :attr:`image` as the image when creating a sandbox.
+    """
+
+    name: str
+    """Stable identifier of the starter image."""
+
+    image: str
+    """Image reference, including its tag."""
+
+    display_name: str | None = None
+    description: str | None = None
+    long_description: str | None = None
+    memory: int | None = None
+    """Default memory allocation in megabytes."""
+
+    categories: list[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
+    ports: list[LibraryImagePort] = field(default_factory=list)
+    icon_url: str | None = None
+    project_url: str | None = None
+    """Project page for the image's stack."""
+
+    enterprise: bool = False
+    """Whether the image is gated to enterprise workspaces."""
+
+
+def library_image_from_api(
+    image: baseten.client.managementapi.SandboxLibraryImage,
+) -> LibraryImage:
+    """Convert the control plane's starter-image catalog entry."""
+    return LibraryImage(
+        name=image.name,
+        image=image.image,
+        display_name=image.displayName,
+        description=image.description,
+        long_description=image.longDescription,
+        memory=image.memory,
+        categories=image.categories or [],
+        tags=image.tags or [],
+        ports=[
+            LibraryImagePort(name=port.name, target=port.target, protocol=port.protocol)
+            for port in image.ports or []
+        ],
+        icon_url=image.icon,
+        project_url=image.url,
+        enterprise=bool(image.enterprise),
+    )
+
+
 def sandbox_info_from_api(sandbox: baseten.client.managementapi.Sandbox) -> SandboxInfo:
     """Convert the control plane's sandbox record."""
     return SandboxInfo(

@@ -20,8 +20,10 @@ from baseten.sandbox._auth import (
 )
 from baseten.sandbox._errors import to_sandbox_api_error
 from baseten.sandbox._info import (
+    LibraryImage,
     SandboxEnvValue,
     SandboxInfo,
+    library_image_from_api,
     sandbox_envs_to_api,
     sandbox_info_from_api,
 )
@@ -372,6 +374,22 @@ class SandboxClient:
             raise to_sandbox_api_error(error, "control") from error
         return sandbox_info_from_api(sandbox)
 
+    def library_images(self) -> Sequence[LibraryImage]:
+        """List the platform's starter images from the platform starter-image library.
+
+        Hidden and coming-soon entries are dropped, matching what the
+        console's create form shows.
+        """
+        try:
+            catalog = self._sandbox_api.list_sandbox_library_images()
+        except Exception as error:
+            raise to_sandbox_api_error(error, "control") from error
+        return [
+            library_image_from_api(image)
+            for image in catalog.root
+            if not image.hidden and not image.coming_soon
+        ]
+
     def close(self) -> None:
         """Close the client and the connections every sandbox shares."""
         for http_client in self._sandbox_http_clients:
@@ -648,6 +666,22 @@ class AsyncSandboxClient:
         except Exception as error:
             raise to_sandbox_api_error(error, "control") from error
         return sandbox_info_from_api(sandbox)
+
+    async def library_images(self) -> Sequence[LibraryImage]:
+        """List the platform's starter images from the platform starter-image library.
+
+        Hidden and coming-soon entries are dropped, matching what the
+        console's create form shows.
+        """
+        try:
+            catalog = await self._sandbox_api.list_sandbox_library_images()
+        except Exception as error:
+            raise to_sandbox_api_error(error, "control") from error
+        return [
+            library_image_from_api(image)
+            for image in catalog.root
+            if not image.hidden and not image.coming_soon
+        ]
 
     async def close(self) -> None:
         """Close the client and the connections every sandbox shares."""
