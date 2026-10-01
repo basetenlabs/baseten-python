@@ -215,6 +215,7 @@ from ._models import (
     RoutesUsageResponse,
     RouteTombstone,
     Sandbox,
+    SandboxHubImageList,
     SearchTrainingJobsRequest,
     SearchTrainingJobsResponse,
     Secret,
@@ -2439,6 +2440,21 @@ class ApiClient:
                 path_args=[],
                 body=None,
                 query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def list_sandbox_hub_images(self) -> SandboxHubImageList:
+        """List starter sandbox images"""
+        return self._do_json(
+            SandboxHubImageList,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v0/sandbox/hub",
+                path_args=[],
+                body=None,
+                query=None,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -6307,6 +6323,21 @@ class AsyncApiClient:
                 path_args=[],
                 body=None,
                 query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def list_sandbox_hub_images(self) -> SandboxHubImageList:
+        """List starter sandbox images"""
+        return await self._do_json(
+            SandboxHubImageList,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v0/sandbox/hub",
+                path_args=[],
+                body=None,
+                query=None,
                 success_codes=[200],
                 error_codes=None,
             ),
