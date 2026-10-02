@@ -103,8 +103,8 @@ def _sandbox_create_request(
     region: str | None,
     envs: list[baseten.client.managementapi.SandboxEnv] | None,
     labels: dict[str, str] | None,
-    display_name: str | None,
     external_id: str | None,
+    create_if_not_exists: bool,
 ) -> baseten.client.managementapi.CreateSandboxRequest:
     """Build the create body from only the fields the caller set.
 
@@ -125,10 +125,10 @@ def _sandbox_create_request(
         create_fields["envs"] = envs
     if labels is not None:
         create_fields["labels"] = labels
-    if display_name is not None:
-        create_fields["display_name"] = display_name
     if external_id is not None:
         create_fields["external_id"] = external_id
+    if create_if_not_exists:
+        create_fields["create_if_not_exists"] = True
     return baseten.client.managementapi.CreateSandboxRequest(**create_fields)
 
 
@@ -266,8 +266,8 @@ class SandboxClient:
         region: str | None = None,
         envs: dict[str, SandboxEnvValue] | None = None,
         labels: dict[str, str] | None = None,
-        display_name: str | None = None,
         external_id: str | None = None,
+        create_if_not_exists: bool = False,
     ) -> Sandbox:
         """Create a sandbox.
 
@@ -286,8 +286,8 @@ class SandboxClient:
                     region=region,
                     envs=sandbox_envs_to_api(envs) if envs is not None else None,
                     labels=labels,
-                    display_name=display_name,
                     external_id=external_id,
+                    create_if_not_exists=create_if_not_exists,
                 ),
             )
         except Exception as error:
@@ -557,8 +557,8 @@ class AsyncSandboxClient:
         region: str | None = None,
         envs: dict[str, SandboxEnvValue] | None = None,
         labels: dict[str, str] | None = None,
-        display_name: str | None = None,
         external_id: str | None = None,
+        create_if_not_exists: bool = False,
     ) -> AsyncSandbox:
         """Create a sandbox.
 
@@ -577,8 +577,8 @@ class AsyncSandboxClient:
                     region=region,
                     envs=sandbox_envs_to_api(envs) if envs is not None else None,
                     labels=labels,
-                    display_name=display_name,
                     external_id=external_id,
+                    create_if_not_exists=create_if_not_exists,
                 ),
             )
         except Exception as error:

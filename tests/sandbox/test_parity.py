@@ -53,8 +53,8 @@ def test_create_forwards_every_translated_field() -> None:
         "region",
         "envs",
         "labels",
-        "display_name",
         "external_id",
+        "create_if_not_exists",
     }
     fields = set(baseten.client.managementapi.CreateSandboxRequest.model_fields)
     assert forwarded <= fields
@@ -66,14 +66,12 @@ def test_record_translation_covers_every_translated_field() -> None:
         "name",
         "url",
         "status",
-        "state",
         "image",
         "memory",
         "region",
         "enabled",
         "envs",
         "labels",
-        "display_name",
         "external_id",
         "created_at",
         "updated_at",
