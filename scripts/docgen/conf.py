@@ -53,6 +53,7 @@ autodoc_pydantic_model_member_order = "bysource"
 NAV_ONLY = {
     "baseten.client.managementapi": ["ApiClient", "AsyncApiClient"],
     "baseten.client.inferenceapi": ["ApiClient", "AsyncApiClient"],
+    "baseten.client.sandboxapi": ["ApiClient", "AsyncApiClient"],
     "baseten.client.modelconfig": ["ModelConfig"],
 }
 

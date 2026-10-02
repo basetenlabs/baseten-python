@@ -7,10 +7,13 @@ Usage:
 
 import argparse
 import ast
+import json
 import subprocess
 import sys
 import urllib.request
 from pathlib import Path
+
+import yaml
 
 from scripts.apigen.clientgen import generate_client
 from scripts.apigen.postprocess import postprocess_models
@@ -21,6 +24,7 @@ INFERENCE_SPEC_URL = "https://api.baseten.co/inference-spec"
 TRUSS_CONFIG_SCHEMA_URL = (
     "https://raw.githubusercontent.com/basetenlabs/truss/main/truss/config.schema.json"
 )
+SANDBOX_SPEC_URL = "https://raw.githubusercontent.com/blaxel-ai/sandbox/main/sandbox-api/docs/openapi.yml"
 
 APIGEN_DIR = Path(__file__).parent
 SPECS_DIR = APIGEN_DIR / "specs"
@@ -42,11 +46,13 @@ def main() -> None:
         download_spec(MANAGEMENT_SPEC_URL, SPECS_DIR / "management.json")
         download_spec(INFERENCE_SPEC_URL, SPECS_DIR / "inference.json")
         download_spec(TRUSS_CONFIG_SCHEMA_URL, SPECS_DIR / "config.schema.json")
+        download_spec(SANDBOX_SPEC_URL, SPECS_DIR / "sandbox.yml")
 
     generate_api(
         SPECS_DIR / "management.json", CLIENT_DIR / "managementapi", "Management"
     )
     generate_api(SPECS_DIR / "inference.json", CLIENT_DIR / "inferenceapi", "Inference")
+    generate_api(SPECS_DIR / "sandbox.yml", CLIENT_DIR / "sandboxapi", "Sandbox")
     generate_modelconfig(SPECS_DIR / "config.schema.json", CLIENT_DIR / "modelconfig")
 
 
@@ -56,11 +62,21 @@ def download_spec(url: str, dest: Path) -> None:
         dest.write_bytes(resp.read())
 
 
+def _read_spec(spec_file: Path) -> bytes:
+    # YAML specs are committed exactly as upstream serves them and converted
+    # here rather than at download time. Timestamp scalars are serialized back
+    # to ISO strings, matching how js-yaml keeps them for the JS SDK.
+    if spec_file.suffix in (".yml", ".yaml"):
+        doc = yaml.safe_load(spec_file.read_text())
+        return json.dumps(doc, default=lambda value: value.isoformat()).encode()
+    return spec_file.read_bytes()
+
+
 def generate_api(spec_file: Path, out_dir: Path, display_name: str) -> None:
     print(f"Generating {out_dir.name} from {spec_file}")
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    preprocessed = preprocess_spec(spec_file.read_bytes())
+    preprocessed = preprocess_spec(_read_spec(spec_file))
 
     models_file = out_dir / "_models.py"
     run_datamodel_codegen(preprocessed, models_file)

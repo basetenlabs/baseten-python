@@ -84,7 +84,7 @@ def test_get_with_query_params() -> None:
     client = make_sync_client(fake)
 
     client.api.get_model_apis(
-        request=baseten.client.managementapi.GetModelApisRequest(added_only=True)
+        params=baseten.client.managementapi.GetModelApisParams(added_only=True)
     )
 
     path, _, query = fake.capture.path.partition("?")

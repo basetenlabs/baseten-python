@@ -43,7 +43,76 @@ def postprocess_models(src: str) -> str:
         src = src.replace(", RootModel, constr", ", RootModel")
         src = src.replace(", constr,", ",")
         src = src.replace(", constr\n", "\n")
+    src = _allow_population_by_field_name(src)
     return _validate_literal_model_defaults(src)
+
+
+def _allow_population_by_field_name(src: str) -> str:
+    # Pydantic accepts only the alias by default, so a Python-renamed field
+    # (async_ for the API's "async") was not passable; generated classes with
+    # aliased fields accept both names.
+    tree = ast.parse(src)
+    lines = src.splitlines(keepends=True)
+    for node in reversed(tree.body):
+        if not (isinstance(node, ast.ClassDef) and _has_aliased_field(node)):
+            continue
+        config_assign = next(
+            (
+                stmt
+                for stmt in node.body
+                if isinstance(stmt, ast.Assign)
+                and isinstance(stmt.targets[0], ast.Name)
+                and stmt.targets[0].id == "model_config"
+            ),
+            None,
+        )
+        if config_assign is not None:
+            start = config_assign.lineno - 1
+            end = config_assign.end_lineno
+            if "populate_by_name" in "".join(lines[start:end]):
+                continue
+            lines[start:end] = [
+                "".join(lines[start:end]).replace(
+                    "ConfigDict(", "ConfigDict(populate_by_name=True, ", 1
+                )
+            ]
+        else:
+            insert_at = node.body[0].lineno - 1
+            indent = " " * node.body[0].col_offset
+            lines.insert(
+                insert_at,
+                f"{indent}model_config = ConfigDict(populate_by_name=True)\n\n",
+            )
+    result = "".join(lines)
+    if "ConfigDict(" in result and not re.search(
+        r"^from pydantic import .*\bConfigDict\b", result, re.MULTILINE
+    ):
+        # An injected model_config is the file's first ConfigDict use.
+        result, substitutions = re.subn(
+            r"^from pydantic import ",
+            "from pydantic import ConfigDict, ",
+            result,
+            count=1,
+        )
+        if substitutions == 0:
+            raise ValueError("injected model_config needs a pydantic import line")
+    return result
+
+
+def _has_aliased_field(class_node: ast.ClassDef) -> bool:
+    for stmt in class_node.body:
+        if not isinstance(stmt, ast.AnnAssign):
+            continue
+        for subnode in ast.walk(stmt):
+            if not (
+                isinstance(subnode, ast.Call)
+                and isinstance(subnode.func, ast.Name)
+                and subnode.func.id == "Field"
+            ):
+                continue
+            if any(keyword.arg == "alias" for keyword in subnode.keywords):
+                return True
+    return False
 
 
 def _validate_literal_model_defaults(src: str) -> str:
