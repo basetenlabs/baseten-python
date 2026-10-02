@@ -33447,12 +33447,6 @@
                             }
                         ]
                     },
-                    "display_name": {
-                        "type": "string",
-                        "description": "Human-readable name for display in the UI. Can contain spaces and special characters, max 63 characters.",
-                        "example": "Baseten API review",
-                        "maxLength": 63
-                    },
                     "external_id": {
                         "type": "string",
                         "description": "Caller-owned identifier for external lookups. Max 64 chars, alphanumeric + dash.",
@@ -33691,12 +33685,6 @@
                             }
                         ]
                     },
-                    "display_name": {
-                        "type": "string",
-                        "description": "Human-readable name for display in the UI. Can contain spaces and special characters, max 63 characters.",
-                        "example": "Baseten API review",
-                        "maxLength": 63
-                    },
                     "external_id": {
                         "type": "string",
                         "description": "Caller-owned identifier for external lookups. Max 64 chars, alphanumeric + dash.",
@@ -33716,6 +33704,10 @@
                             "project": "api-review",
                             "team": "engineering"
                         }
+                    },
+                    "create_if_not_exists": {
+                        "type": "boolean",
+                        "description": "When true, return the existing live sandbox with this name or recreate it if it is failed, terminated, or being deleted. The server handles concurrent creation and deletion races with a bounded wait; persistent contention returns a conflict. Requires name. Existing configuration is preserved. Defaults to false when omitted."
                     }
                 },
                 "example": {
@@ -33886,12 +33878,6 @@
                             }
                         ]
                     },
-                    "display_name": {
-                        "type": "string",
-                        "description": "Human-readable name for display in the UI. Can contain spaces and special characters, max 63 characters.",
-                        "example": "Baseten API review - revised",
-                        "maxLength": 63
-                    },
                     "external_id": {
                         "type": "string",
                         "description": "Caller-owned identifier for external lookups. Max 64 chars, alphanumeric + dash.",
@@ -33999,16 +33985,6 @@
                                     }
                                 ],
                                 "example": "DEPLOYED"
-                            },
-                            "state": {
-                                "type": "string",
-                                "description": "Current execution state when available.",
-                                "enum": [
-                                    "RUNNING",
-                                    "STANDBY"
-                                ],
-                                "readOnly": true,
-                                "example": "RUNNING"
                             },
                             "created_at": {
                                 "type": "string",

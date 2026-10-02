@@ -8701,11 +8701,6 @@ class SandboxMetadataLabels(RootModel[dict[str, str]]):
     root: dict[str, str]
 
 
-class State(StrEnum):
-    RUNNING = "RUNNING"
-    STANDBY = "STANDBY"
-
-
 class SandboxStatus(StrEnum):
     DEPLOYING = "DEPLOYING"
     DEPLOYED = "DEPLOYED"
@@ -12754,14 +12749,6 @@ class SandboxConfiguration(BaseModel):
             examples=[[{"name": "http", "protocol": "HTTP", "target": 3000}]],
         ),
     ] = None
-    display_name: Annotated[
-        str | None,
-        Field(
-            description="Human-readable name for display in the UI. Can contain spaces and special characters, max 63 characters.",
-            examples=["Baseten API review"],
-            max_length=63,
-        ),
-    ] = None
     external_id: Annotated[
         str | None,
         Field(
@@ -12885,14 +12872,6 @@ class CreateSandboxRequest(BaseModel):
             examples=[[{"name": "http", "protocol": "HTTP", "target": 3000}]],
         ),
     ] = None
-    display_name: Annotated[
-        str | None,
-        Field(
-            description="Human-readable name for display in the UI. Can contain spaces and special characters, max 63 characters.",
-            examples=["Baseten API review"],
-            max_length=63,
-        ),
-    ] = None
     external_id: Annotated[
         str | None,
         Field(
@@ -12909,6 +12888,12 @@ class CreateSandboxRequest(BaseModel):
             examples=[
                 {"env": "development", "project": "api-review", "team": "engineering"}
             ],
+        ),
+    ] = None
+    create_if_not_exists: Annotated[
+        bool | None,
+        Field(
+            description="When true, return the existing live sandbox with this name or recreate it if it is failed, terminated, or being deleted. The server handles concurrent creation and deletion races with a bounded wait; persistent contention returns a conflict. Requires name. Existing configuration is preserved. Defaults to false when omitted."
         ),
     ] = None
 
@@ -12974,14 +12959,6 @@ class UpdateSandboxRequest(BaseModel):
             examples=[[{"name": "http", "protocol": "HTTP", "target": 3000}]],
         ),
     ] = None
-    display_name: Annotated[
-        str | None,
-        Field(
-            description="Human-readable name for display in the UI. Can contain spaces and special characters, max 63 characters.",
-            examples=["Baseten API review - revised"],
-            max_length=63,
-        ),
-    ] = None
     external_id: Annotated[
         str | None,
         Field(
@@ -13026,12 +13003,6 @@ class Sandbox(SandboxConfiguration):
         SandboxStatus,
         Field(description="Sandbox deployment status.", examples=["DEPLOYED"]),
     ]
-    state: Annotated[
-        State | None,
-        Field(
-            description="Current execution state when available.", examples=["RUNNING"]
-        ),
-    ] = None
     created_at: Annotated[
         AwareDatetime,
         Field(
