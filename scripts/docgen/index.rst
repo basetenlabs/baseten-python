@@ -11,3 +11,4 @@ the source. For installation, usage, and examples, see the project on GitHub:
    :caption: API Reference
 
    baseten.client
+   baseten.sandbox

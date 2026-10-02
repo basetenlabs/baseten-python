@@ -55,6 +55,12 @@ NAV_ONLY = {
     "baseten.client.inferenceapi": ["ApiClient", "AsyncApiClient"],
     "baseten.client.sandboxapi": ["ApiClient", "AsyncApiClient"],
     "baseten.client.modelconfig": ["ModelConfig"],
+    "baseten.sandbox": [
+        "SandboxClient",
+        "AsyncSandboxClient",
+        "Sandbox",
+        "AsyncSandbox",
+    ],
 }
 
 
