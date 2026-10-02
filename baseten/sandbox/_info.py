@@ -24,14 +24,10 @@ SANDBOX_STATUSES = (
     "UPLOADING",
 )
 
-# Whether a deployed sandbox is running or idle in standby. Kept open.
-SANDBOX_STATES = ("RUNNING", "STANDBY")
-
 # Status of a process in a sandbox. Kept open.
 SANDBOX_PROCESS_STATUSES = ("running", "completed", "failed", "killed", "stopped")
 
 SandboxStatus = str
-SandboxState = str
 SandboxProcessStatus = str
 
 
@@ -59,7 +55,6 @@ class SandboxInfo:
     url: str | None = None
     """Base URL of the sandbox's execution API, once it has one."""
 
-    state: SandboxState | None = None
     image: str | None = None
     """Image reference, including its tag."""
 
@@ -67,7 +62,6 @@ class SandboxInfo:
     """Memory in megabytes, which also sets the CPU allocation."""
 
     region: str | None = None
-    display_name: str | None = None
     external_id: str | None = None
     """Caller-owned identifier for external lookups."""
 
@@ -183,14 +177,12 @@ def sandbox_info_from_api(sandbox: baseten.client.managementapi.Sandbox) -> Sand
         name=sandbox.name,
         url=str(sandbox.url) if sandbox.url is not None else None,
         status=str(sandbox.status),
-        state=str(sandbox.state) if sandbox.state is not None else None,
         image=sandbox.image,
         memory=sandbox.memory,
         region=sandbox.region,
         enabled=sandbox.enabled,
         envs=_envs_from_api(sandbox.envs),
         labels=dict(sandbox.labels.root) if sandbox.labels is not None else {},
-        display_name=sandbox.display_name,
         external_id=sandbox.external_id,
         created_at=sandbox.created_at,
         updated_at=sandbox.updated_at,
