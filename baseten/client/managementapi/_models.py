@@ -309,77 +309,6 @@ class GatewayProvider(StrEnum):
     OPENAI_COMPATIBLE = "OPENAI_COMPATIBLE"
 
 
-class Port(BaseModel):
-    name: Annotated[str | None, Field(description="Name of the port.")] = None
-    target: Annotated[
-        int | None, Field(description="Port number inside the sandbox.")
-    ] = None
-    protocol: Annotated[str | None, Field(description="Protocol the port serves.")] = (
-        None
-    )
-
-
-class SandboxLibraryImage(BaseModel):
-    name: Annotated[str, Field(description="Stable identifier of the starter image.")]
-    displayName: Annotated[
-        str | None, Field(description="Human-readable name for display.")
-    ] = None
-    image: Annotated[
-        str,
-        Field(
-            description="Image reference including its tag. Pass it as image when creating a sandbox.",
-            examples=["blaxel/expo:latest"],
-        ),
-    ]
-    description: Annotated[
-        str | None, Field(description="One-line summary of what the image contains.")
-    ] = None
-    longDescription: Annotated[
-        str | None, Field(description="Longer description of the image's contents.")
-    ] = None
-    memory: Annotated[
-        int | None, Field(description="Default memory allocation in megabytes.")
-    ] = None
-    categories: Annotated[
-        list[str] | None,
-        Field(description="Categories the image is filed under, for filtering."),
-    ] = None
-    tags: Annotated[list[str] | None, Field(description="Free-form tags.")] = None
-    ports: Annotated[
-        list[Port] | None,
-        Field(
-            description="Ports the image's services listen on, for reference in a sandbox's ports list."
-        ),
-    ] = None
-    icon: Annotated[str | None, Field(description="Icon for display.")] = None
-    iconLight: Annotated[
-        str | None, Field(description="Light-mode icon for display.")
-    ] = None
-    iconDark: Annotated[
-        str | None, Field(description="Dark-mode icon for display.")
-    ] = None
-    url: Annotated[
-        str | None, Field(description="Project page for the image's stack.")
-    ] = None
-    enterprise: Annotated[
-        bool | None,
-        Field(description="Whether the image is gated to enterprise workspaces."),
-    ] = None
-    hidden: Annotated[
-        bool | None, Field(description="Whether the entry is hidden from catalogs.")
-    ] = None
-    coming_soon: Annotated[
-        bool | None,
-        Field(description="Whether the image is announced but not yet available."),
-    ] = None
-
-
-class SandboxLibraryImageList(RootModel[list[SandboxLibraryImage]]):
-    root: Annotated[
-        list[SandboxLibraryImage], Field(description="The starter-image catalog.")
-    ]
-
-
 class GetVolumesParams(BaseModel):
     cursor: Annotated[
         str | None,
@@ -1195,6 +1124,16 @@ class ListImageTagsParams(BaseModel):
 
 
 class DeleteImageTagParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
+class ListSandboxLibraryImagesParams(BaseModel):
     team_id: Annotated[
         str | None,
         Field(
@@ -8977,6 +8916,49 @@ class CleanupImagesResponse(BaseModel):
     ]
 
 
+class SandboxLibraryImageVolume(BaseModel):
+    name: Annotated[
+        str,
+        Field(
+            description="Volume name, or an internal identifier for ephemeral volumes.",
+            examples=["scratch"],
+        ),
+    ]
+    mount_path: Annotated[
+        str,
+        Field(
+            description="Absolute filesystem path where the volume is mounted.",
+            examples=["/mnt/data"],
+        ),
+    ]
+    type: Annotated[
+        str | None,
+        Field(
+            description="Volume type, persistent when empty.", examples=["ephemeral"]
+        ),
+    ] = None
+    size_mb: Annotated[
+        int | None,
+        Field(
+            description="Storage capacity in megabytes for ephemeral volumes.",
+            examples=[10240],
+        ),
+    ] = None
+    read_only: Annotated[
+        bool | None,
+        Field(description="Whether the volume is mounted read-only.", examples=[False]),
+    ] = None
+
+
+class SandboxLibraryImageCreationOptions(BaseModel):
+    extra_args: Annotated[
+        dict[str, str] | None, Field(description="Kernel selection arguments.")
+    ] = None
+    volumes: Annotated[
+        list[SandboxLibraryImageVolume] | None, Field(description="Volume attachments.")
+    ] = None
+
+
 class Checkpoints(
     RootModel[
         BasetenLatestCheckpointConfig
@@ -12175,6 +12157,77 @@ class ListImagesResponse(BaseModel):
 class ListImageTagsResponse(BaseModel):
     items: list[ImageTag]
     pagination: SandboxApiPagination
+
+
+class SandboxLibraryImage(BaseModel):
+    name: Annotated[
+        str,
+        Field(
+            description="Stable identifier of the built-in image.",
+            examples=["base-image"],
+        ),
+    ]
+    display_name: Annotated[
+        str | None, Field(description="Human-readable name.", examples=["Base Image"])
+    ] = None
+    description: Annotated[
+        str | None,
+        Field(
+            description="Short description.",
+            examples=["A minimal sandbox environment with the sandbox execution API."],
+        ),
+    ] = None
+    long_description: Annotated[
+        str | None, Field(description="Detailed description.")
+    ] = None
+    image: Annotated[
+        str,
+        Field(
+            description="Image reference including its tag, usable as the image of a sandbox.",
+            examples=["baseten/base-image:latest"],
+        ),
+    ]
+    memory: Annotated[
+        int | None,
+        Field(
+            description="Recommended memory allocation in megabytes.", examples=[4096]
+        ),
+    ] = None
+    ports: SandboxPorts | None = None
+    categories: Annotated[
+        list[str] | None, Field(description="Categories of the image.")
+    ] = None
+    tags: Annotated[list[str] | None, Field(description="Tags of the image.")] = None
+    url: Annotated[str | None, Field(description="Documentation URL.")] = None
+    icon: Annotated[str | None, Field(description="Icon URL.")] = None
+    icon_light: Annotated[str | None, Field(description="Light-mode icon URL.")] = None
+    icon_dark: Annotated[str | None, Field(description="Dark-mode icon URL.")] = None
+    enterprise: Annotated[
+        bool | None,
+        Field(
+            description="Whether the image requires an enterprise plan.",
+            examples=[False],
+        ),
+    ] = None
+    hidden: Annotated[
+        bool | None,
+        Field(
+            description="Whether the image is hidden. Always false in listings.",
+            examples=[False],
+        ),
+    ] = None
+    coming_soon: Annotated[
+        bool | None,
+        Field(
+            description="Whether the image is not yet available. Always false in listings.",
+            examples=[False],
+        ),
+    ] = None
+    creation_options: SandboxLibraryImageCreationOptions | None = None
+
+
+class ListSandboxLibraryImagesResponse(BaseModel):
+    items: Annotated[list[SandboxLibraryImage], Field(description="Built-in images.")]
 
 
 class AuditLogEntry(BaseModel):

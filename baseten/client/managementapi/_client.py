@@ -171,6 +171,8 @@ from ._models import (
     ListLoopsSamplersResponse,
     ListSandboxesParams,
     ListSandboxesResponse,
+    ListSandboxLibraryImagesParams,
+    ListSandboxLibraryImagesResponse,
     ListTrainingJobsResponse,
     ListTrainingProjectsResponse,
     ListVolumeNamespacesResponse,
@@ -215,7 +217,6 @@ from ._models import (
     RoutesUsageResponse,
     RouteTombstone,
     Sandbox,
-    SandboxLibraryImageList,
     SearchTrainingJobsRequest,
     SearchTrainingJobsResponse,
     Secret,
@@ -2445,16 +2446,18 @@ class ApiClient:
             ),
         )
 
-    def list_sandbox_library_images(self) -> SandboxLibraryImageList:
-        """List starter sandbox images"""
+    def list_sandbox_library_images(
+        self, *, params: ListSandboxLibraryImagesParams | None = None
+    ) -> ListSandboxLibraryImagesResponse:
+        """List built-in sandbox images"""
         return self._do_json(
-            SandboxLibraryImageList,
+            ListSandboxLibraryImagesResponse,
             _ApiRequest(
                 method="GET",
-                path_fmt="/v0/sandbox/hub",
+                path_fmt="/v1/sandboxes/library_images",
                 path_args=[],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -6328,16 +6331,18 @@ class AsyncApiClient:
             ),
         )
 
-    async def list_sandbox_library_images(self) -> SandboxLibraryImageList:
-        """List starter sandbox images"""
+    async def list_sandbox_library_images(
+        self, *, params: ListSandboxLibraryImagesParams | None = None
+    ) -> ListSandboxLibraryImagesResponse:
+        """List built-in sandbox images"""
         return await self._do_json(
-            SandboxLibraryImageList,
+            ListSandboxLibraryImagesResponse,
             _ApiRequest(
                 method="GET",
-                path_fmt="/v0/sandbox/hub",
+                path_fmt="/v1/sandboxes/library_images",
                 path_args=[],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),

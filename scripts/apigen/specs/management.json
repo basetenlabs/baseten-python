@@ -11031,26 +11031,52 @@
                 "x-stability": "unstable"
             }
         },
-        "/v0/sandbox/hub": {
+        "/v1/sandboxes/library_images": {
             "get": {
                 "operationId": "ListSandboxLibraryImages",
-                "summary": "List starter sandbox images",
-                "description": "Lists the platform's starter images from the sandbox hub catalog, available to any sandbox without building or pushing. The catalog is workspace-global. Hidden and coming-soon entries arrive unfiltered; callers that display catalogs drop them. Pass an entry's image as image when creating a sandbox.",
+                "summary": "List built-in sandbox images",
+                "description": "Return the built-in sandbox images available to every team. Use the image field directly as the image of a sandbox, without building or pushing it. Hidden and upcoming images are excluded.",
+                "tags": [
+                    "Images"
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/TeamId"
+                    },
+                    {
+                        "$ref": "#/components/parameters/TeamIdHeader"
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "The starter-image catalog.",
+                        "description": "Successful operation.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/SandboxLibraryImageList"
+                                    "$ref": "#/components/schemas/ListSandboxLibraryImagesResponseV1"
+                                },
+                                "examples": {
+                                    "complete": {
+                                        "$ref": "#/components/examples/SandboxLibraryImages"
+                                    }
                                 }
                             }
                         }
                     },
                     "401": {
                         "$ref": "#/components/responses/SandboxError401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/SandboxError403"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/SandboxError429"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/SandboxError500"
                     }
-                }
+                },
+                "x-stability": "unstable"
             }
         }
     },
@@ -34707,111 +34733,166 @@
                     "message": "Removed 3 unused image versions. Image versions used by active sandboxes were retained."
                 }
             },
-            "SandboxLibraryImage": {
+            "SandboxLibraryImageVolumeV1": {
                 "type": "object",
-                "required": [
-                    "name",
-                    "image"
-                ],
+                "description": "Volume attachment suggested by a built-in image.",
                 "properties": {
                     "name": {
                         "type": "string",
-                        "description": "Stable identifier of the starter image."
+                        "description": "Volume name, or an internal identifier for ephemeral volumes.",
+                        "example": "scratch"
                     },
-                    "displayName": {
+                    "mount_path": {
                         "type": "string",
-                        "description": "Human-readable name for display."
+                        "description": "Absolute filesystem path where the volume is mounted.",
+                        "example": "/mnt/data"
                     },
-                    "image": {
+                    "type": {
                         "type": "string",
-                        "description": "Image reference including its tag. Pass it as image when creating a sandbox.",
-                        "examples": [
-                            "blaxel/expo:latest"
-                        ]
+                        "description": "Volume type, persistent when empty.",
+                        "example": "ephemeral"
                     },
-                    "description": {
-                        "type": "string",
-                        "description": "One-line summary of what the image contains."
-                    },
-                    "longDescription": {
-                        "type": "string",
-                        "description": "Longer description of the image's contents."
-                    },
-                    "memory": {
+                    "size_mb": {
                         "type": "integer",
-                        "description": "Default memory allocation in megabytes."
+                        "description": "Storage capacity in megabytes for ephemeral volumes.",
+                        "example": 10240
                     },
-                    "categories": {
-                        "type": "array",
-                        "items": {
+                    "read_only": {
+                        "type": "boolean",
+                        "description": "Whether the volume is mounted read-only.",
+                        "example": false
+                    }
+                },
+                "required": [
+                    "name",
+                    "mount_path"
+                ]
+            },
+            "SandboxLibraryImageCreationOptionsV1": {
+                "type": "object",
+                "description": "Optional settings suggested when creating a sandbox from this image.",
+                "properties": {
+                    "extra_args": {
+                        "type": "object",
+                        "description": "Kernel selection arguments.",
+                        "additionalProperties": {
                             "type": "string"
-                        },
-                        "description": "Categories the image is filed under, for filtering."
+                        }
                     },
-                    "tags": {
+                    "volumes": {
                         "type": "array",
+                        "description": "Volume attachments.",
                         "items": {
-                            "type": "string"
-                        },
-                        "description": "Free-form tags."
-                    },
-                    "ports": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "name": {
-                                    "type": "string",
-                                    "description": "Name of the port."
-                                },
-                                "target": {
-                                    "type": "integer",
-                                    "description": "Port number inside the sandbox."
-                                },
-                                "protocol": {
-                                    "type": "string",
-                                    "description": "Protocol the port serves."
-                                }
-                            }
-                        },
-                        "description": "Ports the image's services listen on, for reference in a sandbox's ports list."
-                    },
-                    "icon": {
-                        "type": "string",
-                        "description": "Icon for display."
-                    },
-                    "iconLight": {
-                        "type": "string",
-                        "description": "Light-mode icon for display."
-                    },
-                    "iconDark": {
-                        "type": "string",
-                        "description": "Dark-mode icon for display."
-                    },
-                    "url": {
-                        "type": "string",
-                        "description": "Project page for the image's stack."
-                    },
-                    "enterprise": {
-                        "type": "boolean",
-                        "description": "Whether the image is gated to enterprise workspaces."
-                    },
-                    "hidden": {
-                        "type": "boolean",
-                        "description": "Whether the entry is hidden from catalogs."
-                    },
-                    "coming_soon": {
-                        "type": "boolean",
-                        "description": "Whether the image is announced but not yet available."
+                            "$ref": "#/components/schemas/SandboxLibraryImageVolumeV1"
+                        }
                     }
                 }
             },
-            "SandboxLibraryImageList": {
-                "type": "array",
-                "items": {
-                    "$ref": "#/components/schemas/SandboxLibraryImage"
+            "SandboxLibraryImageV1": {
+                "type": "object",
+                "description": "Built-in sandbox image usable directly as a sandbox image.",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Stable identifier of the built-in image.",
+                        "example": "base-image"
+                    },
+                    "display_name": {
+                        "type": "string",
+                        "description": "Human-readable name.",
+                        "example": "Base Image"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Short description.",
+                        "example": "A minimal sandbox environment with the sandbox execution API."
+                    },
+                    "long_description": {
+                        "type": "string",
+                        "description": "Detailed description."
+                    },
+                    "image": {
+                        "type": "string",
+                        "description": "Image reference including its tag, usable as the image of a sandbox.",
+                        "example": "baseten/base-image:latest"
+                    },
+                    "memory": {
+                        "type": "integer",
+                        "description": "Recommended memory allocation in megabytes.",
+                        "example": 4096
+                    },
+                    "ports": {
+                        "$ref": "#/components/schemas/SandboxPortsV1"
+                    },
+                    "categories": {
+                        "type": "array",
+                        "description": "Categories of the image.",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "tags": {
+                        "type": "array",
+                        "description": "Tags of the image.",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "url": {
+                        "type": "string",
+                        "description": "Documentation URL."
+                    },
+                    "icon": {
+                        "type": "string",
+                        "description": "Icon URL."
+                    },
+                    "icon_light": {
+                        "type": "string",
+                        "description": "Light-mode icon URL."
+                    },
+                    "icon_dark": {
+                        "type": "string",
+                        "description": "Dark-mode icon URL."
+                    },
+                    "enterprise": {
+                        "type": "boolean",
+                        "description": "Whether the image requires an enterprise plan.",
+                        "example": false
+                    },
+                    "hidden": {
+                        "type": "boolean",
+                        "description": "Whether the image is hidden. Always false in listings.",
+                        "example": false
+                    },
+                    "coming_soon": {
+                        "type": "boolean",
+                        "description": "Whether the image is not yet available. Always false in listings.",
+                        "example": false
+                    },
+                    "creation_options": {
+                        "$ref": "#/components/schemas/SandboxLibraryImageCreationOptionsV1"
+                    }
                 },
-                "description": "The starter-image catalog."
+                "required": [
+                    "name",
+                    "image"
+                ]
+            },
+            "ListSandboxLibraryImagesResponseV1": {
+                "type": "object",
+                "description": "Built-in sandbox images.",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "description": "Built-in images.",
+                        "items": {
+                            "$ref": "#/components/schemas/SandboxLibraryImageV1"
+                        }
+                    }
+                },
+                "required": [
+                    "items"
+                ]
             }
         },
         "parameters": {
