@@ -5,7 +5,7 @@ from __future__ import annotations
 import contextlib
 import urllib.parse
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import Any, Literal, TypeVar
 
 import httpx
 from pydantic import BaseModel, ValidationError
@@ -58,8 +58,10 @@ class _ApiRequest:
     path_args: list[str]
     body: Any
     query: Any
-    success_code: int
+    success_codes: list[int]
     error_codes: dict[int, str] | None
+    body_content_type: str | None = None
+    accept: str | None = None
 
 
 class ApiClient:
@@ -86,7 +88,7 @@ class ApiClient:
                 path_args=[env_name],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -109,7 +111,7 @@ class ApiClient:
                 path_args=[deployment_id],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -132,7 +134,7 @@ class ApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -155,7 +157,7 @@ class ApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -178,7 +180,7 @@ class ApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -201,7 +203,7 @@ class ApiClient:
                 path_args=[env_name],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -223,7 +225,7 @@ class ApiClient:
                 path_args=[deployment_id],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -245,7 +247,7 @@ class ApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -267,7 +269,7 @@ class ApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -289,7 +291,7 @@ class ApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -309,7 +311,7 @@ class ApiClient:
                 path_args=[request_id],
                 body=None,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
         )
@@ -324,7 +326,7 @@ class ApiClient:
                 path_args=[env_name],
                 body=None,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
         )
@@ -341,7 +343,7 @@ class ApiClient:
                 path_args=[deployment_id],
                 body=None,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
         )
@@ -356,7 +358,7 @@ class ApiClient:
                 path_args=[],
                 body=None,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
         )
@@ -371,7 +373,7 @@ class ApiClient:
                 path_args=[],
                 body=None,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
         )
@@ -386,7 +388,7 @@ class ApiClient:
                 path_args=[],
                 body=None,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
         )
@@ -403,7 +405,7 @@ class ApiClient:
                 path_args=[request_id],
                 body=None,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
         )
@@ -418,7 +420,7 @@ class ApiClient:
                 path_args=[env_name],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -428,6 +430,34 @@ class ApiClient:
                     504: "ErrorResponse",
                 },
             ),
+        )
+
+    def predict_raw(
+        self,
+        *,
+        env_name: str,
+        request: PredictInput,
+        accept: Literal["application/json", "application/octet-stream"],
+    ) -> httpx.Response:
+        """Call the model deployment associated with a specified environment. Returns the response unread, in the requested content type. The caller must close the response."""
+        return self._do_raw(
+            _ApiRequest(
+                method="POST",
+                path_fmt="/environments/{}/predict",
+                path_args=[env_name],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes={
+                    400: "ErrorResponse",
+                    401: "ErrorResponse",
+                    429: "ErrorResponse",
+                    502: "ErrorResponse",
+                    503: "ErrorResponse",
+                    504: "ErrorResponse",
+                },
+                accept=accept,
+            )
         )
 
     def predict_deployment(
@@ -442,7 +472,7 @@ class ApiClient:
                 path_args=[deployment_id],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -452,6 +482,34 @@ class ApiClient:
                     504: "ErrorResponse",
                 },
             ),
+        )
+
+    def predict_deployment_raw(
+        self,
+        *,
+        deployment_id: str,
+        request: PredictInput,
+        accept: Literal["application/json", "application/octet-stream"],
+    ) -> httpx.Response:
+        """Call a specific deployment of a model by deployment ID. Returns the response unread, in the requested content type. The caller must close the response."""
+        return self._do_raw(
+            _ApiRequest(
+                method="POST",
+                path_fmt="/deployment/{}/predict",
+                path_args=[deployment_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes={
+                    400: "ErrorResponse",
+                    401: "ErrorResponse",
+                    429: "ErrorResponse",
+                    502: "ErrorResponse",
+                    503: "ErrorResponse",
+                    504: "ErrorResponse",
+                },
+                accept=accept,
+            )
         )
 
     def predict_development(self, *, request: PredictInput) -> PredictOutput:
@@ -464,7 +522,7 @@ class ApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -474,6 +532,33 @@ class ApiClient:
                     504: "ErrorResponse",
                 },
             ),
+        )
+
+    def predict_development_raw(
+        self,
+        *,
+        request: PredictInput,
+        accept: Literal["application/json", "application/octet-stream"],
+    ) -> httpx.Response:
+        """Call the development deployment of a model. Returns the response unread, in the requested content type. The caller must close the response."""
+        return self._do_raw(
+            _ApiRequest(
+                method="POST",
+                path_fmt="/development/predict",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes={
+                    400: "ErrorResponse",
+                    401: "ErrorResponse",
+                    429: "ErrorResponse",
+                    502: "ErrorResponse",
+                    503: "ErrorResponse",
+                    504: "ErrorResponse",
+                },
+                accept=accept,
+            )
         )
 
     def predict_production(self, *, request: PredictInput) -> PredictOutput:
@@ -486,7 +571,7 @@ class ApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -496,6 +581,33 @@ class ApiClient:
                     504: "ErrorResponse",
                 },
             ),
+        )
+
+    def predict_production_raw(
+        self,
+        *,
+        request: PredictInput,
+        accept: Literal["application/json", "application/octet-stream"],
+    ) -> httpx.Response:
+        """Call the production environment of a model. Returns the response unread, in the requested content type. The caller must close the response."""
+        return self._do_raw(
+            _ApiRequest(
+                method="POST",
+                path_fmt="/production/predict",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes={
+                    400: "ErrorResponse",
+                    401: "ErrorResponse",
+                    429: "ErrorResponse",
+                    502: "ErrorResponse",
+                    503: "ErrorResponse",
+                    504: "ErrorResponse",
+                },
+                accept=accept,
+            )
         )
 
     def predict_regional(self, *, request: PredictInput) -> PredictOutput:
@@ -508,7 +620,7 @@ class ApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -518,6 +630,33 @@ class ApiClient:
                     504: "ErrorResponse",
                 },
             ),
+        )
+
+    def predict_regional_raw(
+        self,
+        *,
+        request: PredictInput,
+        accept: Literal["application/json", "application/octet-stream"],
+    ) -> httpx.Response:
+        """Call a regional environment of a model. Returns the response unread, in the requested content type. The caller must close the response."""
+        return self._do_raw(
+            _ApiRequest(
+                method="POST",
+                path_fmt="/predict",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes={
+                    400: "ErrorResponse",
+                    401: "ErrorResponse",
+                    429: "ErrorResponse",
+                    502: "ErrorResponse",
+                    503: "ErrorResponse",
+                    504: "ErrorResponse",
+                },
+                accept=accept,
+            )
         )
 
     def run_remote(self, *, env_name: str, request: RunRemoteInput) -> RunRemoteOutput:
@@ -530,7 +669,7 @@ class ApiClient:
                 path_args=[env_name],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -554,7 +693,7 @@ class ApiClient:
                 path_args=[deployment_id],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -576,7 +715,7 @@ class ApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -598,7 +737,7 @@ class ApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -620,7 +759,7 @@ class ApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -641,7 +780,7 @@ class ApiClient:
                 path_args=[env_name],
                 body=None,
                 query=None,
-                success_code=202,
+                success_codes=[202],
                 error_codes={401: "ErrorResponse"},
             )
         )
@@ -655,7 +794,7 @@ class ApiClient:
                 path_args=[deployment_id],
                 body=None,
                 query=None,
-                success_code=202,
+                success_codes=[202],
                 error_codes={401: "ErrorResponse"},
             )
         )
@@ -669,7 +808,7 @@ class ApiClient:
                 path_args=[],
                 body=None,
                 query=None,
-                success_code=202,
+                success_codes=[202],
                 error_codes={401: "ErrorResponse"},
             )
         )
@@ -683,7 +822,7 @@ class ApiClient:
                 path_args=[],
                 body=None,
                 query=None,
-                success_code=202,
+                success_codes=[202],
                 error_codes={401: "ErrorResponse"},
             )
         )
@@ -697,38 +836,84 @@ class ApiClient:
                 path_args=[],
                 body=None,
                 query=None,
-                success_code=202,
+                success_codes=[202],
                 error_codes={401: "ErrorResponse"},
             )
         )
 
-    def _do(self, request: _ApiRequest) -> httpx.Response:
+    def _build_request(self, request: _ApiRequest) -> httpx.Request:
         path = request.path_fmt.format(
             *[urllib.parse.quote(a, safe="") for a in request.path_args]
         )
         json_body = None
+        content_body = None
+        files_body = None
+        headers: dict[str, str] = {}
+        if request.accept is not None:
+            headers["Accept"] = request.accept
         if request.body is not None:
-            if isinstance(request.body, BaseModel):
-                # Only fields the caller set are sent, so unset fields fall
-                # back to the server default rather than being reset here.
-                # An explicit None is kept, since null can mean "clear".
-                json_body = request.body.model_dump(mode="json", exclude_unset=True)
+            if request.body_content_type is None:
+                if isinstance(request.body, BaseModel):
+                    # Only fields the caller set are sent, so unset fields fall
+                    # back to the server default rather than being reset here.
+                    # An explicit None is kept, since null can mean "clear".
+                    # by_alias: a field renamed for Python (e.g. async_ for
+                    # "async") must serialize under its API name.
+                    json_body = request.body.model_dump(
+                        mode="json", exclude_unset=True, by_alias=True
+                    )
+                else:
+                    json_body = request.body
+            elif request.body_content_type == "multipart/form-data":
+                # httpx derives the multipart Content-Type, boundary included.
+                files_body = request.body
             else:
-                json_body = request.body
+                headers["Content-Type"] = request.body_content_type
+                content_body = request.body
         params = None
         if request.query is not None:
             if isinstance(request.query, BaseModel):
                 # As above, plus dropping None: a null query parameter is
                 # meaningless and would otherwise serialize as an empty string.
                 params = request.query.model_dump(
-                    mode="json", exclude_unset=True, exclude_none=True
+                    mode="json", exclude_unset=True, exclude_none=True, by_alias=True
                 )
             else:
                 params = request.query
-        response = self._http_client.request(
-            request.method, path, json=json_body, params=params
+        return self._http_client.build_request(
+            request.method,
+            path,
+            json=json_body,
+            content=content_body,
+            files=files_body,
+            params=params,
+            headers=headers,
         )
-        if response.status_code != request.success_code:
+
+    def _do(self, request: _ApiRequest) -> httpx.Response:
+        response = self._http_client.send(self._build_request(request))
+        if response.status_code not in request.success_codes:
+            if request.error_codes and response.status_code in request.error_codes:
+                error_name = request.error_codes[response.status_code]
+                if error_name in _ERROR_TYPES:
+                    model_cls, exc_cls, field_name = _ERROR_TYPES[error_name]
+                    # A body that does not match the declared error schema
+                    # falls through to the generic ResponseError below.
+                    model = None
+                    with contextlib.suppress(ValidationError):
+                        model = model_cls.model_validate_json(response.content)
+                    if model is not None:
+                        raise exc_cls(
+                            status_code=response.status_code,  # ty: ignore[unknown-argument]
+                            **{field_name: model},
+                        )
+            raise ResponseError(status_code=response.status_code, body=response.text)
+        return response
+
+    def _do_raw(self, request: _ApiRequest) -> httpx.Response:
+        response = self._http_client.send(self._build_request(request), stream=True)
+        if response.status_code not in request.success_codes:
+            response.read()
             if request.error_codes and response.status_code in request.error_codes:
                 error_name = request.error_codes[response.status_code]
                 if error_name in _ERROR_TYPES:
@@ -783,7 +968,7 @@ class AsyncApiClient:
                 path_args=[env_name],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -806,7 +991,7 @@ class AsyncApiClient:
                 path_args=[deployment_id],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -829,7 +1014,7 @@ class AsyncApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -852,7 +1037,7 @@ class AsyncApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -875,7 +1060,7 @@ class AsyncApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -898,7 +1083,7 @@ class AsyncApiClient:
                 path_args=[env_name],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -920,7 +1105,7 @@ class AsyncApiClient:
                 path_args=[deployment_id],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -942,7 +1127,7 @@ class AsyncApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -964,7 +1149,7 @@ class AsyncApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -986,7 +1171,7 @@ class AsyncApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=201,
+                success_codes=[201],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -1008,7 +1193,7 @@ class AsyncApiClient:
                 path_args=[request_id],
                 body=None,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
         )
@@ -1025,7 +1210,7 @@ class AsyncApiClient:
                 path_args=[env_name],
                 body=None,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
         )
@@ -1042,7 +1227,7 @@ class AsyncApiClient:
                 path_args=[deployment_id],
                 body=None,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
         )
@@ -1057,7 +1242,7 @@ class AsyncApiClient:
                 path_args=[],
                 body=None,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
         )
@@ -1072,7 +1257,7 @@ class AsyncApiClient:
                 path_args=[],
                 body=None,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
         )
@@ -1087,7 +1272,7 @@ class AsyncApiClient:
                 path_args=[],
                 body=None,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
         )
@@ -1104,7 +1289,7 @@ class AsyncApiClient:
                 path_args=[request_id],
                 body=None,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={401: "ErrorResponse", 429: "ErrorResponse"},
             ),
         )
@@ -1119,7 +1304,7 @@ class AsyncApiClient:
                 path_args=[env_name],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -1129,6 +1314,34 @@ class AsyncApiClient:
                     504: "ErrorResponse",
                 },
             ),
+        )
+
+    async def predict_raw(
+        self,
+        *,
+        env_name: str,
+        request: PredictInput,
+        accept: Literal["application/json", "application/octet-stream"],
+    ) -> httpx.Response:
+        """Call the model deployment associated with a specified environment. Returns the response unread, in the requested content type. The caller must close the response."""
+        return await self._do_raw(
+            _ApiRequest(
+                method="POST",
+                path_fmt="/environments/{}/predict",
+                path_args=[env_name],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes={
+                    400: "ErrorResponse",
+                    401: "ErrorResponse",
+                    429: "ErrorResponse",
+                    502: "ErrorResponse",
+                    503: "ErrorResponse",
+                    504: "ErrorResponse",
+                },
+                accept=accept,
+            )
         )
 
     async def predict_deployment(
@@ -1143,7 +1356,7 @@ class AsyncApiClient:
                 path_args=[deployment_id],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -1153,6 +1366,34 @@ class AsyncApiClient:
                     504: "ErrorResponse",
                 },
             ),
+        )
+
+    async def predict_deployment_raw(
+        self,
+        *,
+        deployment_id: str,
+        request: PredictInput,
+        accept: Literal["application/json", "application/octet-stream"],
+    ) -> httpx.Response:
+        """Call a specific deployment of a model by deployment ID. Returns the response unread, in the requested content type. The caller must close the response."""
+        return await self._do_raw(
+            _ApiRequest(
+                method="POST",
+                path_fmt="/deployment/{}/predict",
+                path_args=[deployment_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes={
+                    400: "ErrorResponse",
+                    401: "ErrorResponse",
+                    429: "ErrorResponse",
+                    502: "ErrorResponse",
+                    503: "ErrorResponse",
+                    504: "ErrorResponse",
+                },
+                accept=accept,
+            )
         )
 
     async def predict_development(self, *, request: PredictInput) -> PredictOutput:
@@ -1165,7 +1406,7 @@ class AsyncApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -1175,6 +1416,33 @@ class AsyncApiClient:
                     504: "ErrorResponse",
                 },
             ),
+        )
+
+    async def predict_development_raw(
+        self,
+        *,
+        request: PredictInput,
+        accept: Literal["application/json", "application/octet-stream"],
+    ) -> httpx.Response:
+        """Call the development deployment of a model. Returns the response unread, in the requested content type. The caller must close the response."""
+        return await self._do_raw(
+            _ApiRequest(
+                method="POST",
+                path_fmt="/development/predict",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes={
+                    400: "ErrorResponse",
+                    401: "ErrorResponse",
+                    429: "ErrorResponse",
+                    502: "ErrorResponse",
+                    503: "ErrorResponse",
+                    504: "ErrorResponse",
+                },
+                accept=accept,
+            )
         )
 
     async def predict_production(self, *, request: PredictInput) -> PredictOutput:
@@ -1187,7 +1455,7 @@ class AsyncApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -1197,6 +1465,33 @@ class AsyncApiClient:
                     504: "ErrorResponse",
                 },
             ),
+        )
+
+    async def predict_production_raw(
+        self,
+        *,
+        request: PredictInput,
+        accept: Literal["application/json", "application/octet-stream"],
+    ) -> httpx.Response:
+        """Call the production environment of a model. Returns the response unread, in the requested content type. The caller must close the response."""
+        return await self._do_raw(
+            _ApiRequest(
+                method="POST",
+                path_fmt="/production/predict",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes={
+                    400: "ErrorResponse",
+                    401: "ErrorResponse",
+                    429: "ErrorResponse",
+                    502: "ErrorResponse",
+                    503: "ErrorResponse",
+                    504: "ErrorResponse",
+                },
+                accept=accept,
+            )
         )
 
     async def predict_regional(self, *, request: PredictInput) -> PredictOutput:
@@ -1209,7 +1504,7 @@ class AsyncApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -1219,6 +1514,33 @@ class AsyncApiClient:
                     504: "ErrorResponse",
                 },
             ),
+        )
+
+    async def predict_regional_raw(
+        self,
+        *,
+        request: PredictInput,
+        accept: Literal["application/json", "application/octet-stream"],
+    ) -> httpx.Response:
+        """Call a regional environment of a model. Returns the response unread, in the requested content type. The caller must close the response."""
+        return await self._do_raw(
+            _ApiRequest(
+                method="POST",
+                path_fmt="/predict",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes={
+                    400: "ErrorResponse",
+                    401: "ErrorResponse",
+                    429: "ErrorResponse",
+                    502: "ErrorResponse",
+                    503: "ErrorResponse",
+                    504: "ErrorResponse",
+                },
+                accept=accept,
+            )
         )
 
     async def run_remote(
@@ -1233,7 +1555,7 @@ class AsyncApiClient:
                 path_args=[env_name],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -1257,7 +1579,7 @@ class AsyncApiClient:
                 path_args=[deployment_id],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -1281,7 +1603,7 @@ class AsyncApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -1305,7 +1627,7 @@ class AsyncApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -1327,7 +1649,7 @@ class AsyncApiClient:
                 path_args=[],
                 body=request,
                 query=None,
-                success_code=200,
+                success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
                     401: "ErrorResponse",
@@ -1348,7 +1670,7 @@ class AsyncApiClient:
                 path_args=[env_name],
                 body=None,
                 query=None,
-                success_code=202,
+                success_codes=[202],
                 error_codes={401: "ErrorResponse"},
             )
         )
@@ -1362,7 +1684,7 @@ class AsyncApiClient:
                 path_args=[deployment_id],
                 body=None,
                 query=None,
-                success_code=202,
+                success_codes=[202],
                 error_codes={401: "ErrorResponse"},
             )
         )
@@ -1376,7 +1698,7 @@ class AsyncApiClient:
                 path_args=[],
                 body=None,
                 query=None,
-                success_code=202,
+                success_codes=[202],
                 error_codes={401: "ErrorResponse"},
             )
         )
@@ -1390,7 +1712,7 @@ class AsyncApiClient:
                 path_args=[],
                 body=None,
                 query=None,
-                success_code=202,
+                success_codes=[202],
                 error_codes={401: "ErrorResponse"},
             )
         )
@@ -1404,38 +1726,86 @@ class AsyncApiClient:
                 path_args=[],
                 body=None,
                 query=None,
-                success_code=202,
+                success_codes=[202],
                 error_codes={401: "ErrorResponse"},
             )
         )
 
-    async def _do(self, request: _ApiRequest) -> httpx.Response:
+    def _build_request(self, request: _ApiRequest) -> httpx.Request:
         path = request.path_fmt.format(
             *[urllib.parse.quote(a, safe="") for a in request.path_args]
         )
         json_body = None
+        content_body = None
+        files_body = None
+        headers: dict[str, str] = {}
+        if request.accept is not None:
+            headers["Accept"] = request.accept
         if request.body is not None:
-            if isinstance(request.body, BaseModel):
-                # Only fields the caller set are sent, so unset fields fall
-                # back to the server default rather than being reset here.
-                # An explicit None is kept, since null can mean "clear".
-                json_body = request.body.model_dump(mode="json", exclude_unset=True)
+            if request.body_content_type is None:
+                if isinstance(request.body, BaseModel):
+                    # Only fields the caller set are sent, so unset fields fall
+                    # back to the server default rather than being reset here.
+                    # An explicit None is kept, since null can mean "clear".
+                    # by_alias: a field renamed for Python (e.g. async_ for
+                    # "async") must serialize under its API name.
+                    json_body = request.body.model_dump(
+                        mode="json", exclude_unset=True, by_alias=True
+                    )
+                else:
+                    json_body = request.body
+            elif request.body_content_type == "multipart/form-data":
+                # httpx derives the multipart Content-Type, boundary included.
+                files_body = request.body
             else:
-                json_body = request.body
+                headers["Content-Type"] = request.body_content_type
+                content_body = request.body
         params = None
         if request.query is not None:
             if isinstance(request.query, BaseModel):
                 # As above, plus dropping None: a null query parameter is
                 # meaningless and would otherwise serialize as an empty string.
                 params = request.query.model_dump(
-                    mode="json", exclude_unset=True, exclude_none=True
+                    mode="json", exclude_unset=True, exclude_none=True, by_alias=True
                 )
             else:
                 params = request.query
-        response = await self._http_client.request(
-            request.method, path, json=json_body, params=params
+        return self._http_client.build_request(
+            request.method,
+            path,
+            json=json_body,
+            content=content_body,
+            files=files_body,
+            params=params,
+            headers=headers,
         )
-        if response.status_code != request.success_code:
+
+    async def _do(self, request: _ApiRequest) -> httpx.Response:
+        response = await self._http_client.send(self._build_request(request))
+        if response.status_code not in request.success_codes:
+            if request.error_codes and response.status_code in request.error_codes:
+                error_name = request.error_codes[response.status_code]
+                if error_name in _ERROR_TYPES:
+                    model_cls, exc_cls, field_name = _ERROR_TYPES[error_name]
+                    # A body that does not match the declared error schema
+                    # falls through to the generic ResponseError below.
+                    model = None
+                    with contextlib.suppress(ValidationError):
+                        model = model_cls.model_validate_json(response.content)
+                    if model is not None:
+                        raise exc_cls(
+                            status_code=response.status_code,  # ty: ignore[unknown-argument]
+                            **{field_name: model},
+                        )
+            raise ResponseError(status_code=response.status_code, body=response.text)
+        return response
+
+    async def _do_raw(self, request: _ApiRequest) -> httpx.Response:
+        response = await self._http_client.send(
+            self._build_request(request), stream=True
+        )
+        if response.status_code not in request.success_codes:
+            await response.aread()
             if request.error_codes and response.status_code in request.error_codes:
                 error_name = request.error_codes[response.status_code]
                 if error_name in _ERROR_TYPES:
