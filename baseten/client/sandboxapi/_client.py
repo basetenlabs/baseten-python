@@ -577,7 +577,7 @@ class ApiClient:
         )
 
     def get_process_logs_stream(self, *, identifier: str) -> httpx.Response:
-        """Stream process logs in real time. Returns the response unread, in the requested content type. The caller must close the response."""
+        """Stream process logs in real time. Returns the response unread. The caller must close the response."""
         return self._do_raw(
             _ApiRequest(
                 method="GET",
@@ -594,7 +594,7 @@ class ApiClient:
     def get_watch_filesystem(
         self, *, path: str, params: GetWatchFilesystemParams | None = None
     ) -> httpx.Response:
-        """Stream file modification events in a directory. Returns the response unread, in the requested content type. The caller must close the response."""
+        """Stream file modification events in a directory. Returns the response unread. The caller must close the response."""
         return self._do_raw(
             _ApiRequest(
                 method="GET",
@@ -863,7 +863,7 @@ class ApiClient:
     def put_filesystem_multipart_part(
         self, *, upload_id: str, params: PutFilesystemMultipartPartParams, files: Any
     ) -> MultipartUploadPartResponse:
-        """Upload part"""
+        """Upload part. *files* is sent as httpx ``files``."""
         return self._do_json(
             MultipartUploadPartResponse,
             _ApiRequest(
@@ -1521,7 +1521,7 @@ class AsyncApiClient:
         )
 
     async def get_process_logs_stream(self, *, identifier: str) -> httpx.Response:
-        """Stream process logs in real time. Returns the response unread, in the requested content type. The caller must close the response."""
+        """Stream process logs in real time. Returns the response unread. The caller must close the response."""
         return await self._do_raw(
             _ApiRequest(
                 method="GET",
@@ -1538,7 +1538,7 @@ class AsyncApiClient:
     async def get_watch_filesystem(
         self, *, path: str, params: GetWatchFilesystemParams | None = None
     ) -> httpx.Response:
-        """Stream file modification events in a directory. Returns the response unread, in the requested content type. The caller must close the response."""
+        """Stream file modification events in a directory. Returns the response unread. The caller must close the response."""
         return await self._do_raw(
             _ApiRequest(
                 method="GET",
@@ -1811,7 +1811,7 @@ class AsyncApiClient:
     async def put_filesystem_multipart_part(
         self, *, upload_id: str, params: PutFilesystemMultipartPartParams, files: Any
     ) -> MultipartUploadPartResponse:
-        """Upload part"""
+        """Upload part. *files* is sent as httpx ``files``."""
         return await self._do_json(
             MultipartUploadPartResponse,
             _ApiRequest(

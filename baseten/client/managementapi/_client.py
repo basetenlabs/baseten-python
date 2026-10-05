@@ -56,14 +56,18 @@ from ._models import (
     CreateVolumeTokenResponse,
     DeactivateLoopsDeploymentResponse,
     DeactivateLoopsRunResponse,
+    DeactivateLoopsSamplerResponse,
     DeactivateResponse,
     DeleteImageParams,
     DeleteImageTagParams,
+    DeleteRoutesHarnessConfigsParams,
     DeleteSandboxParams,
     DeleteVolumeRequest,
     DeleteVolumeResponse,
     DeleteVolumeVersionRequest,
     DeleteVolumeVersionResponse,
+    DeployLoopsCheckpointRequest,
+    DeployLoopsCheckpointResponse,
     Deployment,
     DeploymentConfigResponse,
     Deployments,
@@ -95,6 +99,7 @@ from ._models import (
     GetDeploymentPatchesStateResponse,
     GetExploreMetadataParams,
     GetGatewayEventsParams,
+    GetImageBuildLogsParams,
     GetImageParams,
     GetLogsResponse,
     GetLoopsCapabilitiesParams,
@@ -124,6 +129,7 @@ from ._models import (
     GetModelsEnvironmentsLogsParams,
     GetModelsEnvironmentsMetricsParams,
     GetModelsParams,
+    GetRoutesHarnessConfigsParams,
     GetRoutesParams,
     GetRoutesUsageParams,
     GetSandboxParams,
@@ -151,6 +157,7 @@ from ._models import (
     Group,
     GroupsResponse,
     Image,
+    ImageBuildLogsResponse,
     InstanceTypePrices,
     InstanceTypes,
     KeysForGroupResponse,
@@ -213,6 +220,10 @@ from ._models import (
     RestoreVolumeVersionResponse,
     RetryDeploymentResponse,
     Route,
+    RouteHarnessConfig,
+    RouteHarnessConfigsResponse,
+    RouteHarnessConfigTombstone,
+    RouteSpendLimit,
     RoutesResponse,
     RoutesUsageResponse,
     RouteTombstone,
@@ -222,6 +233,7 @@ from ._models import (
     Secret,
     Secrets,
     SecretTombstone,
+    SetRouteHarnessConfigRequest,
     SignalPromotionResponse,
     SignSSHCertificateRequest,
     SignSSHCertificateResponse,
@@ -253,7 +265,9 @@ from ._models import (
     UpdateLibraryListingVersionRequest,
     UpdateModelRequest,
     UpdateRequestBackpressureSettings,
+    UpdateRouteHarnessConfigRequest,
     UpdateRouteRequest,
+    UpdateRouteSpendLimitRequest,
     UpdateSandboxParams,
     UpdateSandboxRequest,
     UpdateTrainingJobRequest,
@@ -556,6 +570,23 @@ class ApiClient:
                 path_args=[route_id],
                 body=None,
                 query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def delete_routes_harness_configs(
+        self, *, harness: str, params: DeleteRoutesHarnessConfigsParams
+    ) -> RouteHarnessConfigTombstone:
+        """Clears default models for a coding harness"""
+        return self._do_json(
+            RouteHarnessConfigTombstone,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/routes/harness-configs/{}",
+                path_args=[harness],
+                body=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -1094,6 +1125,23 @@ class ApiClient:
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/sandboxes/images/{}",
+                path_args=[image_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_image_build_logs(
+        self, *, image_name: str, params: GetImageBuildLogsParams | None = None
+    ) -> ImageBuildLogsResponse:
+        """Get image build logs"""
+        return self._do_json(
+            ImageBuildLogsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/images/{}/logs",
                 path_args=[image_name],
                 body=None,
                 query=params,
@@ -1812,6 +1860,23 @@ class ApiClient:
             ),
         )
 
+    def get_routes_harness_configs(
+        self, *, params: GetRoutesHarnessConfigsParams
+    ) -> RouteHarnessConfigsResponse:
+        """Lists default models for coding harnesses"""
+        return self._do_json(
+            RouteHarnessConfigsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/routes/harness-configs",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     def get_routes_route_id(self, *, route_id: str) -> Route:
         """Gets a route"""
         return self._do_json(
@@ -1820,6 +1885,21 @@ class ApiClient:
                 method="GET",
                 path_fmt="/v1/routes/{}",
                 path_args=[route_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_routes_spend_limits(self, *, user_id: str) -> RouteSpendLimit:
+        """Gets a user's spend limits"""
+        return self._do_json(
+            RouteSpendLimit,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/routes/spend_limits/{}",
+                path_args=[user_id],
                 body=None,
                 query=None,
                 success_codes=[200],
@@ -2760,6 +2840,40 @@ class ApiClient:
             ),
         )
 
+    def patch_routes_harness_configs(
+        self, *, request: UpdateRouteHarnessConfigRequest
+    ) -> RouteHarnessConfig:
+        """Updates default models for a coding harness"""
+        return self._do_json(
+            RouteHarnessConfig,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/routes/harness-configs",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def patch_routes_spend_limits(
+        self, *, user_id: str, request: UpdateRouteSpendLimitRequest
+    ) -> RouteSpendLimit:
+        """Updates a user's spend limits"""
+        return self._do_json(
+            RouteSpendLimit,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/routes/spend_limits/{}",
+                path_args=[user_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     def patch_teams_environment_groups(
         self, *, team_id: str, env_name: str, request: UpdateEnvironmentGroupRequest
     ) -> EnvironmentGroup:
@@ -3057,6 +3171,23 @@ class ApiClient:
             ),
         )
 
+    def post_loops_checkpoints_deploy(
+        self, *, request: DeployLoopsCheckpointRequest
+    ) -> DeployLoopsCheckpointResponse:
+        """Deploys Loops checkpoints"""
+        return self._do_json(
+            DeployLoopsCheckpointResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/loops/checkpoints/deploy",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     def post_loops_checkpoints_validate(
         self, *, request: ValidateLoopsCheckpointRequest
     ) -> ValidateLoopsCheckpointResponse:
@@ -3151,6 +3282,23 @@ class ApiClient:
                 path_fmt="/v1/loops/samplers",
                 path_args=[],
                 body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def post_loops_samplers_deactivate(
+        self, *, sampler_id: str
+    ) -> DeactivateLoopsSamplerResponse:
+        """Deactivates a standalone Loops sampler"""
+        return self._do_json(
+            DeactivateLoopsSamplerResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/loops/samplers/{}/deactivate",
+                path_args=[sampler_id],
+                body=None,
                 query=None,
                 success_codes=[200],
                 error_codes=None,
@@ -4088,6 +4236,23 @@ class ApiClient:
             ),
         )
 
+    def put_routes_harness_configs(
+        self, *, request: SetRouteHarnessConfigRequest
+    ) -> RouteHarnessConfig:
+        """Sets default models for a coding harness"""
+        return self._do_json(
+            RouteHarnessConfig,
+            _ApiRequest(
+                method="PUT",
+                path_fmt="/v1/routes/harness-configs",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     def update_sandbox(
         self,
         *,
@@ -4433,6 +4598,23 @@ class AsyncApiClient:
                 path_args=[route_id],
                 body=None,
                 query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def delete_routes_harness_configs(
+        self, *, harness: str, params: DeleteRoutesHarnessConfigsParams
+    ) -> RouteHarnessConfigTombstone:
+        """Clears default models for a coding harness"""
+        return await self._do_json(
+            RouteHarnessConfigTombstone,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/routes/harness-configs/{}",
+                path_args=[harness],
+                body=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -4975,6 +5157,23 @@ class AsyncApiClient:
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/sandboxes/images/{}",
+                path_args=[image_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_image_build_logs(
+        self, *, image_name: str, params: GetImageBuildLogsParams | None = None
+    ) -> ImageBuildLogsResponse:
+        """Get image build logs"""
+        return await self._do_json(
+            ImageBuildLogsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/images/{}/logs",
                 path_args=[image_name],
                 body=None,
                 query=params,
@@ -5695,6 +5894,23 @@ class AsyncApiClient:
             ),
         )
 
+    async def get_routes_harness_configs(
+        self, *, params: GetRoutesHarnessConfigsParams
+    ) -> RouteHarnessConfigsResponse:
+        """Lists default models for coding harnesses"""
+        return await self._do_json(
+            RouteHarnessConfigsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/routes/harness-configs",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     async def get_routes_route_id(self, *, route_id: str) -> Route:
         """Gets a route"""
         return await self._do_json(
@@ -5703,6 +5919,21 @@ class AsyncApiClient:
                 method="GET",
                 path_fmt="/v1/routes/{}",
                 path_args=[route_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_routes_spend_limits(self, *, user_id: str) -> RouteSpendLimit:
+        """Gets a user's spend limits"""
+        return await self._do_json(
+            RouteSpendLimit,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/routes/spend_limits/{}",
+                path_args=[user_id],
                 body=None,
                 query=None,
                 success_codes=[200],
@@ -6649,6 +6880,40 @@ class AsyncApiClient:
             ),
         )
 
+    async def patch_routes_harness_configs(
+        self, *, request: UpdateRouteHarnessConfigRequest
+    ) -> RouteHarnessConfig:
+        """Updates default models for a coding harness"""
+        return await self._do_json(
+            RouteHarnessConfig,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/routes/harness-configs",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def patch_routes_spend_limits(
+        self, *, user_id: str, request: UpdateRouteSpendLimitRequest
+    ) -> RouteSpendLimit:
+        """Updates a user's spend limits"""
+        return await self._do_json(
+            RouteSpendLimit,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/routes/spend_limits/{}",
+                path_args=[user_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     async def patch_teams_environment_groups(
         self, *, team_id: str, env_name: str, request: UpdateEnvironmentGroupRequest
     ) -> EnvironmentGroup:
@@ -6950,6 +7215,23 @@ class AsyncApiClient:
             ),
         )
 
+    async def post_loops_checkpoints_deploy(
+        self, *, request: DeployLoopsCheckpointRequest
+    ) -> DeployLoopsCheckpointResponse:
+        """Deploys Loops checkpoints"""
+        return await self._do_json(
+            DeployLoopsCheckpointResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/loops/checkpoints/deploy",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     async def post_loops_checkpoints_validate(
         self, *, request: ValidateLoopsCheckpointRequest
     ) -> ValidateLoopsCheckpointResponse:
@@ -7046,6 +7328,23 @@ class AsyncApiClient:
                 path_fmt="/v1/loops/samplers",
                 path_args=[],
                 body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def post_loops_samplers_deactivate(
+        self, *, sampler_id: str
+    ) -> DeactivateLoopsSamplerResponse:
+        """Deactivates a standalone Loops sampler"""
+        return await self._do_json(
+            DeactivateLoopsSamplerResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/loops/samplers/{}/deactivate",
+                path_args=[sampler_id],
+                body=None,
                 query=None,
                 success_codes=[200],
                 error_codes=None,
@@ -7985,6 +8284,23 @@ class AsyncApiClient:
                 body=request,
                 query=params,
                 success_codes=[202],
+                error_codes=None,
+            ),
+        )
+
+    async def put_routes_harness_configs(
+        self, *, request: SetRouteHarnessConfigRequest
+    ) -> RouteHarnessConfig:
+        """Sets default models for a coding harness"""
+        return await self._do_json(
+            RouteHarnessConfig,
+            _ApiRequest(
+                method="PUT",
+                path_fmt="/v1/routes/harness-configs",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
                 error_codes=None,
             ),
         )

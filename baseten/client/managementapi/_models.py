@@ -299,6 +299,22 @@ class ResourceKind(StrEnum):
     CHAINLET = "CHAINLET"
 
 
+class RouteHarness(StrEnum):
+    claude_code = "claude-code"
+    opencode = "opencode"
+    codex = "codex"
+
+
+class RouteHarnessModelSource(StrEnum):
+    team = "team"
+    baseten = "baseten"
+
+
+class RouteHarnessRole(StrEnum):
+    primary = "primary"
+    background = "background"
+
+
 class GatewayProvider(StrEnum):
     ANTHROPIC = "ANTHROPIC"
     OPENAI = "OPENAI"
@@ -903,6 +919,28 @@ class GetRoutesParams(BaseModel):
     ] = None
 
 
+class GetRoutesHarnessConfigsParams(BaseModel):
+    team_id: Annotated[
+        str,
+        Field(
+            description="Identifier of the team whose default models to list.",
+            min_length=1,
+            title="Team Id",
+        ),
+    ]
+
+
+class DeleteRoutesHarnessConfigsParams(BaseModel):
+    team_id: Annotated[
+        str,
+        Field(
+            description="Identifier of the team whose default models to clear.",
+            min_length=1,
+            title="Team Id",
+        ),
+    ]
+
+
 class StatusItem(RootModel[str]):
     root: Annotated[str, Field(min_length=1)]
 
@@ -975,6 +1013,12 @@ class GetSandboxParams(BaseModel):
             min_length=1,
         ),
     ] = None
+    show_secrets: Annotated[
+        bool,
+        Field(
+            description="Reveal environment variable values for workspace administrators. Defaults to false. Callers without the admin role receive masked values even when true."
+        ),
+    ] = False
 
 
 class UpdateSandboxParams(BaseModel):
@@ -988,6 +1032,16 @@ class UpdateSandboxParams(BaseModel):
 
 
 class DeleteSandboxParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
+class ListSandboxLibraryImagesParams(BaseModel):
     team_id: Annotated[
         str | None,
         Field(
@@ -1077,6 +1131,38 @@ class DeleteImageParams(BaseModel):
     ] = None
 
 
+class GetImageBuildLogsParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+    start_time: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Inclusive RFC 3339 start time. Defaults to 24 hours before end_time."
+        ),
+    ] = None
+    end_time: Annotated[
+        AwareDatetime | None,
+        Field(description="RFC 3339 end time. Defaults to the current time."),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(description="Maximum number of log entries to return.", ge=1, le=1000),
+    ] = 100
+    offset: Annotated[
+        int,
+        Field(
+            description="Number of log entries to skip. Narrow the time range beyond 10000 entries.",
+            ge=0,
+            le=10000,
+        ),
+    ] = 0
+
+
 class ListImageTagsParams(BaseModel):
     team_id: Annotated[
         str | None,
@@ -1124,16 +1210,6 @@ class ListImageTagsParams(BaseModel):
 
 
 class DeleteImageTagParams(BaseModel):
-    team_id: Annotated[
-        str | None,
-        Field(
-            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
-            min_length=1,
-        ),
-    ] = None
-
-
-class ListSandboxLibraryImagesParams(BaseModel):
     team_id: Annotated[
         str | None,
         Field(
@@ -6082,6 +6158,20 @@ class CreateLoopsSamplerResponse(BaseModel):
     sampler: LoopsSampler
 
 
+class DeactivateLoopsSamplerResponse(BaseModel):
+    id: Annotated[
+        str, Field(description="The deactivated Loops sampler ID.", title="Id")
+    ]
+    base_model: Annotated[
+        str,
+        Field(
+            description="The base model the deactivated sampler was serving.",
+            title="Base Model",
+        ),
+    ]
+    user: Annotated[User, Field(description="The user who owns the Loops sampler.")]
+
+
 class GetLoopsSamplerResponse(BaseModel):
     sampler: Annotated[LoopsSampler, Field(description="The Loops sampler.")]
 
@@ -6158,6 +6248,50 @@ class ValidateLoopsCheckpointRequest(BaseModel):
 
 class ValidateLoopsCheckpointResponse(BaseModel):
     pass
+
+
+class DeployLoopsCheckpointRequest(BaseModel):
+    checkpoint_ids: Annotated[
+        list[str],
+        Field(
+            description="Sampler checkpoint IDs to deploy together.",
+            min_length=1,
+            title="Checkpoint Ids",
+        ),
+    ]
+    model_name: Annotated[
+        str,
+        Field(
+            description="Name for the created model.", min_length=1, title="Model Name"
+        ),
+    ]
+    instance_type_id: Annotated[
+        str,
+        Field(
+            description="Instance type ID for the deployment.", title="Instance Type Id"
+        ),
+    ]
+    hf_secret_name: Annotated[
+        str,
+        Field(
+            description="Name of the team-scoped secret that supplies HF_TOKEN.",
+            min_length=1,
+            title="Hf Secret Name",
+        ),
+    ]
+
+
+class DeployLoopsCheckpointResponse(BaseModel):
+    model_id: Annotated[
+        str, Field(description="ID of the created or updated model.", title="Model Id")
+    ]
+    deployment_id: Annotated[
+        str,
+        Field(
+            description="ID of the created model version deployment.",
+            title="Deployment Id",
+        ),
+    ]
 
 
 class LoopsCheckpointFilesResponse(BaseModel):
@@ -7635,7 +7769,7 @@ class ModelApiItem(BaseModel):
     model_name: Annotated[str, Field(description="Model name", title="Model Name")]
     model_family: Annotated[
         str | None,
-        Field(description="Model family (e.g., llama, mistral)", title="Model Family"),
+        Field(description="Model family (e.g., Meta, DeepSeek)", title="Model Family"),
     ] = None
     subtotal: Annotated[
         float | Subtotal5,
@@ -8139,6 +8273,321 @@ class RouteUsageDimension(StrEnum):
     PROVIDER = "PROVIDER"
 
 
+class RouteSpendLimit(BaseModel):
+    user_id: Annotated[
+        str, Field(description="ID of the user.", examples=["abc1234"], title="User Id")
+    ]
+    email: Annotated[
+        str | None,
+        Field(
+            description="Email address of the user.",
+            examples=["dev@example.com"],
+            title="Email",
+        ),
+    ]
+    monthly_limit_usd: Annotated[
+        str | None,
+        Field(
+            description="Standing spend limit in USD for each UTC calendar month, returned as an exact decimal string. Null when the user has no standing limit.",
+            examples=["200"],
+            title="Monthly Limit Usd",
+        ),
+    ]
+
+
+class UpdateRouteSpendLimitRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    monthly_limit_usd: Annotated[
+        str | None,
+        Field(
+            description="Standing spend limit in USD for each UTC calendar month, as a non-negative decimal string with at most 9 decimal places. Send null to remove the limit; omit to leave it unchanged.",
+            examples=["200"],
+            title="Monthly Limit Usd",
+        ),
+    ] = None
+
+
+class Primary(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use Baseten's default.",
+            examples=["abc1234"],
+            min_length=1,
+            title="Primary",
+        ),
+    ] = None
+
+
+class Background(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="Route ID for background tasks, such as session titles. Omit to keep the current route, or pass null to use Baseten's default.",
+            examples=["def5678"],
+            min_length=1,
+            title="Background",
+        ),
+    ] = None
+
+
+class UpdateBackgroundHarnessModels(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    primary: Annotated[
+        Primary | None,
+        Field(
+            description="Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use Baseten's default.",
+            examples=["abc1234"],
+            title="Primary",
+        ),
+    ] = None
+    background: Annotated[
+        Background | None,
+        Field(
+            description="Route ID for background tasks, such as session titles. Omit to keep the current route, or pass null to use Baseten's default.",
+            examples=["def5678"],
+            title="Background",
+        ),
+    ] = None
+
+
+class UpdateClaudeCodeHarnessConfig(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    team_id: Annotated[
+        str,
+        Field(
+            description="Identifier of the team whose default models to set. Every route must belong to this team.",
+            min_length=1,
+            title="Team Id",
+        ),
+    ]
+    harness: Annotated[
+        Literal["claude-code"],
+        Field(
+            description="Claude Code, which supports the `primary` and `background` roles.",
+            title="Harness",
+        ),
+    ]
+    models: Annotated[
+        UpdateBackgroundHarnessModels,
+        Field(
+            description="Route IDs for the model roles to change. Roles left out are unchanged."
+        ),
+    ]
+
+
+class UpdateOpenCodeHarnessConfig(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    team_id: Annotated[
+        str,
+        Field(
+            description="Identifier of the team whose default models to set. Every route must belong to this team.",
+            min_length=1,
+            title="Team Id",
+        ),
+    ]
+    harness: Annotated[
+        Literal["opencode"],
+        Field(
+            description="OpenCode, which supports the `primary` and `background` roles.",
+            title="Harness",
+        ),
+    ]
+    models: Annotated[
+        UpdateBackgroundHarnessModels,
+        Field(
+            description="Route IDs for the model roles to change. Roles left out are unchanged."
+        ),
+    ]
+
+
+class UpdatePrimaryHarnessModels(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    primary: Annotated[
+        Primary | None,
+        Field(
+            description="Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use Baseten's default.",
+            examples=["abc1234"],
+            title="Primary",
+        ),
+    ] = None
+
+
+class Primary2(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="Route ID for the primary model, which new sessions use. Omit to use Baseten's default.",
+            examples=["abc1234"],
+            min_length=1,
+            title="Primary",
+        ),
+    ] = None
+
+
+class Background1(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="Route ID for background tasks, such as session titles. Omit to use Baseten's default.",
+            examples=["def5678"],
+            min_length=1,
+            title="Background",
+        ),
+    ] = None
+
+
+class BackgroundHarnessModels(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    primary: Annotated[
+        Primary2 | None,
+        Field(
+            description="Route ID for the primary model, which new sessions use. Omit to use Baseten's default.",
+            examples=["abc1234"],
+            title="Primary",
+        ),
+    ] = None
+    background: Annotated[
+        Background1 | None,
+        Field(
+            description="Route ID for background tasks, such as session titles. Omit to use Baseten's default.",
+            examples=["def5678"],
+            title="Background",
+        ),
+    ] = None
+
+
+class PrimaryHarnessModels(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    primary: Annotated[
+        Primary2 | None,
+        Field(
+            description="Route ID for the primary model, which new sessions use. Omit to use Baseten's default.",
+            examples=["abc1234"],
+            title="Primary",
+        ),
+    ] = None
+
+
+class SetClaudeCodeHarnessConfig(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    team_id: Annotated[
+        str,
+        Field(
+            description="Identifier of the team whose default models to set. Every route must belong to this team.",
+            min_length=1,
+            title="Team Id",
+        ),
+    ]
+    harness: Annotated[
+        Literal["claude-code"],
+        Field(
+            description="Claude Code, which supports the `primary` and `background` roles.",
+            title="Harness",
+        ),
+    ]
+    models: Annotated[
+        BackgroundHarnessModels,
+        Field(
+            description="Route ID for each model role. Roles left out use Baseten's defaults."
+        ),
+    ]
+
+
+class SetCodexHarnessConfig(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    team_id: Annotated[
+        str,
+        Field(
+            description="Identifier of the team whose default models to set. Every route must belong to this team.",
+            min_length=1,
+            title="Team Id",
+        ),
+    ]
+    harness: Annotated[
+        Literal["codex"],
+        Field(
+            description="Codex, which supports only the `primary` role.",
+            title="Harness",
+        ),
+    ]
+    models: Annotated[
+        PrimaryHarnessModels,
+        Field(
+            description="Route ID for each model role. Roles left out use Baseten's defaults."
+        ),
+    ]
+
+
+class SetOpenCodeHarnessConfig(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    team_id: Annotated[
+        str,
+        Field(
+            description="Identifier of the team whose default models to set. Every route must belong to this team.",
+            min_length=1,
+            title="Team Id",
+        ),
+    ]
+    harness: Annotated[
+        Literal["opencode"],
+        Field(
+            description="OpenCode, which supports the `primary` and `background` roles.",
+            title="Harness",
+        ),
+    ]
+    models: Annotated[
+        BackgroundHarnessModels,
+        Field(
+            description="Route ID for each model role. Roles left out use Baseten's defaults."
+        ),
+    ]
+
+
+class SetRouteHarnessConfigRequest(
+    RootModel[
+        SetClaudeCodeHarnessConfig | SetOpenCodeHarnessConfig | SetCodexHarnessConfig
+    ]
+):
+    root: Annotated[
+        SetClaudeCodeHarnessConfig | SetOpenCodeHarnessConfig | SetCodexHarnessConfig,
+        Field(discriminator="harness", title="SetRouteHarnessConfigRequestV1"),
+    ]
+
+
+class RouteHarnessConfigTombstone(BaseModel):
+    harness: Annotated[
+        RouteHarness, Field(description="Harness whose default models were cleared.")
+    ]
+    team_id: Annotated[
+        str,
+        Field(
+            description="Identifier of the team whose default models were cleared.",
+            title="Team Id",
+        ),
+    ]
+
+
 class RouteTombstone(BaseModel):
     id: Annotated[
         str, Field(description="Stable identifier of the deleted route.", title="Id")
@@ -8583,6 +9032,22 @@ class RegisterAPIKeyResponse(BaseModel):
     ]
 
 
+class ImageBuildLog(BaseModel):
+    timestamp: AwareDatetime
+    message: str
+    severity: Annotated[int, Field(description="Numeric OpenTelemetry severity level.")]
+
+
+class ImageBuildLogsResponse(BaseModel):
+    logs: list[ImageBuildLog]
+    total_count: Annotated[
+        int,
+        Field(
+            description="Number of matching log entries in the requested time range."
+        ),
+    ]
+
+
 class SandboxDuration(RootModel[str]):
     root: Annotated[
         str,
@@ -8665,9 +9130,12 @@ class SandboxEnv(BaseModel):
         Field(description="Name of the environment variable", examples=["NODE_ENV"]),
     ] = None
     secret: Annotated[
-        bool | None,
-        Field(description="Whether the value is a secret", examples=[False]),
-    ] = None
+        bool,
+        Field(
+            description='Whether the value is a secret. Defaults to true; secret values are returned as "****". Set false explicitly to return the original value.',
+            examples=[False],
+        ),
+    ] = True
     value: Annotated[
         str | None,
         Field(description="Value of the environment variable", examples=["production"]),
@@ -8768,13 +9236,6 @@ class Image(BaseModel):
             examples=["base-image"],
         ),
     ]
-    display_name: Annotated[
-        str | None,
-        Field(
-            description="Human-readable image repository name.",
-            examples=["b10/base-image"],
-        ),
-    ] = None
     status: Annotated[
         ImageStatus,
         Field(
@@ -8852,7 +9313,7 @@ class PushImageRequest(BaseModel):
     image: Annotated[
         str | None,
         Field(
-            description="Optional source registry image reference including a registry hostname. When omitted, the response provides an archive upload URL.",
+            description="Optional source registry image reference including a registry hostname. When omitted, the response provides an archive upload URL. The uploaded ZIP archive must not exceed 5 GB.",
             examples=["docker.io/b10/base-image:latest"],
         ),
     ] = None
@@ -8881,7 +9342,7 @@ class PushImageResponse(BaseModel):
     upload_url: Annotated[
         AnyUrl | None,
         Field(
-            description="Temporary signed URL for uploading the source ZIP archive with HTTP PUT. Present only when no source image was supplied. Uploading starts asynchronous processing. This storage upload is separate from the API endpoints.",
+            description="Temporary signed URL for uploading the source ZIP archive with HTTP PUT. Present only when no source image was supplied. The uploaded ZIP archive must not exceed 5 GB. Uploading starts asynchronous processing. This storage upload is separate from the API endpoints.",
             examples=[
                 "https://uploads.b10.run/images/base-image/20260916212658/source.zip?expires=2026-09-16T22%3A26%3A58Z&signature=demo-not-a-valid-upload-signature"
             ],
@@ -8894,21 +9355,6 @@ class PushImageResponse(BaseModel):
             examples=["b10/base-image:latest"],
         ),
     ] = None
-
-
-class CleanupImagesResponse(BaseModel):
-    deleted: Annotated[
-        int, Field(description="Number of image versions removed.", examples=[3], ge=0)
-    ]
-    message: Annotated[
-        str,
-        Field(
-            description="Human-readable cleanup result.",
-            examples=[
-                "Removed 3 unused image versions. Image versions used by active sandboxes were retained."
-            ],
-        ),
-    ]
 
 
 class SandboxLibraryImageVolume(BaseModel):
@@ -8952,6 +9398,21 @@ class SandboxLibraryImageCreationOptions(BaseModel):
     volumes: Annotated[
         list[SandboxLibraryImageVolume] | None, Field(description="Volume attachments.")
     ] = None
+
+
+class CleanupImagesResponse(BaseModel):
+    deleted: Annotated[
+        int, Field(description="Number of image versions removed.", examples=[3], ge=0)
+    ]
+    message: Annotated[
+        str,
+        Field(
+            description="Human-readable cleanup result.",
+            examples=[
+                "Removed 3 unused image versions. Image versions used by active sandboxes were retained."
+            ],
+        ),
+    ]
 
 
 class Checkpoints(
@@ -11329,7 +11790,7 @@ class ModelAPI(BaseModel):
         str | None,
         Field(
             description="Family the underlying model belongs to.",
-            examples=["META", "DEEPSEEK", "QWEN"],
+            examples=["Meta", "DeepSeek", "Qwen"],
             title="Model Family",
         ),
     ] = None
@@ -11917,6 +12378,58 @@ class RoutesUsageResponse(BaseModel):
     ]
     pagination: Annotated[
         PaginationResponse, Field(description="Pagination metadata for the page.")
+    ]
+
+
+class RouteHarnessModel(BaseModel):
+    source: Annotated[
+        RouteHarnessModelSource,
+        Field(
+            description="Who chose this role's route: `team` if a team admin set it, or `baseten` if it is Baseten's default, chosen from the team's Model API routes."
+        ),
+    ]
+    route: Annotated[Route, Field(description="Route to use for this role.")]
+
+
+class UpdateCodexHarnessConfig(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    team_id: Annotated[
+        str,
+        Field(
+            description="Identifier of the team whose default models to set. Every route must belong to this team.",
+            min_length=1,
+            title="Team Id",
+        ),
+    ]
+    harness: Annotated[
+        Literal["codex"],
+        Field(
+            description="Codex, which supports only the `primary` role.",
+            title="Harness",
+        ),
+    ]
+    models: Annotated[
+        UpdatePrimaryHarnessModels,
+        Field(
+            description="Route IDs for the model roles to change. Roles left out are unchanged."
+        ),
+    ]
+
+
+class UpdateRouteHarnessConfigRequest(
+    RootModel[
+        UpdateClaudeCodeHarnessConfig
+        | UpdateOpenCodeHarnessConfig
+        | UpdateCodexHarnessConfig
+    ]
+):
+    root: Annotated[
+        UpdateClaudeCodeHarnessConfig
+        | UpdateOpenCodeHarnessConfig
+        | UpdateCodexHarnessConfig,
+        Field(discriminator="harness", title="UpdateRouteHarnessConfigRequestV1"),
     ]
 
 
@@ -12538,6 +13051,23 @@ class GetLoopsDeploymentMetricsResponse(BaseModel):
     ]
 
 
+class RouteHarnessConfig(BaseModel):
+    models: Annotated[
+        dict[RouteHarnessRole, RouteHarnessModel],
+        Field(description="Route for each model role, keyed by role.", title="Models"),
+    ]
+
+
+class RouteHarnessConfigsResponse(BaseModel):
+    harness_configs: Annotated[
+        dict[RouteHarness, RouteHarnessConfig],
+        Field(
+            description="Default models for each harness, keyed by harness. A harness is omitted when none of its roles has a route.",
+            title="Harness Configs",
+        ),
+    ]
+
+
 class EffectiveModelConfig(BaseModel):
     slug: Annotated[str, Field(description="Shared endpoint slug.", title="Slug")]
     rate_limits: Annotated[
@@ -12730,8 +13260,8 @@ class SandboxConfiguration(BaseModel):
     image: Annotated[
         str | None,
         Field(
-            description="Image reference including its tag. Use blaxel/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.",
-            examples=["blaxel/base-image:latest"],
+            description="Image reference including its tag. Built-in image references are returned in the canonical baseten/ namespace. Use baseten/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.",
+            examples=["baseten/base-image:latest"],
         ),
     ] = None
     memory: Annotated[
@@ -12770,6 +13300,12 @@ class SandboxConfiguration(BaseModel):
 
 
 class CreateSandboxRequest(BaseModel):
+    create_if_not_exists: Annotated[
+        bool | None,
+        Field(
+            description="When true, return the existing live sandbox with this name or recreate it if it is failed, terminated, or being deleted. The server handles concurrent creation and deletion races with a bounded wait; persistent contention returns a conflict. Requires name. Existing configuration is preserved. Defaults to false when omitted."
+        ),
+    ] = None
     name: Annotated[
         str | None,
         Field(
@@ -12851,20 +13387,20 @@ class CreateSandboxRequest(BaseModel):
         ),
     ] = None
     image: Annotated[
-        str | None,
+        str,
         Field(
-            description="Image reference including its tag. Use blaxel/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.",
-            examples=["blaxel/base-image:latest"],
+            description="Image reference including its tag. Defaults to baseten/base-image:latest, the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.",
+            examples=["baseten/base-image:latest"],
         ),
-    ] = None
+    ] = "baseten/base-image:latest"
     memory: Annotated[
-        int | None,
+        int,
         Field(
-            description="Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs).",
+            description="Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs). Defaults to 4096.",
             examples=[4096],
             ge=1,
         ),
-    ] = None
+    ] = 4096
     ports: Annotated[
         SandboxPorts | None,
         Field(
@@ -12888,12 +13424,6 @@ class CreateSandboxRequest(BaseModel):
             examples=[
                 {"env": "development", "project": "api-review", "team": "engineering"}
             ],
-        ),
-    ] = None
-    create_if_not_exists: Annotated[
-        bool | None,
-        Field(
-            description="When true, return the existing live sandbox with this name or recreate it if it is failed, terminated, or being deleted. The server handles concurrent creation and deletion races with a bounded wait; persistent contention returns a conflict. Requires name. Existing configuration is preserved. Defaults to false when omitted."
         ),
     ] = None
 
@@ -12948,8 +13478,8 @@ class UpdateSandboxRequest(BaseModel):
     image: Annotated[
         str | None,
         Field(
-            description="Image reference including its tag. Use blaxel/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.",
-            examples=["blaxel/base-image:latest"],
+            description="Image reference including its tag. Built-in image references are returned in the canonical baseten/ namespace. Use baseten/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.",
+            examples=["baseten/base-image:latest"],
         ),
     ] = None
     ports: Annotated[
@@ -12993,12 +13523,12 @@ class Sandbox(SandboxConfiguration):
         ),
     ]
     url: Annotated[
-        AnyUrl | None,
+        AnyUrl,
         Field(
-            description='Base URL of this sandbox\'s execution API. Use this exact returned URL; do not reconstruct its hostname. Authenticate requests with the same Authorization: Bearer <api_key> header used to create the sandbox. No additional routing headers are required. Fetch GET {url}/swagger/doc.json with that header for the API reference served by this sandbox. For example, POST {url}/process with Content-Type: application/json and {"command":"echo hello","waitForCompletion":true} executes a command and waits for its result. Execution API fields use camelCase, independently of this API\'s snake_case fields.',
+            description='Base URL of this sandbox\'s execution API, always present on successful creation. The URL is assigned before deployment completes; inspect status for readiness. Use this exact returned URL; do not reconstruct its hostname. Authenticate requests with your authentication token using Authorization: Bearer <token>. Do not send the Baseten API key directly. No additional routing headers are required. Fetch GET {url}/swagger/doc.json with that header for the API reference served by this sandbox. For example, POST {url}/process with Content-Type: application/json and {"command":"echo hello","waitForCompletion":true} executes a command and waits for its result. Execution API fields use camelCase, independently of this API\'s snake_case fields.',
             examples=["https://sbx-baseten-api-review-0916-esb1qo.us-pdx-1.b10.run"],
         ),
-    ] = None
+    ]
     status: Annotated[
         SandboxStatus,
         Field(description="Sandbox deployment status.", examples=["DEPLOYED"]),
@@ -13108,10 +13638,9 @@ class ListSandboxesResponse(BaseModel):
                             },
                             {"name": "PORT", "secret": False, "value": "3000"},
                         ],
-                        "image": "blaxel/base-image:latest",
+                        "image": "baseten/base-image:latest",
                         "memory": 4096,
                         "ports": [{"name": "http", "protocol": "HTTP", "target": 3000}],
-                        "display_name": "Baseten API review",
                         "external_id": "api-review-20260916-001",
                         "labels": {
                             "env": "development",
@@ -13121,7 +13650,6 @@ class ListSandboxesResponse(BaseModel):
                         "name": "baseten-api-review-0916",
                         "url": "https://sbx-baseten-api-review-0916-esb1qo.us-pdx-1.b10.run",
                         "status": "DEPLOYED",
-                        "state": "RUNNING",
                         "created_at": "2026-09-16T21:26:58.545765901Z",
                         "updated_at": "2026-09-16T21:31:13Z",
                         "created_by": "sandbox-automation",

@@ -100,6 +100,15 @@ def _extract_operations(spec: dict) -> list[_Operation]:
                 for p in op_data.get("parameters", [])
                 if isinstance(p, dict) and p.get("in") == "query"
             ]
+            json_responses = _json_response_refs(spec, op_data)
+            # Several JSON success codes return a union narrowed by type, so a
+            # schema shared by two codes would hide which code was returned.
+            json_refs = [ref for _, ref in json_responses]
+            if len(json_refs) != len(set(json_refs)):
+                raise ValueError(
+                    f"{http_method.upper()} {path} shares a response schema "
+                    f"across success codes: {json_responses}"
+                )
             ops.append(
                 _Operation(
                     name=name,
@@ -111,7 +120,7 @@ def _extract_operations(spec: dict) -> list[_Operation]:
                     has_body="requestBody" in op_data,
                     req_body_ref=_body_schema_ref(spec, op_data),
                     body_content_type=_body_content_type(spec, op_data),
-                    json_responses=_json_response_refs(spec, op_data),
+                    json_responses=json_responses,
                     raw_accepts=_raw_response_accepts(spec, op_data),
                     success_codes=_extract_success_codes(op_data, http_method, path),
                     error_codes=_error_code_map(spec, op_data),
@@ -626,10 +635,11 @@ def _render_method(op: _Operation, *, is_async: bool, is_raw: bool) -> str:
     if op.summary:
         summary = op.summary
         if is_raw:
-            summary = summary.rstrip(".")
-            summary += (
-                ". Returns the response unread, in the requested content"
-                " type. The caller must close the response."
-            )
+            summary = summary.rstrip(".") + ". Returns the response unread"
+            if accept_expr == "accept":
+                summary += ", in the requested content type"
+            summary += ". The caller must close the response."
+        if body_arg == "files":
+            summary = summary.rstrip(".") + ". *files* is sent as httpx ``files``."
         sig += f'\n        """{summary}"""'
     return f"{sig}\n        {body}\n"
