@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import types
 from typing import Any
 
 import httpx
 import pytest
 
+import baseten.sandbox._auth
 from baseten.sandbox import (
     AsyncSandboxClient,
     SandboxApiError,
@@ -562,7 +564,18 @@ def test_fs_read_retries_gateway_errors() -> None:
     client.close()
 
 
-def test_persistent_revocation_returns_last_response() -> None:
+def test_persistent_revocation_returns_last_response(monkeypatch) -> None:
+    # The first resend is immediate; later ones wait out the revocation's
+    # rounded-up cutoff second, here shortened to keep the test fast.
+    delays: list[float] = []
+    monkeypatch.setattr(
+        baseten.sandbox._auth, "_TOKEN_REVOKED_RETRY_DELAY_SECONDS", 0.01
+    )
+    monkeypatch.setattr(
+        baseten.sandbox._auth,
+        "time",
+        types.SimpleNamespace(sleep=lambda s: delays.append(s)),
+    )
     transport = RoutingTransport(
         routes={
             "GET /v1/sandboxes/instances/sb-1": lambda request: revoked_token_response(
@@ -577,9 +590,52 @@ def test_persistent_revocation_returns_last_response() -> None:
         client.get_info("sb-1")
 
     # Exhaustion surfaces the final 401 as a converted error, and every
-    # minted token was tried.
+    # minted token was tried, the later resends past the cutoff.
     assert exc_info.value.status == 401
     assert transport.mint_count == 3
+    assert delays == [0.01]
+    client.close()
+
+
+def test_get_info_show_secrets_reaches_the_query() -> None:
+    seen_queries: list[str] = []
+
+    def show_secrets_route(request: httpx.Request) -> httpx.Response:
+        seen_queries.append(str(request.url.params))
+        return httpx.Response(
+            200, json=sandbox_record(), headers={"content-type": "application/json"}
+        )
+
+    transport = RoutingTransport(
+        routes={"GET /v1/sandboxes/instances/sb-1": show_secrets_route}
+    )
+    client = make_sync_client(transport)
+
+    client.get_info("sb-1")
+    client.get_info("sb-1", show_secrets=True)
+
+    assert "show_secrets=false" in seen_queries[0]
+    assert "show_secrets=true" in seen_queries[1]
+    client.close()
+
+
+def test_sandbox_from_url_makes_no_call_and_shares_auth() -> None:
+    transport = RoutingTransport(
+        routes={
+            "POST /process": process_record(),
+        }
+    )
+    client = make_sync_client(transport)
+
+    sandbox = client.sandbox_from_url("https://sb-1.invalid")
+    assert sandbox.name == ""
+    assert sandbox.url == "https://sb-1.invalid"
+    # No control-plane call was made to resolve it.
+    assert transport.count("GET", "/v1/sandboxes/instances/sb-1") == 0
+
+    # The sandbox shares the client's token: its exec call carries it.
+    sandbox.process.exec("echo hi", wait_for_completion=True)
+    assert transport.authorizations("/process") == ["Bearer tok-1"]
     client.close()
 
 

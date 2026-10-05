@@ -36,7 +36,10 @@ class SandboxEnvValue:
     """Value of an environment variable in a sandbox."""
 
     value: str
-    secret: bool = False
+    # The server treats every env value as secret by default, so the safe
+    # default here is secret too; False opts out and unmasks the value in
+    # responses.
+    secret: bool = True
 
 
 @dataclass
@@ -143,6 +146,31 @@ class LibraryImage:
     enterprise: bool = False
     """Whether the image is gated to enterprise workspaces."""
 
+    creation_extra_args: dict[str, str] = field(default_factory=dict)
+    """Kernel selection arguments suggested when creating a sandbox."""
+
+    creation_volumes: list[LibraryImageVolume] = field(default_factory=list)
+    """Volume attachments suggested when creating a sandbox."""
+
+
+@dataclass
+class LibraryImageVolume:
+    """A volume attachment a starter image suggests."""
+
+    name: str | None = None
+    """Volume name, or an internal identifier for an ephemeral volume."""
+
+    mount_path: str | None = None
+    """Absolute filesystem path where the volume is mounted."""
+
+    type: str | None = None
+    """Volume type, empty for a persistent volume."""
+
+    size_mb: int | None = None
+    """Storage capacity in megabytes for an ephemeral volume."""
+
+    read_only: bool = False
+
 
 def library_image_from_api(
     image: baseten.client.managementapi.SandboxLibraryImage,
@@ -168,6 +196,21 @@ def library_image_from_api(
         icon_url=image.icon,
         project_url=image.url,
         enterprise=bool(image.enterprise),
+        creation_extra_args=dict(image.creation_options.extra_args or {})
+        if image.creation_options
+        else {},
+        creation_volumes=[
+            LibraryImageVolume(
+                name=volume.name,
+                mount_path=volume.mount_path,
+                type=volume.type,
+                size_mb=volume.size_mb,
+                read_only=bool(volume.read_only),
+            )
+            for volume in (image.creation_options.volumes or [])
+        ]
+        if image.creation_options
+        else [],
     )
 
 

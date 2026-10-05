@@ -41,7 +41,6 @@ INTENTIONALLY_NOT_TRANSLATED_LIBRARY_IMAGE = {
     "icon_dark",
     "hidden",
     "coming_soon",
-    "creation_options",
 }
 
 
@@ -145,6 +144,7 @@ def test_library_image_translation_covers_every_translated_field() -> None:
         "icon",
         "url",
         "enterprise",
+        "creation_options",
     }
     fields = set(baseten.client.managementapi.SandboxLibraryImage.model_fields)
     assert translated <= fields

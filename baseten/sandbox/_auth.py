@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
+import time
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
@@ -14,6 +15,13 @@ _TOKEN_EXPIRY_LEEWAY = timedelta(seconds=60)
 # A few retries cover a new token invalidated in the same event as the old
 # one; beyond that, rejection points at something a new token cannot fix.
 _TOKEN_INVALIDATION_MAX_RETRIES = 2
+
+# A revocation rejects every token issued before its cutoff, the event's time
+# rounded up to the next whole second. A token minted right after the event
+# can fall before the cutoff and be rejected too, so after the first resend,
+# each one waits this long to be minted past it. A module variable so tests
+# can shorten it.
+_TOKEN_REVOKED_RETRY_DELAY_SECONDS = 1.0
 
 # Both planes send this header on revocation, which can precede the stated
 # expiry. The request was untouched, so re-sending with a new token is safe
@@ -208,6 +216,8 @@ class _SyncAuthTransport(httpx.BaseTransport):
                 return response
             self._token_source.invalidate(token)
             response.close()
+            if attempt > 0:
+                time.sleep(_TOKEN_REVOKED_RETRY_DELAY_SECONDS)
         raise AssertionError  # pragma: no cover - loop returns first
 
     def close(self) -> None:
@@ -241,6 +251,8 @@ class _AsyncAuthTransport(httpx.AsyncBaseTransport):
                 return response
             await self._token_source.invalidate(token)
             await response.aclose()
+            if attempt > 0:
+                await asyncio.sleep(_TOKEN_REVOKED_RETRY_DELAY_SECONDS)
         raise AssertionError  # pragma: no cover - loop returns first
 
     async def aclose(self) -> None:

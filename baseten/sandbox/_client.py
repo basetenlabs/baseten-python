@@ -36,6 +36,10 @@ DEFAULT_MANAGEMENT_BASE_URL = "https://api.baseten.co"
 # needs. Callers pass a stricter `timeout` when wanted.
 DEFAULT_TIMEOUT = httpx.Timeout(None, connect=10.0)
 
+# One token exchange is bounded on its own, so a stalled mint is not what
+# every caller waits on. A module variable so tests can shorten it.
+_TOKEN_MINT_TIMEOUT_SECONDS = 30.0
+
 
 @dataclass(frozen=True)
 class SandboxClientOptions:
@@ -192,7 +196,7 @@ class SandboxClient:
                 self._options,
                 f"Bearer {api_key}" if api_key != "" else None,
             ),
-            timeout=self._timeout,
+            timeout=httpx.Timeout(_TOKEN_MINT_TIMEOUT_SECONDS),
         )
         self._token_source = SyncTokenSource(
             api_key=api_key,
@@ -293,15 +297,22 @@ class SandboxClient:
         except Exception as error:
             raise to_sandbox_api_error(error, "control") from error
         info = sandbox_info_from_api(sandbox)
-        return self._sandbox_for(info, info)
+        if info.url is None:
+            raise ValueError(f"sandbox {info.name} was created but has no URL yet")
+        return self._sandbox_for(info.name, info.url, info)
 
-    def get_info(self, name: str) -> SandboxInfo:
-        """Get a sandbox's current record."""
+    def get_info(self, name: str, *, show_secrets: bool = False) -> SandboxInfo:
+        """Get a sandbox's current record.
+
+        ``show_secrets`` returns environment variable values unmasked;
+        it needs the workspace administrator role, and callers without it
+        still see masked values.
+        """
         try:
             sandbox = self._sandbox_api.get_sandbox(
                 sandbox_name=name,
                 params=baseten.client.managementapi.GetSandboxParams(
-                    team_id=self._options.team_id
+                    team_id=self._options.team_id, show_secrets=show_secrets
                 ),
             )
         except Exception as error:
@@ -315,7 +326,17 @@ class SandboxClient:
         record is already in hand.
         """
         info = self.get_info(sandbox) if isinstance(sandbox, str) else sandbox
-        return self._sandbox_for(info)
+        if info.url is None:
+            raise ValueError(f"sandbox {info.name} has no URL yet")
+        return self._sandbox_for(info.name, info.url)
+
+    def sandbox_from_url(self, url: str) -> Sandbox:
+        """Get a :class:`Sandbox` for a sandbox whose URL is already known.
+
+        Makes no call. The sandbox shares this client's authentication,
+        connections, and retry budgets, and closes with it.
+        """
+        return self._sandbox_for("", url)
 
     def list(
         self,
@@ -405,20 +426,18 @@ class SandboxClient:
         self.close()
 
     def _sandbox_for(
-        self, info: SandboxInfo, creation_info: SandboxInfo | None = None
+        self, name: str, url: str, creation_info: SandboxInfo | None = None
     ) -> Sandbox:
-        if info.url is None:
-            raise ValueError(f"sandbox {info.name} has no URL yet")
         http_client = httpx.Client(
             transport=self._auth_transport,
-            base_url=info.url,
+            base_url=url,
             headers=_request_headers(self._options, None),
             timeout=self._timeout,
         )
         self._sandbox_http_clients.append(http_client)
         return Sandbox._shared(
-            name=info.name,
-            url=info.url,
+            name=name,
+            url=url,
             http_client=http_client,
             retries=self._options.retries,
             creation_info=creation_info,
@@ -584,15 +603,22 @@ class AsyncSandboxClient:
         except Exception as error:
             raise to_sandbox_api_error(error, "control") from error
         info = sandbox_info_from_api(sandbox)
-        return await self._sandbox_for(info, info)
+        if info.url is None:
+            raise ValueError(f"sandbox {info.name} was created but has no URL yet")
+        return self._sandbox_for(info.name, info.url, info)
 
-    async def get_info(self, name: str) -> SandboxInfo:
-        """Get a sandbox's current record."""
+    async def get_info(self, name: str, *, show_secrets: bool = False) -> SandboxInfo:
+        """Get a sandbox's current record.
+
+        ``show_secrets`` returns environment variable values unmasked;
+        it needs the workspace administrator role, and callers without it
+        still see masked values.
+        """
         try:
             sandbox = await self._sandbox_api.get_sandbox(
                 sandbox_name=name,
                 params=baseten.client.managementapi.GetSandboxParams(
-                    team_id=self._options.team_id
+                    team_id=self._options.team_id, show_secrets=show_secrets
                 ),
             )
         except Exception as error:
@@ -606,7 +632,17 @@ class AsyncSandboxClient:
         record is already in hand.
         """
         info = await self.get_info(sandbox) if isinstance(sandbox, str) else sandbox
-        return await self._sandbox_for(info)
+        if info.url is None:
+            raise ValueError(f"sandbox {info.name} has no URL yet")
+        return self._sandbox_for(info.name, info.url)
+
+    def sandbox_from_url(self, url: str) -> AsyncSandbox:
+        """Get an :class:`AsyncSandbox` for a sandbox whose URL is already known.
+
+        Makes no call. The sandbox shares this client's authentication,
+        connections, and retry budgets, and closes with it.
+        """
+        return self._sandbox_for("", url)
 
     async def list(
         self,
@@ -696,21 +732,19 @@ class AsyncSandboxClient:
     async def __aexit__(self, *args: object) -> None:
         await self.close()
 
-    async def _sandbox_for(
-        self, info: SandboxInfo, creation_info: SandboxInfo | None = None
+    def _sandbox_for(
+        self, name: str, url: str, creation_info: SandboxInfo | None = None
     ) -> AsyncSandbox:
-        if info.url is None:
-            raise ValueError(f"sandbox {info.name} has no URL yet")
         http_client = httpx.AsyncClient(
             transport=self._auth_transport,
-            base_url=info.url,
+            base_url=url,
             headers=_request_headers(self._options, None),
             timeout=self._timeout,
         )
         self._sandbox_http_clients.append(http_client)
         return AsyncSandbox._shared(
-            name=info.name,
-            url=info.url,
+            name=name,
+            url=url,
             http_client=http_client,
             retries=self._options.retries,
             creation_info=creation_info,

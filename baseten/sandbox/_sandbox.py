@@ -1,21 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from typing import Self
 
 import httpx
 
 import baseten.client.sandboxapi
-from baseten.client._user_agent import with_user_agent
-from baseten.sandbox._auth import (
-    AsyncSandboxTokenProvider,
-    AsyncTokenSource,
-    SandboxTokenProvider,
-    SyncTokenSource,
-    _AsyncAuthTransport,
-    _SyncAuthTransport,
-    resolve_http2_flag,
-)
 from baseten.sandbox._errors import to_sandbox_api_error
 from baseten.sandbox._info import (
     SandboxInfo,
@@ -38,66 +28,21 @@ _NOT_IMPLEMENTED = (
 class Sandbox:
     """One sandbox, reached directly at its own URL.
 
-    Get one from :meth:`baseten.sandbox.SandboxClient.create` or
-    :meth:`baseten.sandbox.SandboxClient.get`, or construct one directly when
-    the URL and a token provider are already known. A sandbox from a client
-    shares that client's connections and is closed with it; one constructed
-    directly owns its connections and :meth:`close` closes them.
+    Get one from :meth:`baseten.sandbox.SandboxClient.create`,
+    :meth:`baseten.sandbox.SandboxClient.get`, or
+    :meth:`baseten.sandbox.SandboxClient.sandbox_from_url`. A sandbox
+    always shares its client's authentication, connections, and retry
+    budgets, and closes with it.
     """
 
-    def __init__(
-        self,
-        *,
-        name: str,
-        url: str,
-        token_provider: SandboxTokenProvider | None = None,
-        headers: Mapping[str, str] | None = None,
-        http2: bool | None = None,
-        timeout: httpx.Timeout | None = None,
-        retries: SandboxRetryOptions | None = None,
-        transport_override: httpx.BaseTransport | None = None,
-    ) -> None:
-        """Construct a standalone sandbox client.
-
-        Args:
-            name: Name of the sandbox.
-            url: Base URL of the sandbox's execution API, as reported in
-                ``SandboxInfo.url``.
-            token_provider: Returns the bearer token for each request. When
-                unset, no Authorization is sent.
-            headers: Additional headers to send on every request.
-            http2: Use HTTP/2 when the optional h2 package allows. None
-                enables it when h2 is importable, True requires it.
-            timeout: HTTP timeouts. Defaults to bounding only connect time.
-            retries: Retry budgets for transient failures.
-            transport_override: HTTP transport for tests with a mock.
-        """
-        self._name = name
-        self._url = url.rstrip("/")
-        self._retries = retries or SandboxRetryOptions()
-        self._pool = (
-            transport_override
-            if transport_override is not None
-            else httpx.HTTPTransport(http2=resolve_http2_flag(http2))
-        )
-        self._token_source = SyncTokenSource(
-            api_key="", token_provider=token_provider, mint=None
-        )
-        self._auth_transport = _SyncAuthTransport(self._pool, self._token_source)
-        request_headers = with_user_agent({**(headers or {})})
-        self._http_client = httpx.Client(
-            transport=self._auth_transport,
-            base_url=self._url,
-            headers=request_headers,
-            timeout=timeout
-            if timeout is not None
-            else httpx.Timeout(None, connect=10.0),
-        )
-        self._api = baseten.client.sandboxapi.ApiClient(self._http_client)
-        self._fs: SandboxFileSystem | None = None
-        self._process: SandboxProcess | None = None
-        self._info: SandboxInfo | None = None
-        self._owns_pool = True
+    _name: str
+    _url: str
+    _retries: SandboxRetryOptions
+    _http_client: httpx.Client
+    _api: baseten.client.sandboxapi.ApiClient
+    _fs: SandboxFileSystem | None
+    _process: SandboxProcess | None
+    _info: SandboxInfo | None
 
     @classmethod
     def _shared(
@@ -118,7 +63,6 @@ class Sandbox:
         sandbox._fs = None
         sandbox._process = None
         sandbox._info = creation_info
-        sandbox._owns_pool = False
         return sandbox
 
     @property
@@ -180,75 +124,31 @@ class Sandbox:
         """Network access to ports in the sandbox. Not implemented yet."""
         raise NotImplementedError(_NOT_IMPLEMENTED.format("sandbox.api"))
 
-    def close(self) -> None:
-        """Close this sandbox's connections, when it owns them.
-
-        A sandbox from a :class:`baseten.sandbox.SandboxClient` shares that
-        client's connections and is closed with it, so this does nothing.
-        """
-        if self._owns_pool:
-            self._http_client.close()
-
     def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *args: object) -> None:
-        self.close()
+        pass
 
 
 class AsyncSandbox:
     """One sandbox, reached directly at its own URL. Async variant.
 
-    Get one from :meth:`baseten.sandbox.AsyncSandboxClient.create` or
-    :meth:`baseten.sandbox.AsyncSandboxClient.get`, or construct one directly
-    when the URL and a token provider are already known.
+    Get one from :meth:`baseten.sandbox.AsyncSandboxClient.create`,
+    :meth:`baseten.sandbox.AsyncSandboxClient.get`, or
+    :meth:`baseten.sandbox.AsyncSandboxClient.sandbox_from_url`. The sandbox
+    shares its client's authentication, connections, and retry budgets, and
+    closes with it.
     """
 
-    def __init__(
-        self,
-        *,
-        name: str,
-        url: str,
-        token_provider: SandboxTokenProvider | AsyncSandboxTokenProvider | None = None,
-        headers: Mapping[str, str] | None = None,
-        http2: bool | None = None,
-        timeout: httpx.Timeout | None = None,
-        retries: SandboxRetryOptions | None = None,
-        transport_override: httpx.AsyncBaseTransport | None = None,
-    ) -> None:
-        """Construct a standalone async sandbox client.
-
-        The token provider may return a string or an awaitable of one. Other
-        args match :class:`Sandbox`.
-        """
-        self._name = name
-        self._url = url.rstrip("/")
-        self._retries = retries or SandboxRetryOptions()
-        self._pool = (
-            transport_override
-            if transport_override is not None
-            else httpx.AsyncHTTPTransport(http2=resolve_http2_flag(http2))
-        )
-        self._token_source = AsyncTokenSource(
-            api_key="",
-            token_provider=token_provider,
-            mint=None,  # type: ignore[arg-type]
-        )
-        self._auth_transport = _AsyncAuthTransport(self._pool, self._token_source)
-        request_headers = with_user_agent({**(headers or {})})
-        self._http_client = httpx.AsyncClient(
-            transport=self._auth_transport,
-            base_url=self._url,
-            headers=request_headers,
-            timeout=timeout
-            if timeout is not None
-            else httpx.Timeout(None, connect=10.0),
-        )
-        self._api = baseten.client.sandboxapi.AsyncApiClient(self._http_client)
-        self._fs: AsyncSandboxFileSystem | None = None
-        self._process: AsyncSandboxProcess | None = None
-        self._info: SandboxInfo | None = None
-        self._owns_pool = True
+    _name: str
+    _url: str
+    _retries: SandboxRetryOptions
+    _http_client: httpx.AsyncClient
+    _api: baseten.client.sandboxapi.AsyncApiClient
+    _fs: AsyncSandboxFileSystem | None
+    _process: AsyncSandboxProcess | None
+    _info: SandboxInfo | None
 
     @classmethod
     def _shared(
@@ -269,7 +169,6 @@ class AsyncSandbox:
         sandbox._fs = None
         sandbox._process = None
         sandbox._info = creation_info
-        sandbox._owns_pool = False
         return sandbox
 
     @property
@@ -331,16 +230,11 @@ class AsyncSandbox:
         """Network access to ports in the sandbox. Not implemented yet."""
         raise NotImplementedError(_NOT_IMPLEMENTED.format("sandbox.api"))
 
-    async def close(self) -> None:
-        """Close this sandbox's connections, when it owns them."""
-        if self._owns_pool:
-            await self._http_client.aclose()
-
     async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, *args: object) -> None:
-        await self.close()
+        pass
 
 
 class SandboxFileSystem:
