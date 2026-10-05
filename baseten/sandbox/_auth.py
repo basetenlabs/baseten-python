@@ -234,7 +234,9 @@ class _AsyncAuthTransport(httpx.AsyncBaseTransport):
         self._token_source = token_source
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        request.read()
+        # aread: the body may be backed by an async stream, and a re-send
+        # replays it.
+        await request.aread()
         for attempt in range(_TOKEN_INVALIDATION_MAX_RETRIES + 1):
             token = await self._token_source.token()
             if token is not None:

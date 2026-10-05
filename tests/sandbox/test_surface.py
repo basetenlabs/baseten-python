@@ -351,6 +351,58 @@ def test_fs_read_retries_dropped_connection() -> None:
     client.close()
 
 
+@pytest.mark.asyncio
+async def test_async_fs_read_and_write_retry_transient_failures() -> None:
+    transport = RoutingTransport(
+        routes={
+            "POST /v1/sandboxes/instances": created_response(),
+            "GET /filesystem/file.txt": [
+                httpx.ConnectError("dropped"),
+                httpx.Response(502, text="bad gateway"),
+                file_record(),
+            ],
+            "PUT /filesystem/file.txt": [
+                httpx.ConnectError("dropped"),
+                httpx.Response(503, text="unavailable"),
+                {"message": "written"},
+            ],
+        }
+    )
+    client = AsyncSandboxClient(
+        api_key="test-key",
+        base_url_override=MANAGEMENT_URL,
+        transport_override=transport.async_transport,
+    )
+    sandbox = await client.create(name="sb-1")
+
+    content = await sandbox.fs.read("file.txt")
+    await sandbox.fs.write("file.txt", content)
+
+    assert content == "file text"
+    assert transport.count("GET", "/filesystem/file.txt") == 3
+    assert transport.count("PUT", "/filesystem/file.txt") == 3
+    await client.close()
+
+
+def test_error_only_body_carries_its_error_as_code_and_description() -> None:
+    transport = RoutingTransport(
+        routes={
+            "GET /v1/sandboxes/instances/sb-1": httpx.Response(
+                409,
+                json={"error": "SANDBOX_NAME_TAKEN"},
+            )
+        }
+    )
+    client = make_sync_client(transport)
+
+    with pytest.raises(SandboxApiError) as exc_info:
+        client.get_info("sb-1")
+
+    assert exc_info.value.code == "SANDBOX_NAME_TAKEN"
+    assert "SANDBOX_NAME_TAKEN" in str(exc_info.value)
+    client.close()
+
+
 def test_fs_read_directory_raises() -> None:
     transport = RoutingTransport(
         routes={

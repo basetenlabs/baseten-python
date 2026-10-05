@@ -25,7 +25,7 @@ class SandboxApiError(Exception):
         code = (
             body_code
             if isinstance(body_code, str)
-            else (body_error if isinstance(body_message, str) else None)
+            else (body_error if isinstance(body_error, str) else None)
         )
         description = None
         if isinstance(body_message, str):

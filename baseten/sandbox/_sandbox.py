@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Self
 
 import httpx
 
@@ -124,12 +123,6 @@ class Sandbox:
         """Network access to ports in the sandbox. Not implemented yet."""
         raise NotImplementedError(_NOT_IMPLEMENTED.format("sandbox.api"))
 
-    def __enter__(self) -> Self:
-        return self
-
-    def __exit__(self, *args: object) -> None:
-        pass
-
 
 class AsyncSandbox:
     """One sandbox, reached directly at its own URL. Async variant.
@@ -229,12 +222,6 @@ class AsyncSandbox:
     def network(self) -> object:
         """Network access to ports in the sandbox. Not implemented yet."""
         raise NotImplementedError(_NOT_IMPLEMENTED.format("sandbox.api"))
-
-    async def __aenter__(self) -> Self:
-        return self
-
-    async def __aexit__(self, *args: object) -> None:
-        pass
 
 
 class SandboxFileSystem:
