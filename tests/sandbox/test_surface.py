@@ -384,6 +384,39 @@ async def test_async_fs_read_and_write_retry_transient_failures() -> None:
     await client.close()
 
 
+def test_streaming_body_is_sent_once_on_revocation() -> None:
+    # A stream-backed body cannot be replayed, so a revoked token surfaces
+    # instead of a re-send that would have to materialize the stream.
+    sends: list[bytes] = []
+
+    def revoked_route(request: httpx.Request) -> httpx.Response:
+        request.read()
+        sends.append(b"".join(request.stream))
+        return revoked_token_response("revoked")
+
+    transport = RoutingTransport(
+        routes={"POST /filesystem/big.bin": revoked_route},
+        mint_tokens=["tok-1"],
+    )
+    client = make_sync_client(transport)
+
+    stream = httpx.Client(
+        transport=client._auth_transport,
+        base_url=MANAGEMENT_URL,
+        headers=_request_headers_for_test(),
+    )
+    response = stream.post("/filesystem/big.bin", content=iter([b"part-1", b"part-2"]))
+
+    assert response.status_code == 401
+    assert sends == [b"part-1part-2"]
+    assert transport.mint_count == 1
+    client.close()
+
+
+def _request_headers_for_test() -> dict[str, str]:
+    return {"user-agent": "test"}
+
+
 def test_error_only_body_carries_its_error_as_code_and_description() -> None:
     transport = RoutingTransport(
         routes={

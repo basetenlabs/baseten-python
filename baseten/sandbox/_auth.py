@@ -188,8 +188,9 @@ class _SyncAuthTransport(httpx.BaseTransport):
     """Adds a bearer token from the source to every request.
 
     A request whose token was revoked is re-sent with a fresh one, up to
-    :data:`_TOKEN_INVALIDATION_MAX_RETRIES` times. The request body is
-    buffered first so a re-send replays it.
+    :data:`_TOKEN_INVALIDATION_MAX_RETRIES` times. Only a body already in
+    memory is re-sent: one still backed by a stream is sent once, since
+    replaying it would mean materializing it here.
     """
 
     def __init__(
@@ -199,14 +200,22 @@ class _SyncAuthTransport(httpx.BaseTransport):
         self._token_source = token_source
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
-        request.read()
+        # A body still backed by a stream, such as a raw multipart upload,
+        # cannot be replayed, and materializing it here is the memory
+        # exhaustion to avoid: it is sent once, without revocation resend.
+        try:
+            request.content
+            replayable = True
+        except httpx.RequestNotRead:
+            replayable = False
         for attempt in range(_TOKEN_INVALIDATION_MAX_RETRIES + 1):
             token = self._token_source.token()
             if token is not None:
                 request.headers["Authorization"] = f"Bearer {token}"
             response = self._inner.handle_request(request)
             revoked = (
-                token is not None
+                replayable
+                and token is not None
                 and response.status_code == 401
                 and response.headers.get("x-blaxel-error-code") == _TOKEN_REVOKED_CODE
             )
@@ -234,16 +243,23 @@ class _AsyncAuthTransport(httpx.AsyncBaseTransport):
         self._token_source = token_source
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        # aread: the body may be backed by an async stream, and a re-send
-        # replays it.
-        await request.aread()
+        # A body still backed by an async stream, such as a raw multipart
+        # upload, cannot be replayed, and materializing it here is the
+        # memory exhaustion to avoid: it is sent once, without revocation
+        # resend.
+        try:
+            request.content
+            replayable = True
+        except httpx.RequestNotRead:
+            replayable = False
         for attempt in range(_TOKEN_INVALIDATION_MAX_RETRIES + 1):
             token = await self._token_source.token()
             if token is not None:
                 request.headers["Authorization"] = f"Bearer {token}"
             response = await self._inner.handle_async_request(request)
             revoked = (
-                token is not None
+                replayable
+                and token is not None
                 and response.status_code == 401
                 and response.headers.get("x-blaxel-error-code") == _TOKEN_REVOKED_CODE
             )
