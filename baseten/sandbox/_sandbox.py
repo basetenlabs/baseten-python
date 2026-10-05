@@ -101,7 +101,7 @@ class Sandbox:
     def process(self) -> SandboxProcess:
         """Processes in the sandbox."""
         if self._process is None:
-            self._process = SandboxProcess(self._api)
+            self._process = SandboxProcess(self._api, self._retries)
         return self._process
 
     @property
@@ -207,7 +207,7 @@ class AsyncSandbox:
     def process(self) -> AsyncSandboxProcess:
         """Processes in the sandbox."""
         if self._process is None:
-            self._process = AsyncSandboxProcess(self._api)
+            self._process = AsyncSandboxProcess(self._api, self._retries)
         return self._process
 
     @property
@@ -274,14 +274,26 @@ class SandboxFileSystem:
         raise ValueError(f"{path} is a directory, not a file")
 
     def write(self, path: str, content: str) -> None:
-        """Write a text file, creating it or replacing its content."""
-        try:
-            self._api.put_filesystem(
-                path=path,
-                request=baseten.client.sandboxapi.FileRequest(content=content),
-            )
-        except Exception as error:
-            raise to_sandbox_api_error(error, "exec") from error
+        """Write a text file, creating it or replacing its content.
+
+        A write of the same content is idempotent, so it is retried on the
+        upload budgets after a dropped connection.
+        """
+
+        def attempt() -> None:
+            try:
+                self._api.put_filesystem(
+                    path=path,
+                    request=baseten.client.sandboxapi.FileRequest(content=content),
+                )
+            except Exception as error:
+                raise to_sandbox_api_error(error, "exec") from error
+
+        retry_idempotent(
+            attempt,
+            max_retries=self._retries.upload_max_retries,
+            gateway_max_retries=self._retries.gateway_max_retries,
+        )
 
 
 class AsyncSandboxFileSystem:
@@ -323,21 +335,38 @@ class AsyncSandboxFileSystem:
         raise ValueError(f"{path} is a directory, not a file")
 
     async def write(self, path: str, content: str) -> None:
-        """Write a text file, creating it or replacing its content."""
-        try:
-            await self._api.put_filesystem(
-                path=path,
-                request=baseten.client.sandboxapi.FileRequest(content=content),
-            )
-        except Exception as error:
-            raise to_sandbox_api_error(error, "exec") from error
+        """Write a text file, creating it or replacing its content.
+
+        A write of the same content is idempotent, so it is retried on the
+        upload budgets after a dropped connection.
+        """
+
+        async def attempt() -> None:
+            try:
+                await self._api.put_filesystem(
+                    path=path,
+                    request=baseten.client.sandboxapi.FileRequest(content=content),
+                )
+            except Exception as error:
+                raise to_sandbox_api_error(error, "exec") from error
+
+        await retry_idempotent_async(
+            attempt,
+            max_retries=self._retries.upload_max_retries,
+            gateway_max_retries=self._retries.gateway_max_retries,
+        )
 
 
 class SandboxProcess:
     """Processes in a sandbox."""
 
-    def __init__(self, api: baseten.client.sandboxapi.ApiClient) -> None:
+    def __init__(
+        self,
+        api: baseten.client.sandboxapi.ApiClient,
+        retries: SandboxRetryOptions,
+    ) -> None:
         self._api = api
+        self._retries = retries
 
     def exec(
         self,
@@ -370,27 +399,54 @@ class SandboxProcess:
         return process_info_from_api(response)
 
     def list(self) -> Sequence[SandboxProcessInfo]:
-        """List the sandbox's processes."""
-        try:
-            response = self._api.get_process()
-        except Exception as error:
-            raise to_sandbox_api_error(error, "exec") from error
+        """List the sandbox's processes.
+
+        Retried as an idempotent read, on the configured budgets.
+        """
+
+        def attempt() -> baseten.client.sandboxapi.GetProcessResponse:
+            try:
+                return self._api.get_process()
+            except Exception as error:
+                raise to_sandbox_api_error(error, "exec") from error
+
+        response = retry_idempotent(
+            attempt,
+            max_retries=self._retries.read_max_retries,
+            gateway_max_retries=self._retries.gateway_max_retries,
+        )
         return [process_info_from_api(process) for process in response.root]
 
     def logs(self, identifier: str) -> SandboxProcessLogs:
-        """Get one process's captured output, by pid or name."""
-        try:
-            response = self._api.get_process_logs(identifier=identifier)
-        except Exception as error:
-            raise to_sandbox_api_error(error, "exec") from error
+        """Get one process's captured output, by pid or name.
+
+        Retried as an idempotent read, on the configured budgets.
+        """
+
+        def attempt() -> baseten.client.sandboxapi.ProcessLogs:
+            try:
+                return self._api.get_process_logs(identifier=identifier)
+            except Exception as error:
+                raise to_sandbox_api_error(error, "exec") from error
+
+        response = retry_idempotent(
+            attempt,
+            max_retries=self._retries.read_max_retries,
+            gateway_max_retries=self._retries.gateway_max_retries,
+        )
         return process_logs_from_api(response)
 
 
 class AsyncSandboxProcess:
     """Processes in a sandbox. Async variant."""
 
-    def __init__(self, api: baseten.client.sandboxapi.AsyncApiClient) -> None:
+    def __init__(
+        self,
+        api: baseten.client.sandboxapi.AsyncApiClient,
+        retries: SandboxRetryOptions,
+    ) -> None:
         self._api = api
+        self._retries = retries
 
     async def exec(
         self,
@@ -423,17 +479,39 @@ class AsyncSandboxProcess:
         return process_info_from_api(response)
 
     async def list(self) -> Sequence[SandboxProcessInfo]:
-        """List the sandbox's processes."""
-        try:
-            response = await self._api.get_process()
-        except Exception as error:
-            raise to_sandbox_api_error(error, "exec") from error
+        """List the sandbox's processes.
+
+        Retried as an idempotent read, on the configured budgets.
+        """
+
+        async def attempt() -> baseten.client.sandboxapi.GetProcessResponse:
+            try:
+                return await self._api.get_process()
+            except Exception as error:
+                raise to_sandbox_api_error(error, "exec") from error
+
+        response = await retry_idempotent_async(
+            attempt,
+            max_retries=self._retries.read_max_retries,
+            gateway_max_retries=self._retries.gateway_max_retries,
+        )
         return [process_info_from_api(process) for process in response.root]
 
     async def logs(self, identifier: str) -> SandboxProcessLogs:
-        """Get one process's captured output, by pid or name."""
-        try:
-            response = await self._api.get_process_logs(identifier=identifier)
-        except Exception as error:
-            raise to_sandbox_api_error(error, "exec") from error
+        """Get one process's captured output, by pid or name.
+
+        Retried as an idempotent read, on the configured budgets.
+        """
+
+        async def attempt() -> baseten.client.sandboxapi.ProcessLogs:
+            try:
+                return await self._api.get_process_logs(identifier=identifier)
+            except Exception as error:
+                raise to_sandbox_api_error(error, "exec") from error
+
+        response = await retry_idempotent_async(
+            attempt,
+            max_retries=self._retries.read_max_retries,
+            gateway_max_retries=self._retries.gateway_max_retries,
+        )
         return process_logs_from_api(response)

@@ -498,7 +498,7 @@ class AsyncSandboxClient:
         self._timeout = self._options.timeout or DEFAULT_TIMEOUT
         self._mint_http_client = httpx.AsyncClient(
             transport=self._pool,
-            timeout=self._timeout,
+            timeout=httpx.Timeout(_TOKEN_MINT_TIMEOUT_SECONDS),
             base_url=_management_base_url(self._options),
             headers=_request_headers(
                 self._options,
