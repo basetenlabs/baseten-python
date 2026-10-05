@@ -43,6 +43,14 @@ class Sandbox:
     _process: SandboxProcess | None
     _info: SandboxInfo | None
 
+    def __init__(self) -> None:
+        # _shared builds instances; direct construction cannot produce a
+        # usable one, so refuse it rather than fail later on access.
+        raise TypeError(
+            "build a Sandbox through SandboxClient.create, .get, or "
+            ".sandbox_from_url"
+        )
+
     @classmethod
     def _shared(
         cls,
@@ -142,6 +150,14 @@ class AsyncSandbox:
     _fs: AsyncSandboxFileSystem | None
     _process: AsyncSandboxProcess | None
     _info: SandboxInfo | None
+
+    def __init__(self) -> None:
+        # _shared builds instances; direct construction cannot produce a
+        # usable one, so refuse it rather than fail later on access.
+        raise TypeError(
+            "build an AsyncSandbox through AsyncSandboxClient.create, .get, "
+            "or .sandbox_from_url"
+        )
 
     @classmethod
     def _shared(
