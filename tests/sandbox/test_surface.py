@@ -390,8 +390,7 @@ def test_streaming_body_is_sent_once_on_revocation() -> None:
     sends: list[bytes] = []
 
     def revoked_route(request: httpx.Request) -> httpx.Response:
-        request.read()
-        sends.append(b"".join(request.stream))
+        sends.append(request.read())
         return revoked_token_response("revoked")
 
     transport = RoutingTransport(

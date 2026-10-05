@@ -204,7 +204,7 @@ class _SyncAuthTransport(httpx.BaseTransport):
         # cannot be replayed, and materializing it here is the memory
         # exhaustion to avoid: it is sent once, without revocation resend.
         try:
-            request.content
+            _ = request.content
             replayable = True
         except httpx.RequestNotRead:
             replayable = False
@@ -248,7 +248,7 @@ class _AsyncAuthTransport(httpx.AsyncBaseTransport):
         # memory exhaustion to avoid: it is sent once, without revocation
         # resend.
         try:
-            request.content
+            _ = request.content
             replayable = True
         except httpx.RequestNotRead:
             replayable = False
