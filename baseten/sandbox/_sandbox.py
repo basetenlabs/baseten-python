@@ -47,8 +47,7 @@ class Sandbox:
         # _shared builds instances; direct construction cannot produce a
         # usable one, so refuse it rather than fail later on access.
         raise TypeError(
-            "build a Sandbox through SandboxClient.create, .get, or "
-            ".sandbox_from_url"
+            "build a Sandbox through SandboxClient.create, .get, or .sandbox_from_url"
         )
 
     @classmethod

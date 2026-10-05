@@ -214,16 +214,22 @@ class _SyncAuthTransport(httpx.BaseTransport):
                 request.headers["Authorization"] = f"Bearer {token}"
             response = self._inner.handle_request(request)
             revoked = (
-                replayable
-                and token is not None
+                token is not None
                 and response.status_code == 401
                 and response.headers.get("x-blaxel-error-code") == _TOKEN_REVOKED_CODE
             )
+            if revoked:
+                # A revoked token never stays cached, even when the request
+                # cannot be re-sent or the attempts are exhausted.
+                self._token_source.invalidate(token)
             # The last attempt's response is returned even when still
             # revoked, so the generated client raises a meaningful error.
-            if not revoked or attempt == _TOKEN_INVALIDATION_MAX_RETRIES:
+            if (
+                not revoked
+                or not replayable
+                or attempt == _TOKEN_INVALIDATION_MAX_RETRIES
+            ):
                 return response
-            self._token_source.invalidate(token)
             response.close()
             if attempt > 0:
                 time.sleep(_TOKEN_REVOKED_RETRY_DELAY_SECONDS)
@@ -258,16 +264,22 @@ class _AsyncAuthTransport(httpx.AsyncBaseTransport):
                 request.headers["Authorization"] = f"Bearer {token}"
             response = await self._inner.handle_async_request(request)
             revoked = (
-                replayable
-                and token is not None
+                token is not None
                 and response.status_code == 401
                 and response.headers.get("x-blaxel-error-code") == _TOKEN_REVOKED_CODE
             )
+            if revoked:
+                # A revoked token never stays cached, even when the request
+                # cannot be re-sent or the attempts are exhausted.
+                await self._token_source.invalidate(token)
             # The last attempt's response is returned even when still
             # revoked, so the generated client raises a meaningful error.
-            if not revoked or attempt == _TOKEN_INVALIDATION_MAX_RETRIES:
+            if (
+                not revoked
+                or not replayable
+                or attempt == _TOKEN_INVALIDATION_MAX_RETRIES
+            ):
                 return response
-            await self._token_source.invalidate(token)
             await response.aclose()
             if attempt > 0:
                 await asyncio.sleep(_TOKEN_REVOKED_RETRY_DELAY_SECONDS)

@@ -409,6 +409,13 @@ def test_streaming_body_is_sent_once_on_revocation() -> None:
     assert response.status_code == 401
     assert sends == [b"part-1part-2"]
     assert transport.mint_count == 1
+
+    # The revoked token left the cache: the next request mints a fresh one
+    # instead of reusing the known-bad token.
+    transport.routes["GET /v1/sandboxes/instances/sb-1"] = sandbox_record()
+    info = client.get_info("sb-1")
+    assert info.name == "sb-1"
+    assert transport.mint_count == 2
     client.close()
 
 
