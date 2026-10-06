@@ -149,7 +149,7 @@ async def test_api_key_crud() -> None:
             created = await client.api.post_api_keys(
                 request=baseten.client.managementapi.CreateAPIKeyRequest(
                     name=key_name,
-                    type=baseten.client.managementapi.APIKeyCategory.PERSONAL,
+                    type="PERSONAL",
                 ),
             )
             assert created.api_key

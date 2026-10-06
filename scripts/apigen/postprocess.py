@@ -44,7 +44,178 @@ def postprocess_models(src: str) -> str:
         src = src.replace(", constr,", ",")
         src = src.replace(", constr\n", "\n")
     src = _allow_population_by_field_name(src)
-    return _validate_literal_model_defaults(src)
+    src = _validate_literal_model_defaults(src)
+    src = _open_literals(src)
+    return _open_tagged_unions(src)
+
+
+def _open_tagged_unions(src: str) -> str:
+    # A tagged union rejects a tag outside its members, so a variant the server
+    # adds later would fail validation of the whole response. Each one is kept
+    # as is and tried first, falling back to a plain dict of the raw value. A
+    # known tag with a malformed payload falls back too, rather than failing.
+    tree = ast.parse(src)
+    line_starts = _line_starts(src)
+
+    edits: list[tuple[int, int, str]] = []
+    for node in ast.walk(tree):
+        if not _is_tagged_union(node):
+            continue
+        assert isinstance(node, ast.expr)
+        assert node.end_lineno is not None and node.end_col_offset is not None
+        edits.append(
+            (
+                line_starts[node.lineno - 1] + node.col_offset,
+                line_starts[node.end_lineno - 1] + node.end_col_offset,
+                (
+                    f"Annotated[{ast.get_source_segment(src, node)} | dict[str, Any], "
+                    'Field(union_mode="left_to_right")]'
+                ),
+            )
+        )
+    if not edits:
+        return src
+
+    # Apply last to first so earlier offsets stay valid.
+    for start, end, replacement in sorted(edits, reverse=True):
+        src = src[:start] + replacement + src[end:]
+
+    return _ensure_import(src, "typing", ["Any"])
+
+
+def _is_tagged_union(node: ast.AST) -> bool:
+    """Reports whether a node is an `Annotated[..., Field(discriminator=...)]`."""
+    return (
+        isinstance(node, ast.Subscript)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "Annotated"
+        and isinstance(node.slice, ast.Tuple)
+        and any(
+            isinstance(metadata, ast.Call)
+            and isinstance(metadata.func, ast.Name)
+            and metadata.func.id == "Field"
+            and any(k.arg == "discriminator" for k in metadata.keywords)
+            for metadata in node.slice.elts[1:]
+        )
+    )
+
+
+def _ensure_import(src: str, module: str, names: list[str]) -> str:
+    # Adds names to a module's `from ... import` line, or adds the line after
+    # the last top-level import.
+    tree = ast.parse(src)
+    imports = [
+        node for node in tree.body if isinstance(node, (ast.Import, ast.ImportFrom))
+    ]
+    existing = next(
+        (
+            node
+            for node in imports
+            if isinstance(node, ast.ImportFrom) and node.module == module
+        ),
+        None,
+    )
+    starts = _line_starts(src)
+    if existing is None:
+        last = imports[-1]
+        assert last.end_lineno is not None
+        at = starts[last.end_lineno]
+        return src[:at] + f"from {module} import {', '.join(names)}\n" + src[at:]
+    present = {alias.name for alias in existing.names}
+    if all(name in present for name in names):
+        return src
+    merged = sorted(present | set(names))
+    assert existing.end_lineno is not None and existing.end_col_offset is not None
+    start = starts[existing.lineno - 1] + existing.col_offset
+    end = starts[existing.end_lineno - 1] + existing.end_col_offset
+    return src[:start] + f"from {module} import {', '.join(merged)}" + src[end:]
+
+
+def _line_starts(src: str) -> list[int]:
+    """Returns the offset in src where each line starts."""
+    starts = [0]
+    for line in src.splitlines(keepends=True):
+        starts.append(starts[-1] + len(line))
+    return starts
+
+
+def _open_literals(src: str) -> str:
+    # Enums are generated as Literal fields, which pydantic rejects on any value
+    # outside the list, so a value the server adds later would fail validation
+    # of the whole response. Each Literal is widened to `Literal[...] | str` to
+    # accept it while keeping the known values in the type. Discriminator
+    # fields stay closed, since a tagged union needs a Literal tag on each
+    # member to pick it.
+    tree = ast.parse(src)
+    discriminators = _discriminator_fields(tree)
+    line_starts = _line_starts(src)
+
+    edits: list[tuple[int, int, str]] = []
+    for cls in tree.body:
+        if not isinstance(cls, ast.ClassDef):
+            continue
+        for stmt in cls.body:
+            if not (
+                isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name)
+            ):
+                continue
+            if (cls.name, stmt.target.id) in discriminators:
+                continue
+            for node in ast.walk(stmt.annotation):
+                if not (
+                    isinstance(node, ast.Subscript)
+                    and isinstance(node.value, ast.Name)
+                    and node.value.id == "Literal"
+                ):
+                    continue
+                if node.end_lineno is None or node.end_col_offset is None:
+                    continue
+                edits.append(
+                    (
+                        line_starts[node.lineno - 1] + node.col_offset,
+                        line_starts[node.end_lineno - 1] + node.end_col_offset,
+                        f"{ast.get_source_segment(src, node)} | str",
+                    )
+                )
+
+    # Apply last to first so earlier offsets stay valid.
+    for start, end, replacement in sorted(edits, reverse=True):
+        src = src[:start] + replacement + src[end:]
+    return src
+
+
+def _discriminator_fields(tree: ast.Module) -> set[tuple[str, str]]:
+    # Each Field(discriminator="x") annotates a union; every class named in
+    # that union has its field x serve as the tag.
+    fields: set[tuple[str, str]] = set()
+    for node in ast.walk(tree):
+        if not (
+            isinstance(node, ast.Subscript)
+            and isinstance(node.value, ast.Name)
+            and node.value.id == "Annotated"
+            and isinstance(node.slice, ast.Tuple)
+            and node.slice.elts
+        ):
+            continue
+        for metadata in node.slice.elts[1:]:
+            if not (
+                isinstance(metadata, ast.Call)
+                and isinstance(metadata.func, ast.Name)
+                and metadata.func.id == "Field"
+            ):
+                continue
+            for keyword in metadata.keywords:
+                if (
+                    keyword.arg == "discriminator"
+                    and isinstance(keyword.value, ast.Constant)
+                    and isinstance(keyword.value.value, str)
+                ):
+                    fields.update(
+                        (member.id, keyword.value.value)
+                        for member in ast.walk(node.slice.elts[0])
+                        if isinstance(member, ast.Name)
+                    )
+    return fields
 
 
 def _allow_population_by_field_name(src: str) -> str:

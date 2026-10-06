@@ -4,33 +4,9 @@
 from __future__ import annotations
 
 from datetime import date as date_aliased
-from enum import StrEnum
 from typing import Annotated, Any, Literal
 
 from pydantic import AnyUrl, AwareDatetime, BaseModel, ConfigDict, Field, RootModel
-
-
-class DeploymentConfigOutputFormat(StrEnum):
-    raw = "raw"
-    parsed = "parsed"
-    both = "both"
-
-
-class CheckpointSyncStatus(StrEnum):
-    SYNCING = "SYNCING"
-    COMPLETED = "COMPLETED"
-
-
-class V1AvailabilityModel(StrEnum):
-    dedicated = "dedicated"
-    spot = "spot"
-
-
-class AuthMethod(StrEnum):
-    CUSTOM_SECRET = "CUSTOM_SECRET"
-    AWS_OIDC = "AWS_OIDC"
-    GCP_OIDC = "GCP_OIDC"
-    AWS_ASSUME_ROLE = "AWS_ASSUME_ROLE"
 
 
 class BasetenLatestCheckpointConfig(BaseModel):
@@ -154,25 +130,11 @@ class CreateTrainingJobS3Artifact(BaseModel):
     ]
 
 
-class DockerAuthType(StrEnum):
-    GCP_SERVICE_ACCOUNT_JSON = "GCP_SERVICE_ACCOUNT_JSON"
-    AWS_IAM = "AWS_IAM"
-    AWS_OIDC = "AWS_OIDC"
-    GCP_OIDC = "GCP_OIDC"
-    REGISTRY_SECRET = "REGISTRY_SECRET"
-    AWS_ASSUME_ROLE = "AWS_ASSUME_ROLE"
-
-
 class GitInfo(BaseModel):
     latest_commit_sha: Annotated[str, Field(title="Latest Commit Sha")]
     latest_tag: Annotated[str | None, Field(title="Latest Tag")]
     commits_since_tag: Annotated[int | None, Field(title="Commits Since Tag")]
     has_uncommitted_changes: Annotated[bool, Field(title="Has Uncommitted Changes")]
-
-
-class Target(StrEnum):
-    trainer = "trainer"
-    sampler = "sampler"
 
 
 class LoopsCheckpointConfig(BaseModel):
@@ -188,12 +150,12 @@ class LoopsCheckpointConfig(BaseModel):
         Field(description="Name of the checkpoint to load", title="Checkpoint Name"),
     ]
     target: Annotated[
-        Target,
+        Literal["trainer", "sampler"] | str,
         Field(
             description="Which checkpoint target to load: 'trainer' (full training state) or 'sampler' (inference weights)",
             title="Target",
         ),
-    ] = Target.trainer
+    ] = "trainer"
     typ: Annotated[Literal["loops_checkpoint"], Field(title="Typ")] = "loops_checkpoint"
 
 
@@ -209,23 +171,6 @@ class TrussUserEnv(BaseModel):
         False
     )
     git_info: GitInfo | None = None
-
-
-class V1InteractiveSessionAuthProvider(StrEnum):
-    github = "github"
-    microsoft = "microsoft"
-
-
-class V1InteractiveSessionProvider(StrEnum):
-    vs_code = "vs_code"
-    cursor = "cursor"
-    ssh = "ssh"
-
-
-class V1InteractiveSessionTrigger(StrEnum):
-    on_startup = "on_startup"
-    on_failure = "on_failure"
-    on_demand = "on_demand"
 
 
 class CheckpointFile(BaseModel):
@@ -250,79 +195,6 @@ class FileSummary(BaseModel):
     permissions: Annotated[
         str, Field(description="Permissions of the file", title="Permissions")
     ]
-
-
-class TrainerCheckpointTarget(StrEnum):
-    sampler = "sampler"
-    trainer = "trainer"
-
-
-class Name(StrEnum):
-    CREATED = "CREATED"
-    DEPLOYING = "DEPLOYING"
-    RUNNING = "RUNNING"
-    SCALED_TO_ZERO = "SCALED_TO_ZERO"
-    FAILED = "FAILED"
-    STOPPED = "STOPPED"
-    PREEMPTED = "PREEMPTED"
-
-
-class APIKeyCategory(StrEnum):
-    PERSONAL = "PERSONAL"
-    ROUTES = "ROUTES"
-    WORKSPACE_MANAGE_ALL = "WORKSPACE_MANAGE_ALL"
-    WORKSPACE_EXPORT_METRICS = "WORKSPACE_EXPORT_METRICS"
-    WORKSPACE_INVOKE = "WORKSPACE_INVOKE"
-    WORKSPACE_MANAGE_API_KEYS = "WORKSPACE_MANAGE_API_KEYS"
-
-
-class BucketWidth(StrEnum):
-    field_1m = "1m"
-    field_1h = "1h"
-    field_1d = "1d"
-
-
-class LibraryListingModality(StrEnum):
-    text = "text"
-    image = "image"
-    audio = "audio"
-    video = "video"
-    embedding = "embedding"
-    rerank = "rerank"
-
-
-class ResourceKind(StrEnum):
-    LOOPS_SAMPLER = "LOOPS_SAMPLER"
-    LOOPS_TRAINER = "LOOPS_TRAINER"
-    MODEL_DEPLOYMENT = "MODEL_DEPLOYMENT"
-    TRAINING_JOB = "TRAINING_JOB"
-    CHAINLET = "CHAINLET"
-
-
-class RouteHarness(StrEnum):
-    claude_code = "claude-code"
-    opencode = "opencode"
-    codex = "codex"
-
-
-class RouteHarnessModelSource(StrEnum):
-    team = "team"
-    baseten = "baseten"
-
-
-class RouteHarnessRole(StrEnum):
-    primary = "primary"
-    background = "background"
-
-
-class GatewayProvider(StrEnum):
-    ANTHROPIC = "ANTHROPIC"
-    OPENAI = "OPENAI"
-    XAI = "XAI"
-    BASETEN = "BASETEN"
-    BASETEN_MODEL_API = "BASETEN_MODEL_API"
-    VERTEX = "VERTEX"
-    OPENAI_COMPATIBLE = "OPENAI_COMPATIBLE"
 
 
 class GetVolumesParams(BaseModel):
@@ -445,11 +317,12 @@ class GetModelsDeploymentsParams(BaseModel):
 
 class GetModelsDeploymentsConfigParams(BaseModel):
     output_format: Annotated[
-        DeploymentConfigOutputFormat,
+        Literal["raw", "parsed", "both"] | str,
         Field(
-            description="'raw': verbatim config.yaml with comments (not available for deployments created before 2026-04-30). 'parsed': dict with server-side defaults applied (always available). 'both': both fields populated."
+            description="'raw': verbatim config.yaml with comments (not available for deployments created before 2026-04-30). 'parsed': dict with server-side defaults applied (always available). 'both': both fields populated.",
+            title="DeploymentConfigOutputFormat",
         ),
-    ] = DeploymentConfigOutputFormat.both
+    ] = "both"
 
 
 class Limit(RootModel[int]):
@@ -702,7 +575,17 @@ class GetTeamsLoopsSamplersParams(BaseModel):
 
 class GetApiKeysParams(BaseModel):
     type: Annotated[
-        APIKeyCategory | None, Field(description="Filter by API key type")
+        Literal[
+            "PERSONAL",
+            "ROUTES",
+            "WORKSPACE_MANAGE_ALL",
+            "WORKSPACE_EXPORT_METRICS",
+            "WORKSPACE_INVOKE",
+            "WORKSPACE_MANAGE_API_KEYS",
+        ]
+        | str
+        | None,
+        Field(description="Filter by API key type"),
     ] = None
     created_by_me: Annotated[
         bool,
@@ -1278,13 +1161,6 @@ class VolumeVersionSummary(BaseModel):
     ]
 
 
-class VolumeTokenScope(StrEnum):
-    PULL = "PULL"
-    INSPECT = "INSPECT"
-    PUSH = "PUSH"
-    TAG = "TAG"
-
-
 class CorrelationId(RootModel[str]):
     root: Annotated[
         str | None,
@@ -1302,7 +1178,7 @@ class CreateVolumeTokenRequest(BaseModel):
         extra="forbid",
     )
     scopes: Annotated[
-        list[VolumeTokenScope],
+        list[Literal["PULL", "INSPECT", "PUSH", "TAG"] | str],
         Field(
             description="Capabilities the token grants, at least one. Requesting PUSH or TAG requires organization-level model management permission.",
             min_length=1,
@@ -1350,7 +1226,7 @@ class CreateVolumeTokenResponse(BaseModel):
         ),
     ]
     scopes: Annotated[
-        list[VolumeTokenScope],
+        list[Literal["PULL", "INSPECT", "PUSH", "TAG"] | str],
         Field(description="Effective capabilities granted.", title="Scopes"),
     ]
     namespaces: Annotated[
@@ -1716,34 +1592,34 @@ class VolumeSyncSourceS3(BaseModel):
     ] = None
 
 
-class VolumeSyncStatus(StrEnum):
-    PENDING = "PENDING"
-    SYNCING = "SYNCING"
-    READY = "READY"
-    FAILED = "FAILED"
-    CANCELED = "CANCELED"
-
-
 class VolumeSync(BaseModel):
     sync_id: Annotated[
         str, Field(description="Identifier of this sync operation.", title="Sync Id")
     ]
     status: Annotated[
-        VolumeSyncStatus, Field(description="Current lifecycle state of the sync.")
+        Literal["PENDING", "SYNCING", "READY", "FAILED", "CANCELED"] | str,
+        Field(
+            description="Current lifecycle state of the sync.",
+            title="VolumeSyncStatusV1",
+        ),
     ]
     source: Annotated[
-        VolumeSyncSourceHuggingFace
-        | VolumeSyncSourceS3
-        | VolumeSyncSourceGCS
-        | VolumeSyncSourceAzure
-        | VolumeSyncSourceR2
-        | VolumeSyncSourceCoreWeave
-        | VolumeSyncSourceBasetenTraining,
-        Field(
-            description="Remote source being synced.",
-            discriminator="type",
-            title="Source",
-        ),
+        Annotated[
+            VolumeSyncSourceHuggingFace
+            | VolumeSyncSourceS3
+            | VolumeSyncSourceGCS
+            | VolumeSyncSourceAzure
+            | VolumeSyncSourceR2
+            | VolumeSyncSourceCoreWeave
+            | VolumeSyncSourceBasetenTraining,
+            Field(
+                description="Remote source being synced.",
+                discriminator="type",
+                title="Source",
+            ),
+        ]
+        | dict[str, Any],
+        Field(union_mode="left_to_right"),
     ]
     destination: Annotated[
         VolumeSyncDestination, Field(description="BDN volume being populated.")
@@ -1807,18 +1683,22 @@ class CreateVolumeSyncRequest(BaseModel):
         extra="forbid",
     )
     source: Annotated[
-        VolumeSyncSourceHuggingFace
-        | VolumeSyncSourceS3
-        | VolumeSyncSourceGCS
-        | VolumeSyncSourceAzure
-        | VolumeSyncSourceR2
-        | VolumeSyncSourceCoreWeave
-        | VolumeSyncSourceBasetenTraining,
-        Field(
-            description="Remote source to sync from.",
-            discriminator="type",
-            title="Source",
-        ),
+        Annotated[
+            VolumeSyncSourceHuggingFace
+            | VolumeSyncSourceS3
+            | VolumeSyncSourceGCS
+            | VolumeSyncSourceAzure
+            | VolumeSyncSourceR2
+            | VolumeSyncSourceCoreWeave
+            | VolumeSyncSourceBasetenTraining,
+            Field(
+                description="Remote source to sync from.",
+                discriminator="type",
+                title="Source",
+            ),
+        ]
+        | dict[str, Any],
+        Field(union_mode="left_to_right"),
     ]
     destination: Annotated[
         VolumeSyncDestination, Field(description="BDN volume to sync into.")
@@ -2177,13 +2057,9 @@ class RestoreVolumeVersionResponse(BaseModel):
     ]
 
 
-class TokenScope(StrEnum):
-    sandboxes = "sandboxes"
-
-
 class CreateTokenRequest(BaseModel):
     scopes: Annotated[
-        list[TokenScope],
+        list[Literal["sandboxes"] | str],
         Field(
             description="What the token should grant access to. Only `sandboxes` is supported today; the token then authenticates against the sandbox API.",
             examples=[["sandboxes"]],
@@ -2604,17 +2480,14 @@ class PrepareModelUploadResponse(BaseModel):
     ] = None
 
 
-class AuditLogActorType(StrEnum):
-    USER = "USER"
-    API_KEY = "API_KEY"
-    BASETEN_USER = "BASETEN_USER"
-    BASETEN_SYSTEM = "BASETEN_SYSTEM"
-    TOMBSTONE_USER = "TOMBSTONE_USER"
-
-
 class AuditLogActor(BaseModel):
     type: Annotated[
-        AuditLogActorType, Field(description="Kind of actor that performed the action.")
+        Literal["USER", "API_KEY", "BASETEN_USER", "BASETEN_SYSTEM", "TOMBSTONE_USER"]
+        | str,
+        Field(
+            description="Kind of actor that performed the action.",
+            title="AuditLogActorTypeV1",
+        ),
     ]
     email: Annotated[
         str | None,
@@ -2639,37 +2512,32 @@ class AuditLogActor(BaseModel):
     ] = None
 
 
-class AuditLogApiKeyType(StrEnum):
-    PERSONAL = "PERSONAL"
-    CREATOR_SERVICE_ACCOUNT = "CREATOR_SERVICE_ACCOUNT"
-    MANAGE_API_KEYS_SERVICE_ACCOUNT = "MANAGE_API_KEYS_SERVICE_ACCOUNT"
-    INVOKE_ALL_MODELS_SERVICE_ACCOUNT = "INVOKE_ALL_MODELS_SERVICE_ACCOUNT"
-    INVOKE_ALLOWED_MODELS_SERVICE_ACCOUNT = "INVOKE_ALLOWED_MODELS_SERVICE_ACCOUNT"
-    INVOKE_SCOPED_ENVS_AND_MODELS_SERVICE_ACCOUNT = (
-        "INVOKE_SCOPED_ENVS_AND_MODELS_SERVICE_ACCOUNT"
-    )
-    EXPORT_METRICS_ALL_MODELS_SERVICE_ACCOUNT = (
-        "EXPORT_METRICS_ALL_MODELS_SERVICE_ACCOUNT"
-    )
-    EXPORT_METRICS_ALLOWED_MODELS_SERVICE_ACCOUNT = (
-        "EXPORT_METRICS_ALLOWED_MODELS_SERVICE_ACCOUNT"
-    )
-    INVOKE_ALL_SHARED_ENDPOINTS_SERVICE_ACCOUNT = (
-        "INVOKE_ALL_SHARED_ENDPOINTS_SERVICE_ACCOUNT"
-    )
-    INVOKE_ALLOWED_SHARED_ENDPOINTS_SERVICE_ACCOUNT = (
-        "INVOKE_ALLOWED_SHARED_ENDPOINTS_SERVICE_ACCOUNT"
-    )
-    INVOKE_ALL_ROUTES = "INVOKE_ALL_ROUTES"
-
-
 class AuditLogEventApiKeyCreated(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     event_type: Annotated[Literal["API_KEY_CREATED"], Field(title="Event Type")]
     api_key_id: Annotated[str, Field(title="Api Key Id")]
-    api_key_type: AuditLogApiKeyType
+    api_key_type: Annotated[
+        Literal[
+            "PERSONAL",
+            "CREATOR_SERVICE_ACCOUNT",
+            "MANAGE_API_KEYS_SERVICE_ACCOUNT",
+            "INVOKE_ALL_MODELS_SERVICE_ACCOUNT",
+            "INVOKE_ALLOWED_MODELS_SERVICE_ACCOUNT",
+            "INVOKE_SCOPED_ENVS_AND_MODELS_SERVICE_ACCOUNT",
+            "EXPORT_METRICS_ALL_MODELS_SERVICE_ACCOUNT",
+            "EXPORT_METRICS_ALLOWED_MODELS_SERVICE_ACCOUNT",
+            "INVOKE_ALL_SHARED_ENDPOINTS_SERVICE_ACCOUNT",
+            "INVOKE_ALLOWED_SHARED_ENDPOINTS_SERVICE_ACCOUNT",
+            "INVOKE_ALL_ROUTES",
+        ]
+        | str,
+        Field(
+            description="Type of API key recorded on an API-key event.",
+            title="AuditLogApiKeyTypeV1",
+        ),
+    ]
     prefix: Annotated[str, Field(title="Prefix")]
 
 
@@ -2679,15 +2547,27 @@ class AuditLogEventApiKeyDeleted(BaseModel):
     )
     event_type: Annotated[Literal["API_KEY_DELETED"], Field(title="Event Type")]
     api_key_id: Annotated[str, Field(title="Api Key Id")]
-    api_key_type: AuditLogApiKeyType
+    api_key_type: Annotated[
+        Literal[
+            "PERSONAL",
+            "CREATOR_SERVICE_ACCOUNT",
+            "MANAGE_API_KEYS_SERVICE_ACCOUNT",
+            "INVOKE_ALL_MODELS_SERVICE_ACCOUNT",
+            "INVOKE_ALLOWED_MODELS_SERVICE_ACCOUNT",
+            "INVOKE_SCOPED_ENVS_AND_MODELS_SERVICE_ACCOUNT",
+            "EXPORT_METRICS_ALL_MODELS_SERVICE_ACCOUNT",
+            "EXPORT_METRICS_ALLOWED_MODELS_SERVICE_ACCOUNT",
+            "INVOKE_ALL_SHARED_ENDPOINTS_SERVICE_ACCOUNT",
+            "INVOKE_ALLOWED_SHARED_ENDPOINTS_SERVICE_ACCOUNT",
+            "INVOKE_ALL_ROUTES",
+        ]
+        | str,
+        Field(
+            description="Type of API key recorded on an API-key event.",
+            title="AuditLogApiKeyTypeV1",
+        ),
+    ]
     prefix: Annotated[str, Field(title="Prefix")]
-
-
-class AuditLogEventAutoscalingScheduleAction(StrEnum):
-    CREATED = "CREATED"
-    UPDATED = "UPDATED"
-    DELETED = "DELETED"
-    UNCHANGED = "UNCHANGED"
 
 
 class AuditLogEventAutoscalingScheduleSettings(BaseModel):
@@ -3272,63 +3152,6 @@ class AuditLogEventSshCertificateSigned(BaseModel):
     expires_at: Annotated[str, Field(title="Expires At")]
 
 
-class AuditLogEventType(StrEnum):
-    MODEL_DEPLOYED = "MODEL_DEPLOYED"
-    MODEL_DEPLOYMENT_ACTIVATED = "MODEL_DEPLOYMENT_ACTIVATED"
-    MODEL_DEPLOYMENT_DEACTIVATED = "MODEL_DEPLOYMENT_DEACTIVATED"
-    MODEL_DEPLOYMENT_RETRIED = "MODEL_DEPLOYMENT_RETRIED"
-    MODEL_DEPLOYMENT_PROMOTED = "MODEL_DEPLOYMENT_PROMOTED"
-    MODEL_DEPLOYMENT_AUTOSCALING_SETTINGS_CHANGED = (
-        "MODEL_DEPLOYMENT_AUTOSCALING_SETTINGS_CHANGED"
-    )
-    MODEL_DEPLOYMENT_REQUEST_BACKPRESSURE_SETTINGS_CHANGED = (
-        "MODEL_DEPLOYMENT_REQUEST_BACKPRESSURE_SETTINGS_CHANGED"
-    )
-    MODEL_DEPLOYMENT_INSTANCE_TYPE_CHANGED = "MODEL_DEPLOYMENT_INSTANCE_TYPE_CHANGED"
-    MODEL_DEPLOYMENT_DELETED = "MODEL_DEPLOYMENT_DELETED"
-    MODEL_DELETED = "MODEL_DELETED"
-    MODEL_RENAMED = "MODEL_RENAMED"
-    CHAIN_DEPLOYED = "CHAIN_DEPLOYED"
-    CHAIN_DEPLOYMENT_ACTIVATED = "CHAIN_DEPLOYMENT_ACTIVATED"
-    CHAIN_DEPLOYMENT_DEACTIVATED = "CHAIN_DEPLOYMENT_DEACTIVATED"
-    CHAIN_DEPLOYMENT_PROMOTED = "CHAIN_DEPLOYMENT_PROMOTED"
-    CHAINLET_AUTOSCALING_SETTINGS_CHANGED = "CHAINLET_AUTOSCALING_SETTINGS_CHANGED"
-    CHAINLET_INSTANCE_TYPE_CHANGED = "CHAINLET_INSTANCE_TYPE_CHANGED"
-    CHAIN_DEPLOYMENT_DELETED = "CHAIN_DEPLOYMENT_DELETED"
-    CHAIN_DELETED = "CHAIN_DELETED"
-    CHAIN_ENVIRONMENT_CREATED = "CHAIN_ENVIRONMENT_CREATED"
-    CHAIN_ENVIRONMENT_UPDATED = "CHAIN_ENVIRONMENT_UPDATED"
-    SECRET_UPDATED = "SECRET_UPDATED"
-    SECRET_DELETED = "SECRET_DELETED"
-    API_KEY_CREATED = "API_KEY_CREATED"
-    API_KEY_DELETED = "API_KEY_DELETED"
-    GATEWAY_ENDPOINT_CREATED = "GATEWAY_ENDPOINT_CREATED"
-    GATEWAY_ENDPOINT_UPDATED = "GATEWAY_ENDPOINT_UPDATED"
-    GATEWAY_ENDPOINT_DELETED = "GATEWAY_ENDPOINT_DELETED"
-    PROVIDER_CONNECTION_CREATED = "PROVIDER_CONNECTION_CREATED"
-    PROVIDER_CONNECTION_UPDATED = "PROVIDER_CONNECTION_UPDATED"
-    PROVIDER_CONNECTION_DELETED = "PROVIDER_CONNECTION_DELETED"
-    USER_INVITED = "USER_INVITED"
-    USER_JOINED_ORGANIZATION = "USER_JOINED_ORGANIZATION"
-    WEBHOOK_SIGNING_SECRET_CREATED = "WEBHOOK_SIGNING_SECRET_CREATED"
-    WEBHOOK_SIGNING_SECRET_ROTATED = "WEBHOOK_SIGNING_SECRET_ROTATED"
-    WEBHOOK_SIGNING_SECRET_DELETED = "WEBHOOK_SIGNING_SECRET_DELETED"
-    USER_ROLE_UPDATED = "USER_ROLE_UPDATED"
-    USER_TEAM_ROLE_UPDATED = "USER_TEAM_ROLE_UPDATED"
-    USER_REMOVED = "USER_REMOVED"
-    DIRECTORY_GROUP_ROLE_UPDATED = "DIRECTORY_GROUP_ROLE_UPDATED"
-    REQUIRE_GROUP_BASED_ADMINS_ENABLED = "REQUIRE_GROUP_BASED_ADMINS_ENABLED"
-    ENVIRONMENT_CREATED = "ENVIRONMENT_CREATED"
-    ENVIRONMENT_UPDATED = "ENVIRONMENT_UPDATED"
-    ENVIRONMENT_DELETED = "ENVIRONMENT_DELETED"
-    REPLICA_TERMINATED = "REPLICA_TERMINATED"
-    MODEL_PROMOTION_CONTROL_ACTION = "MODEL_PROMOTION_CONTROL_ACTION"
-    SSH_CERTIFICATE_SIGNED = "SSH_CERTIFICATE_SIGNED"
-    VOLUME_DELETED = "VOLUME_DELETED"
-    VOLUME_VERSION_DELETED = "VOLUME_VERSION_DELETED"
-    VOLUME_VERSION_RESTORED = "VOLUME_VERSION_RESTORED"
-
-
 class AuditLogEventUserInvited(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -3444,48 +3267,6 @@ class AuditLogEventWebhookSigningSecretRotated(BaseModel):
     webhook_signing_secret_id: Annotated[str, Field(title="Webhook Signing Secret Id")]
 
 
-class AuditLogPromotionControlAction(StrEnum):
-    PAUSE = "PAUSE"
-    RESUME = "RESUME"
-    FORCE_CANCEL = "FORCE_CANCEL"
-    FORCE_ROLL_FORWARD = "FORCE_ROLL_FORWARD"
-    GRACEFUL_CANCEL = "GRACEFUL_CANCEL"
-
-
-class AuditLogSource(StrEnum):
-    UI = "UI"
-    API = "API"
-    MCP = "MCP"
-    SYSTEM = "SYSTEM"
-    OTHER = "OTHER"
-
-
-class AuditLogEventTypeGroup(StrEnum):
-    DEPLOYED = "DEPLOYED"
-    PROMOTED = "PROMOTED"
-    ACTIVATED_DEACTIVATED = "ACTIVATED_DEACTIVATED"
-    AUTOSCALING_SETTINGS = "AUTOSCALING_SETTINGS"
-    REQUEST_BACKPRESSURE_SETTINGS = "REQUEST_BACKPRESSURE_SETTINGS"
-    INSTANCE_TYPE_CHANGED = "INSTANCE_TYPE_CHANGED"
-    ENVIRONMENT_SETTINGS = "ENVIRONMENT_SETTINGS"
-    REPLICA_TERMINATED = "REPLICA_TERMINATED"
-    DELETED = "DELETED"
-    METADATA = "METADATA"
-    SECRETS = "SECRETS"
-    API_KEYS = "API_KEYS"
-    GATEWAY = "GATEWAY"
-    CODE = "CODE"
-    WEBHOOK_SIGNING_SECRETS = "WEBHOOK_SIGNING_SECRETS"
-    USER_MANAGEMENT = "USER_MANAGEMENT"
-    DIRECTORY_GROUP_MANAGEMENT = "DIRECTORY_GROUP_MANAGEMENT"
-    SSH = "SSH"
-
-
-class AuditLogSortDirection(StrEnum):
-    DESC = "DESC"
-    ASC = "ASC"
-
-
 class Model(BaseModel):
     id: Annotated[str, Field(description="Unique identifier of the model", title="Id")]
     created_at: Annotated[
@@ -3587,12 +3368,16 @@ class ModelArchiveSource(BaseModel):
 
 class CreateModelRequest(BaseModel):
     source: Annotated[
-        LibraryListingSource | ModelArchiveSource,
-        Field(
-            description="Where the new model is created from.",
-            discriminator="kind",
-            title="Source",
-        ),
+        Annotated[
+            LibraryListingSource | ModelArchiveSource,
+            Field(
+                description="Where the new model is created from.",
+                discriminator="kind",
+                title="Source",
+            ),
+        ]
+        | dict[str, Any],
+        Field(union_mode="left_to_right"),
     ]
 
 
@@ -3647,31 +3432,9 @@ class AutoscalingSettings(BaseModel):
     ] = None
 
 
-class DeploymentStatus(StrEnum):
-    BUILDING = "BUILDING"
-    DEPLOYING = "DEPLOYING"
-    DEPLOY_FAILED = "DEPLOY_FAILED"
-    LOADING_MODEL = "LOADING_MODEL"
-    ACTIVE = "ACTIVE"
-    UNHEALTHY = "UNHEALTHY"
-    BUILD_FAILED = "BUILD_FAILED"
-    BUILD_STOPPED = "BUILD_STOPPED"
-    DEACTIVATING = "DEACTIVATING"
-    INACTIVE = "INACTIVE"
-    FAILED = "FAILED"
-    UPDATING = "UPDATING"
-    SCALED_TO_ZERO = "SCALED_TO_ZERO"
-    WAKING_UP = "WAKING_UP"
-
-
-class RequestBackpressurePolicy(StrEnum):
-    QUEUE_ON_FULL = "QUEUE_ON_FULL"
-    REJECT_ON_FULL = "REJECT_ON_FULL"
-
-
 class RequestBackpressureSettings(BaseModel):
     policy: Annotated[
-        RequestBackpressurePolicy | None,
+        Literal["QUEUE_ON_FULL", "REJECT_ON_FULL"] | str | None,
         Field(description="Backpressure policy. Null when no policy is set."),
     ] = None
 
@@ -3726,12 +3489,16 @@ class DeploymentArchiveSource(BaseModel):
 
 class CreateModelDeploymentRequest(BaseModel):
     source: Annotated[
-        DeploymentArchiveSource,
-        Field(
-            description="Where the new deployment is created from.",
-            discriminator="kind",
-            title="Source",
-        ),
+        Annotated[
+            DeploymentArchiveSource,
+            Field(
+                description="Where the new deployment is created from.",
+                discriminator="kind",
+                title="Source",
+            ),
+        ]
+        | dict[str, Any],
+        Field(union_mode="left_to_right"),
     ]
 
 
@@ -3853,16 +3620,13 @@ class UpdateAutoscalingSettings(BaseModel):
     ] = None
 
 
-class UpdateAutoscalingSettingsStatus(StrEnum):
-    ACCEPTED = "ACCEPTED"
-    QUEUED = "QUEUED"
-    UNCHANGED = "UNCHANGED"
-
-
 class UpdateAutoscalingSettingsResponse(BaseModel):
     status: Annotated[
-        UpdateAutoscalingSettingsStatus,
-        Field(description="Status of the request to update autoscaling settings"),
+        Literal["ACCEPTED", "QUEUED", "UNCHANGED"] | str,
+        Field(
+            description="Status of the request to update autoscaling settings",
+            title="UpdateAutoscalingSettingsStatusV1",
+        ),
     ]
     message: Annotated[
         str,
@@ -3878,7 +3642,7 @@ class UpdateRequestBackpressureSettings(BaseModel):
         extra="forbid",
     )
     policy: Annotated[
-        RequestBackpressurePolicy | None,
+        Literal["QUEUE_ON_FULL", "REJECT_ON_FULL"] | str | None,
         Field(
             description="Backpressure policy to apply. Null indicates no policy (on update, clears an existing one).",
             examples=["REJECT_ON_FULL"],
@@ -3963,13 +3727,6 @@ class DeploymentConfigResponse(BaseModel):
     ] = None
 
 
-class LogLevel(StrEnum):
-    DEBUG = "DEBUG"
-    INFO = "INFO"
-    WARNING = "WARNING"
-    ERROR = "ERROR"
-
-
 class Log(BaseModel):
     timestamp: Annotated[
         str,
@@ -3999,7 +3756,7 @@ class Log(BaseModel):
         ),
     ] = None
     level: Annotated[
-        LogLevel | None,
+        Literal["DEBUG", "INFO", "WARNING", "ERROR"] | str | None,
         Field(
             description="Severity of the log line, if one was detected. null when unknown."
         ),
@@ -4010,11 +3767,6 @@ class GetLogsResponse(BaseModel):
     logs: Annotated[
         list[Log], Field(description="Logs for a specific entity.", title="Logs")
     ]
-
-
-class SortOrder(StrEnum):
-    asc = "asc"
-    desc = "desc"
 
 
 class Limit6(RootModel[int]):
@@ -4044,9 +3796,9 @@ class GetDeploymentLogsRequest(BaseModel):
             title="End Epoch Millis",
         ),
     ] = None
-    direction: Annotated[SortOrder | None, Field(description="Sort order for logs")] = (
-        None
-    )
+    direction: Annotated[
+        Literal["asc", "desc"] | str | None, Field(description="Sort order for logs")
+    ] = None
     limit: Annotated[
         Limit6 | None,
         Field(
@@ -4056,7 +3808,7 @@ class GetDeploymentLogsRequest(BaseModel):
         ),
     ] = Limit6.model_validate(500)
     min_level: Annotated[
-        LogLevel | None,
+        Literal["DEBUG", "INFO", "WARNING", "ERROR"] | str | None,
         Field(
             description="Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level."
         ),
@@ -4104,12 +3856,6 @@ class GetDeploymentLogsRequest(BaseModel):
     ] = None
 
 
-class DeploymentPatchAction(StrEnum):
-    ADD = "ADD"
-    UPDATE = "UPDATE"
-    REMOVE = "REMOVE"
-
-
 class DeploymentPatchOpConfig(BaseModel):
     type: Annotated[Literal["config"], Field(title="Type")] = "config"
     config: Annotated[
@@ -4126,7 +3872,11 @@ class DeploymentPatchOpEnvVar(BaseModel):
         "environment_variable"
     )
     action: Annotated[
-        DeploymentPatchAction, Field(description="How this op changes the variable.")
+        Literal["ADD", "UPDATE", "REMOVE"] | str,
+        Field(
+            description="How this op changes the variable.",
+            title="DeploymentPatchActionV1",
+        ),
     ]
     name: Annotated[
         str, Field(description="The environment variable name.", title="Name")
@@ -4143,9 +3893,10 @@ class DeploymentPatchOpEnvVar(BaseModel):
 class DeploymentPatchOpExternalData(BaseModel):
     type: Annotated[Literal["external_data"], Field(title="Type")] = "external_data"
     action: Annotated[
-        DeploymentPatchAction,
+        Literal["ADD", "UPDATE", "REMOVE"] | str,
         Field(
-            description="How this op changes the item. `UPDATE` is treated identically to `ADD`."
+            description="How this op changes the item. `UPDATE` is treated identically to `ADD`.",
+            title="DeploymentPatchActionV1",
         ),
     ]
     item: Annotated[
@@ -4157,7 +3908,10 @@ class DeploymentPatchOpExternalData(BaseModel):
 class DeploymentPatchOpModelCode(BaseModel):
     type: Annotated[Literal["model_code"], Field(title="Type")] = "model_code"
     action: Annotated[
-        DeploymentPatchAction, Field(description="How this op changes the file.")
+        Literal["ADD", "UPDATE", "REMOVE"] | str,
+        Field(
+            description="How this op changes the file.", title="DeploymentPatchActionV1"
+        ),
     ]
     path: Annotated[
         str,
@@ -4191,7 +3945,10 @@ class DeploymentPatchOpModelCode(BaseModel):
 class DeploymentPatchOpPackage(BaseModel):
     type: Annotated[Literal["package"], Field(title="Type")] = "package"
     action: Annotated[
-        DeploymentPatchAction, Field(description="How this op changes the file.")
+        Literal["ADD", "UPDATE", "REMOVE"] | str,
+        Field(
+            description="How this op changes the file.", title="DeploymentPatchActionV1"
+        ),
     ]
     path: Annotated[
         str,
@@ -4221,7 +3978,11 @@ class DeploymentPatchOpPythonRequirement(BaseModel):
         "python_requirement"
     )
     action: Annotated[
-        DeploymentPatchAction, Field(description="How this op changes the requirement.")
+        Literal["ADD", "UPDATE", "REMOVE"] | str,
+        Field(
+            description="How this op changes the requirement.",
+            title="DeploymentPatchActionV1",
+        ),
     ]
     requirement: Annotated[
         str,
@@ -4256,27 +4017,6 @@ class DeploymentPatchPoint(BaseModel):
     ] = None
 
 
-class PatchOps(
-    RootModel[
-        DeploymentPatchOpModelCode
-        | DeploymentPatchOpPackage
-        | DeploymentPatchOpConfig
-        | DeploymentPatchOpPythonRequirement
-        | DeploymentPatchOpEnvVar
-        | DeploymentPatchOpExternalData
-    ]
-):
-    root: Annotated[
-        DeploymentPatchOpModelCode
-        | DeploymentPatchOpPackage
-        | DeploymentPatchOpConfig
-        | DeploymentPatchOpPythonRequirement
-        | DeploymentPatchOpEnvVar
-        | DeploymentPatchOpExternalData,
-        Field(discriminator="type"),
-    ]
-
-
 class CreateDeploymentPatchRequest(BaseModel):
     prev_patch_hash: Annotated[
         str,
@@ -4292,7 +4032,21 @@ class CreateDeploymentPatchRequest(BaseModel):
         ),
     ]
     patch_ops: Annotated[
-        list[PatchOps],
+        list[
+            Annotated[
+                Annotated[
+                    DeploymentPatchOpModelCode
+                    | DeploymentPatchOpPackage
+                    | DeploymentPatchOpConfig
+                    | DeploymentPatchOpPythonRequirement
+                    | DeploymentPatchOpEnvVar
+                    | DeploymentPatchOpExternalData,
+                    Field(discriminator="type"),
+                ]
+                | dict[str, Any],
+                Field(union_mode="left_to_right"),
+            ]
+        ],
         Field(
             description="The ordered ops that make up this patch. At least one op is required; a patch that changes nothing is not a valid request. There is no op for a directory: a directory comes into existence when the first file under it is added, and is removed when its last file is removed, so directory creation and deletion happen implicitly through the file ops. Adding or removing an otherwise empty directory therefore produces no ops even though it changes the source hash; do not send a patch request for such a change.",
             min_length=1,
@@ -4366,27 +4120,6 @@ class SyncDeploymentPatchesResponse(BaseModel):
             title="Needs Full Deploy Reason",
         ),
     ] = None
-
-
-class ModelMetricKind(StrEnum):
-    GAUGE = "GAUGE"
-    COUNTER = "COUNTER"
-    HISTOGRAM = "HISTOGRAM"
-
-
-class ModelMetricMode(StrEnum):
-    CURRENT = "CURRENT"
-    SUMMARY = "SUMMARY"
-    SERIES = "SERIES"
-
-
-class ModelMetricUnitHint(StrEnum):
-    PER_SECOND = "PER_SECOND"
-    SECONDS = "SECONDS"
-    BYTES = "BYTES"
-    MEBIBYTES = "MEBIBYTES"
-    COUNT = "COUNT"
-    RATIO = "RATIO"
 
 
 class ModelMetricValueSet(BaseModel):
@@ -4530,34 +4263,21 @@ class AutoscalingScheduleState(BaseModel):
     ]
 
 
-class Cadence(StrEnum):
-    DAILY = "DAILY"
-    HOURLY = "HOURLY"
-
-
-class AutoscalingScheduleWeekday(StrEnum):
-    SUNDAY = "SUNDAY"
-    MONDAY = "MONDAY"
-    TUESDAY = "TUESDAY"
-    WEDNESDAY = "WEDNESDAY"
-    THURSDAY = "THURSDAY"
-    FRIDAY = "FRIDAY"
-    SATURDAY = "SATURDAY"
-
-
-class InProgressPromotionStatus(StrEnum):
-    RELEASING = "RELEASING"
-    RAMPING_UP = "RAMPING_UP"
-    RAMPING_DOWN = "RAMPING_DOWN"
-    PAUSED = "PAUSED"
-    SUCCEEDED = "SUCCEEDED"
-    FAILED = "FAILED"
-    CANCELED = "CANCELED"
-
-
 class InProgressPromotion(BaseModel):
     status: Annotated[
-        InProgressPromotionStatus, Field(description="Status of the promotion")
+        Literal[
+            "RELEASING",
+            "RAMPING_UP",
+            "RAMPING_DOWN",
+            "PAUSED",
+            "SUCCEEDED",
+            "FAILED",
+            "CANCELED",
+        ]
+        | str,
+        Field(
+            description="Status of the promotion", title="InProgressPromotionStatusV1"
+        ),
     ]
     percent_traffic_to_new_version: Annotated[
         int,
@@ -4604,19 +4324,9 @@ class OneTimeAutoscalingSchedule(BaseModel):
     ]
 
 
-class PromotionCleanupStrategy(StrEnum):
-    KEEP = "KEEP"
-    SCALE_TO_ZERO = "SCALE_TO_ZERO"
-    DEACTIVATE = "DEACTIVATE"
-
-
-class RollingDeployStrategy(StrEnum):
-    REPLICA = "REPLICA"
-
-
 class UpdateRollingDeployConfig(BaseModel):
     rolling_deploy_strategy: Annotated[
-        RollingDeployStrategy | None,
+        Literal["REPLICA"] | str | None,
         Field(
             description="The rolling deploy strategy to use for promotions.",
             examples=["REPLICA"],
@@ -4758,7 +4468,18 @@ class AutoscalingScheduleUpsert(BaseModel):
         Field(description="Recurring schedule cadence", title="Cadence"),
     ]
     weekdays: Annotated[
-        list[AutoscalingScheduleWeekday],
+        list[
+            Literal[
+                "SUNDAY",
+                "MONDAY",
+                "TUESDAY",
+                "WEDNESDAY",
+                "THURSDAY",
+                "FRIDAY",
+                "SATURDAY",
+            ]
+            | str
+        ],
         Field(description="Weekdays on which the schedule runs", title="Weekdays"),
     ]
     start_hour: Annotated[
@@ -4825,15 +4546,6 @@ class OneTimeAutoscalingScheduleUpsert(BaseModel):
     ]
 
 
-class Schedules1(
-    RootModel[AutoscalingScheduleUpsert | OneTimeAutoscalingScheduleUpsert]
-):
-    root: Annotated[
-        AutoscalingScheduleUpsert | OneTimeAutoscalingScheduleUpsert,
-        Field(discriminator="cadence"),
-    ]
-
-
 class UpdateAutoscalingScheduleSettings(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -4846,7 +4558,17 @@ class UpdateAutoscalingScheduleSettings(BaseModel):
         ),
     ] = None
     schedules: Annotated[
-        list[Schedules1] | None,
+        list[
+            Annotated[
+                Annotated[
+                    AutoscalingScheduleUpsert | OneTimeAutoscalingScheduleUpsert,
+                    Field(discriminator="cadence"),
+                ]
+                | dict[str, Any],
+                Field(union_mode="left_to_right"),
+            ]
+        ]
+        | None,
         Field(
             description="Complete schedules to create or replace. Existing schedules omitted from this list are unchanged.",
             title="Schedules",
@@ -4884,16 +4606,12 @@ class PromoteToEnvironmentRequest(BaseModel):
     ] = True
 
 
-class CancelPromotionStatus(StrEnum):
-    CANCELED = "CANCELED"
-    RAMPING_DOWN = "RAMPING_DOWN"
-
-
 class CancelPromotionResponse(BaseModel):
     status: Annotated[
-        CancelPromotionStatus,
+        Literal["CANCELED", "RAMPING_DOWN"] | str,
         Field(
-            description="Status of the request to cancel a promotion. Can be CANCELED or RAMPING_DOWN."
+            description="Status of the request to cancel a promotion. Can be CANCELED or RAMPING_DOWN.",
+            title="CancelPromotionStatusV1",
         ),
     ]
     message: Annotated[
@@ -4969,7 +4687,26 @@ class Chainlet(BaseModel):
         int,
         Field(description="Number of active replicas", title="Active Replica Count"),
     ]
-    status: Annotated[DeploymentStatus, Field(description="Status of the chainlet")]
+    status: Annotated[
+        Literal[
+            "BUILDING",
+            "DEPLOYING",
+            "DEPLOY_FAILED",
+            "LOADING_MODEL",
+            "ACTIVE",
+            "UNHEALTHY",
+            "BUILD_FAILED",
+            "BUILD_STOPPED",
+            "DEACTIVATING",
+            "INACTIVE",
+            "FAILED",
+            "UPDATING",
+            "SCALED_TO_ZERO",
+            "WAKING_UP",
+        ]
+        | str,
+        Field(description="Status of the chainlet", title="DeploymentStatusV1"),
+    ]
 
 
 class ChainDeploymentTombstone(BaseModel):
@@ -5283,12 +5020,13 @@ class CreateTrainingJobCompute(BaseModel):
         ),
     ] = None
     availability_model: Annotated[
-        V1AvailabilityModel,
+        Literal["dedicated", "spot"] | str,
         Field(
             description="Capacity guarantee for the job. 'dedicated' (the default) runs on on-demand capacity that is not preempted. 'spot' runs on interruptible capacity that may be preempted; the user is responsible for checkpointing their own progress.",
             examples=["spot"],
+            title="V1AvailabilityModel",
         ),
-    ] = V1AvailabilityModel.dedicated
+    ] = "dedicated"
 
 
 class GcpOidcDockerAuth(BaseModel):
@@ -5310,11 +5048,12 @@ class GcpOidcDockerAuth(BaseModel):
 
 class InteractiveSessionConfig(BaseModel):
     trigger: Annotated[
-        V1InteractiveSessionTrigger,
+        Literal["on_startup", "on_failure", "on_demand"] | str,
         Field(
-            description="When to create the interactive session. 'on_startup' creates on job start, 'on_failure' creates on job failure, 'on_demand' bypasses automatic session creation."
+            description="When to create the interactive session. 'on_startup' creates on job start, 'on_failure' creates on job failure, 'on_demand' bypasses automatic session creation.",
+            title="V1InteractiveSessionTrigger",
         ),
-    ] = V1InteractiveSessionTrigger.on_demand
+    ] = "on_demand"
     timeout_minutes: Annotated[
         int,
         Field(
@@ -5324,13 +5063,19 @@ class InteractiveSessionConfig(BaseModel):
         ),
     ] = 480
     session_provider: Annotated[
-        V1InteractiveSessionProvider,
-        Field(description="The IDE client for the interactive session."),
-    ] = V1InteractiveSessionProvider.vs_code
+        Literal["vs_code", "cursor", "ssh"] | str,
+        Field(
+            description="The IDE client for the interactive session.",
+            title="V1InteractiveSessionProvider",
+        ),
+    ] = "vs_code"
     auth_provider: Annotated[
-        V1InteractiveSessionAuthProvider,
-        Field(description="The authentication provider for the interactive session."),
-    ] = V1InteractiveSessionAuthProvider.github
+        Literal["github", "microsoft"] | str,
+        Field(
+            description="The authentication provider for the interactive session.",
+            title="V1InteractiveSessionAuthProvider",
+        ),
+    ] = "github"
 
 
 class SecretReference(BaseModel):
@@ -5346,7 +5091,11 @@ class SecretReference(BaseModel):
 
 class TrainingWeightAuth(BaseModel):
     auth_method: Annotated[
-        AuthMethod, Field(description="Method used to authenticate the weight source.")
+        Literal["CUSTOM_SECRET", "AWS_OIDC", "GCP_OIDC", "AWS_ASSUME_ROLE"] | str,
+        Field(
+            description="Method used to authenticate the weight source.",
+            title="AuthMethod",
+        ),
     ]
     auth_secret_name: Annotated[
         str | None,
@@ -5425,7 +5174,7 @@ class UpdateTrainingJobRequest(BaseModel):
         ),
     ] = None
     availability_model: Annotated[
-        V1AvailabilityModel | None,
+        Literal["dedicated", "spot"] | str | None,
         Field(
             description="New capacity guarantee for a PENDING training job. 'dedicated' runs on on-demand capacity that is not preempted. 'spot' runs on interruptible capacity that may be preempted; the user is responsible for checkpointing their own progress. Only jobs in the PENDING state can have their availability model changed.",
             examples=["spot"],
@@ -5458,9 +5207,9 @@ class GetTrainingJobLogsRequest(BaseModel):
             title="End Epoch Millis",
         ),
     ] = None
-    direction: Annotated[SortOrder | None, Field(description="Sort order for logs")] = (
-        None
-    )
+    direction: Annotated[
+        Literal["asc", "desc"] | str | None, Field(description="Sort order for logs")
+    ] = None
     limit: Annotated[
         Limit6 | None,
         Field(
@@ -5470,7 +5219,7 @@ class GetTrainingJobLogsRequest(BaseModel):
         ),
     ] = Limit6.model_validate(500)
     min_level: Annotated[
-        LogLevel | None,
+        Literal["DEBUG", "INFO", "WARNING", "ERROR"] | str | None,
         Field(
             description="Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level."
         ),
@@ -5658,7 +5407,7 @@ class PatchInteractiveSessionRequest(BaseModel):
         ),
     ] = None
     trigger: Annotated[
-        V1InteractiveSessionTrigger | None,
+        Literal["on_startup", "on_failure", "on_demand"] | str | None,
         Field(
             description="Update when the interactive session is created. Cannot be changed if the session trigger is 'on_startup'."
         ),
@@ -5914,11 +5663,6 @@ class GetLoopsCapabilitiesResponse(BaseModel):
     ]
 
 
-class LoopsUseCase(StrEnum):
-    rl = "rl"
-    sft = "sft"
-
-
 class LoopsSession(BaseModel):
     id: Annotated[str, Field(title="Id")]
 
@@ -5931,23 +5675,39 @@ class GetLoopsSessionResponse(BaseModel):
     session: Annotated[LoopsSession, Field(description="The Loops session.")]
 
 
-class LoopsRunStatusName(StrEnum):
-    ACTIVE = "ACTIVE"
-    INACTIVE = "INACTIVE"
-
-
 class LoopsRunStatus(BaseModel):
     name: Annotated[
-        LoopsRunStatusName,
+        Literal["ACTIVE", "INACTIVE"] | str,
         Field(
-            description="ACTIVE while the run is live; INACTIVE once replaced by a newer run or shut down."
+            description="ACTIVE while the run is live; INACTIVE once replaced by a newer run or shut down.",
+            title="LoopsRunStatusNameV1",
         ),
     ]
 
 
 class LoopsSamplerStatus(BaseModel):
     name: Annotated[
-        DeploymentStatus, Field(description="The current status of the Loops sampler.")
+        Literal[
+            "BUILDING",
+            "DEPLOYING",
+            "DEPLOY_FAILED",
+            "LOADING_MODEL",
+            "ACTIVE",
+            "UNHEALTHY",
+            "BUILD_FAILED",
+            "BUILD_STOPPED",
+            "DEACTIVATING",
+            "INACTIVE",
+            "FAILED",
+            "UPDATING",
+            "SCALED_TO_ZERO",
+            "WAKING_UP",
+        ]
+        | str,
+        Field(
+            description="The current status of the Loops sampler.",
+            title="DeploymentStatusV1",
+        ),
     ]
 
 
@@ -6046,12 +5806,13 @@ class CreateLoopsRunRequest(BaseModel):
         ),
     ] = 900
     availability_model: Annotated[
-        V1AvailabilityModel,
+        Literal["dedicated", "spot"] | str,
         Field(
             description="Capacity the trainer runs on. 'dedicated' is not preempted. 'spot' runs below inference and reaches idle reserved capacity, but the run is stopped if its GPUs are reclaimed and cannot be resumed.",
             examples=["spot"],
+            title="V1AvailabilityModel",
         ),
-    ] = V1AvailabilityModel.dedicated
+    ] = "dedicated"
     replicas: Annotated[
         int,
         Field(
@@ -6104,7 +5865,7 @@ class ListLoopsSamplersResponse(BaseModel):
 
 class CreateLoopsSamplerRequest(BaseModel):
     availability_model: Annotated[
-        V1AvailabilityModel | None,
+        Literal["dedicated", "spot"] | str | None,
         Field(
             description="Capacity the sampler runs on. 'spot' allows preemption when its GPUs are reclaimed. Defaults to 'dedicated' for standalone samplers. Paired samplers inherit their run's availability model; an explicit value must match it."
         ),
@@ -6221,9 +5982,10 @@ class LoopsCheckpoint(BaseModel):
         ),
     ]
     target: Annotated[
-        TrainerCheckpointTarget,
+        Literal["sampler", "trainer"] | str,
         Field(
-            description="Whether this checkpoint is loadable by the sampler or by the run."
+            description="Whether this checkpoint is loadable by the sampler or by the run.",
+            title="TrainerCheckpointTarget",
         ),
     ]
 
@@ -6342,17 +6104,36 @@ class LoopsCheckpointVolumeSource(BaseModel):
 
 class LoopsCheckpointSourceResponse(BaseModel):
     source: Annotated[
-        LoopsCheckpointS3Source | LoopsCheckpointVolumeSource,
-        Field(
-            description="`s3` means the files endpoint serves presigned URLs for this checkpoint; `volume` carries the ref to pull instead.",
-            discriminator="kind",
-            title="Source",
-        ),
+        Annotated[
+            LoopsCheckpointS3Source | LoopsCheckpointVolumeSource,
+            Field(
+                description="`s3` means the files endpoint serves presigned URLs for this checkpoint; `volume` carries the ref to pull instead.",
+                discriminator="kind",
+                title="Source",
+            ),
+        ]
+        | dict[str, Any],
+        Field(union_mode="left_to_right"),
     ]
 
 
 class LoopsDeploymentStatus(BaseModel):
-    name: Annotated[Name, Field(description="Latest status of the Loops deployment.")]
+    name: Annotated[
+        Literal[
+            "CREATED",
+            "DEPLOYING",
+            "RUNNING",
+            "SCALED_TO_ZERO",
+            "FAILED",
+            "STOPPED",
+            "PREEMPTED",
+        ]
+        | str,
+        Field(
+            description="Latest status of the Loops deployment.",
+            title="LoopsDeploymentStatus",
+        ),
+    ]
 
 
 class LoopsDeployment(BaseModel):
@@ -6391,8 +6172,12 @@ class LoopsDeployment(BaseModel):
         ),
     ]
     availability_model: Annotated[
-        V1AvailabilityModel, Field(description="Capacity the trainer was scheduled on.")
-    ] = V1AvailabilityModel.dedicated
+        Literal["dedicated", "spot"] | str,
+        Field(
+            description="Capacity the trainer was scheduled on.",
+            title="V1AvailabilityModel",
+        ),
+    ] = "dedicated"
     instance_type: Annotated[
         InstanceType, Field(description="Instance type backing the trainer.")
     ]
@@ -6871,7 +6656,15 @@ class CreateAPIKeyRequest(BaseModel):
         ),
     ] = None
     type: Annotated[
-        APIKeyCategory,
+        Literal[
+            "PERSONAL",
+            "ROUTES",
+            "WORKSPACE_MANAGE_ALL",
+            "WORKSPACE_EXPORT_METRICS",
+            "WORKSPACE_INVOKE",
+            "WORKSPACE_MANAGE_API_KEYS",
+        ]
+        | str,
         Field(
             description="Type of the API key.",
             examples=[
@@ -6882,6 +6675,7 @@ class CreateAPIKeyRequest(BaseModel):
                 "WORKSPACE_INVOKE",
                 "WORKSPACE_MANAGE_ALL",
             ],
+            title="APIKeyCategory",
         ),
     ]
     model_ids: Annotated[
@@ -6921,14 +6715,6 @@ class APIKeyTombstone(BaseModel):
     prefix: Annotated[
         str, Field(description="Unique prefix of the API key", title="Prefix")
     ]
-
-
-class LimitType(StrEnum):
-    REQUEST = "REQUEST"
-    TOKEN = "TOKEN"
-    CONCURRENT_REQUEST = "CONCURRENT_REQUEST"
-    UNCACHED_INPUT_TOKEN = "UNCACHED_INPUT_TOKEN"
-    OUTPUT_TOKEN = "OUTPUT_TOKEN"
 
 
 class ModelAPIOrgDetails(BaseModel):
@@ -6978,19 +6764,29 @@ class CostPerMillionOutputTokens(RootModel[str]):
     ]
 
 
-class RateLimitUnit(StrEnum):
-    SECOND = "SECOND"
-    MINUTE = "MINUTE"
-
-
 class RateLimit(BaseModel):
     type: Annotated[
-        LimitType,
-        Field(description="The type of the rate limit", examples=["TOKEN", "REQUEST"]),
+        Literal[
+            "REQUEST",
+            "TOKEN",
+            "CONCURRENT_REQUEST",
+            "UNCACHED_INPUT_TOKEN",
+            "OUTPUT_TOKEN",
+        ]
+        | str,
+        Field(
+            description="The type of the rate limit",
+            examples=["TOKEN", "REQUEST"],
+            title="LimitTypeV1",
+        ),
     ]
     unit: Annotated[
-        RateLimitUnit,
-        Field(description="The unit of the rate limit", examples=["SECOND", "MINUTE"]),
+        Literal["SECOND", "MINUTE"] | str,
+        Field(
+            description="The unit of the rate limit",
+            examples=["SECOND", "MINUTE"],
+            title="RateLimitUnitV1",
+        ),
     ]
     threshold: Annotated[
         int,
@@ -7052,12 +6848,6 @@ class ModelApisUsageResult(BaseModel):
     request_count: Annotated[
         int, Field(description="Total number of requests.", title="Request Count")
     ]
-
-
-class UsageDimension(StrEnum):
-    api_key = "api_key"
-    user = "user"
-    model = "model"
 
 
 class CreateLLMModelRequest(BaseModel):
@@ -7256,11 +7046,13 @@ class LibraryListingMetadata(BaseModel):
     parameter_count: Annotated[int | None, Field(title="Parameter Count")] = None
     context_length: Annotated[int | None, Field(title="Context Length")] = None
     input_modalities: Annotated[
-        list[LibraryListingModality], Field(title="Input Modalities")
-    ] = [LibraryListingModality.text]
+        list[Literal["text", "image", "audio", "video", "embedding", "rerank"] | str],
+        Field(title="Input Modalities"),
+    ] = ["text"]
     output_modalities: Annotated[
-        list[LibraryListingModality], Field(title="Output Modalities")
-    ] = [LibraryListingModality.text]
+        list[Literal["text", "image", "audio", "video", "embedding", "rerank"] | str],
+        Field(title="Output Modalities"),
+    ] = ["text"]
     license: Annotated[str, Field(title="License")]
     variant: Annotated[str | None, Field(title="Variant")] = None
     publisher: Annotated[str | None, Field(title="Publisher")] = None
@@ -7523,13 +7315,6 @@ class ModelApisCostResult(BaseModel):
             title="Subtotal",
         ),
     ]
-
-
-class ModelApiCostDimension(StrEnum):
-    api_key_prefix = "api_key_prefix"
-    user = "user"
-    model = "model"
-    service_tier = "service_tier"
 
 
 class ChainMetadata(BaseModel):
@@ -8182,16 +7967,20 @@ class CreateRouteRequest(BaseModel):
         ),
     ] = None
     target: Annotated[
-        RouteTargetBasetenModelAPI
-        | RouteTargetAnthropic
-        | RouteTargetOpenAI
-        | RouteTargetXAI,
-        Field(
-            description="Upstream target for the route.",
-            discriminator="type",
-            examples=[{"model": "zai-org/GLM-5.3", "type": "BASETEN_MODEL_API"}],
-            title="Target",
-        ),
+        Annotated[
+            RouteTargetBasetenModelAPI
+            | RouteTargetAnthropic
+            | RouteTargetOpenAI
+            | RouteTargetXAI,
+            Field(
+                description="Upstream target for the route.",
+                discriminator="type",
+                examples=[{"model": "zai-org/GLM-5.3", "type": "BASETEN_MODEL_API"}],
+                title="Target",
+            ),
+        ]
+        | dict[str, Any],
+        Field(union_mode="left_to_right"),
     ]
     description: Annotated[
         Description | None,
@@ -8201,15 +7990,6 @@ class CreateRouteRequest(BaseModel):
             title="Description",
         ),
     ] = None
-
-
-class RouteProvider(StrEnum):
-    BASETEN_MODEL_API = "BASETEN_MODEL_API"
-    OPENAI = "OPENAI"
-    ANTHROPIC = "ANTHROPIC"
-    XAI = "XAI"
-    VERTEX = "VERTEX"
-    OPENAI_COMPATIBLE = "OPENAI_COMPATIBLE"
 
 
 class RoutesUsageResult(BaseModel):
@@ -8228,7 +8008,16 @@ class RoutesUsageResult(BaseModel):
         ),
     ] = None
     provider: Annotated[
-        RouteProvider | None,
+        Literal[
+            "BASETEN_MODEL_API",
+            "OPENAI",
+            "ANTHROPIC",
+            "XAI",
+            "VERTEX",
+            "OPENAI_COMPATIBLE",
+        ]
+        | str
+        | None,
         Field(
             description="Provider that served the requests. Null when not grouping by PROVIDER."
         ),
@@ -8265,12 +8054,6 @@ class RoutesUsageResult(BaseModel):
     output_tokens: Annotated[
         int, Field(description="Output tokens.", title="Output Tokens")
     ]
-
-
-class RouteUsageDimension(StrEnum):
-    USER = "USER"
-    MODEL = "MODEL"
-    PROVIDER = "PROVIDER"
 
 
 class RouteSpendLimit(BaseModel):
@@ -8570,14 +8353,24 @@ class SetRouteHarnessConfigRequest(
     ]
 ):
     root: Annotated[
-        SetClaudeCodeHarnessConfig | SetOpenCodeHarnessConfig | SetCodexHarnessConfig,
-        Field(discriminator="harness", title="SetRouteHarnessConfigRequestV1"),
+        Annotated[
+            SetClaudeCodeHarnessConfig
+            | SetOpenCodeHarnessConfig
+            | SetCodexHarnessConfig,
+            Field(discriminator="harness", title="SetRouteHarnessConfigRequestV1"),
+        ]
+        | dict[str, Any],
+        Field(union_mode="left_to_right"),
     ]
 
 
 class RouteHarnessConfigTombstone(BaseModel):
     harness: Annotated[
-        RouteHarness, Field(description="Harness whose default models were cleared.")
+        Literal["claude-code", "opencode", "codex"] | str,
+        Field(
+            description="Harness whose default models were cleared.",
+            title="RouteHarness",
+        ),
     ]
     team_id: Annotated[
         str,
@@ -8642,11 +8435,6 @@ class UpdateRouteRequest(BaseModel):
     ] = None
 
 
-class SharedEndpointRegion(StrEnum):
-    UNRESTRICTED = "UNRESTRICTED"
-    EU = "EU"
-
-
 class VertexTargetConfig(BaseModel):
     project_id: Annotated[
         str,
@@ -8666,10 +8454,20 @@ class VertexTargetConfig(BaseModel):
 
 class EndpointTargetRequest(BaseModel):
     provider: Annotated[
-        GatewayProvider,
+        Literal[
+            "ANTHROPIC",
+            "OPENAI",
+            "XAI",
+            "BASETEN",
+            "BASETEN_MODEL_API",
+            "VERTEX",
+            "OPENAI_COMPATIBLE",
+        ]
+        | str,
         Field(
             description="Upstream provider for this target.",
             examples=["ANTHROPIC", "OPENAI", "OPENAI_COMPATIBLE", "BASETEN"],
+            title="GatewayProvider",
         ),
     ]
     secret_id: Annotated[
@@ -8730,8 +8528,11 @@ class CreateEndpointRequest(BaseModel):
         ),
     ]
     region: Annotated[
-        SharedEndpointRegion, Field(description="Region the new routing serves.")
-    ] = SharedEndpointRegion.UNRESTRICTED
+        Literal["UNRESTRICTED", "EU"] | str,
+        Field(
+            description="Region the new routing serves.", title="SharedEndpointRegionV1"
+        ),
+    ] = "UNRESTRICTED"
     targets: Annotated[
         list[EndpointTargetRequest],
         Field(
@@ -8851,12 +8652,27 @@ class UpdateEndpointRequest(BaseModel):
 
 class EffectiveRateLimit(BaseModel):
     type: Annotated[
-        LimitType,
-        Field(description="The type of the rate limit", examples=["TOKEN", "REQUEST"]),
+        Literal[
+            "REQUEST",
+            "TOKEN",
+            "CONCURRENT_REQUEST",
+            "UNCACHED_INPUT_TOKEN",
+            "OUTPUT_TOKEN",
+        ]
+        | str,
+        Field(
+            description="The type of the rate limit",
+            examples=["TOKEN", "REQUEST"],
+            title="LimitTypeV1",
+        ),
     ]
     unit: Annotated[
-        RateLimitUnit,
-        Field(description="The unit of the rate limit", examples=["SECOND", "MINUTE"]),
+        Literal["SECOND", "MINUTE"] | str,
+        Field(
+            description="The unit of the rate limit",
+            examples=["SECOND", "MINUTE"],
+            title="RateLimitUnitV1",
+        ),
     ]
     threshold: Annotated[
         int,
@@ -8910,23 +8726,29 @@ class GroupMetadata(BaseModel):
     ]
 
 
-class LimitEnforcement(StrEnum):
-    CASCADING = "CASCADING"
-    INDEPENDENT = "INDEPENDENT"
-
-
-class UsageLimitUnit(StrEnum):
-    DAY = "DAY"
-
-
 class UsageLimit(BaseModel):
     type: Annotated[
-        LimitType,
-        Field(description="The type of the usage limit", examples=["REQUEST", "TOKEN"]),
+        Literal[
+            "REQUEST",
+            "TOKEN",
+            "CONCURRENT_REQUEST",
+            "UNCACHED_INPUT_TOKEN",
+            "OUTPUT_TOKEN",
+        ]
+        | str,
+        Field(
+            description="The type of the usage limit",
+            examples=["REQUEST", "TOKEN"],
+            title="LimitTypeV1",
+        ),
     ]
     unit: Annotated[
-        UsageLimitUnit,
-        Field(description="The unit of the usage limit", examples=["DAY"]),
+        Literal["DAY"] | str,
+        Field(
+            description="The unit of the usage limit",
+            examples=["DAY"],
+            title="UsageLimitUnitV1",
+        ),
     ]
     threshold: Annotated[
         int,
@@ -8941,7 +8763,7 @@ class UsageLimit(BaseModel):
 
 class CreateGroupHierarchy(BaseModel):
     limit_enforcement: Annotated[
-        LimitEnforcement | None,
+        Literal["CASCADING", "INDEPENDENT"] | str | None,
         Field(
             description="Limit behavior. Child groups inherit their parent's behavior when omitted; root groups default to Independent for backwards compatibility.",
             examples=["INDEPENDENT"],
@@ -9048,8 +8870,10 @@ class ImageBuildLogsResponse(BaseModel):
     ]
 
 
-class SandboxDuration(RootModel[str]):
-    root: Annotated[
+class SandboxTTLIdleExpirationPolicy(BaseModel):
+    action: Literal["DELETE"] | str
+    type: Literal["TTL_IDLE"]
+    value: Annotated[
         str,
         Field(
             description="Duration using seconds, minutes, hours, or composite durations such as 1h30m. Whole days and weeks are also supported, for example 7d or 2w.",
@@ -9059,36 +8883,21 @@ class SandboxDuration(RootModel[str]):
     ]
 
 
-class Action(StrEnum):
-    DELETE = "DELETE"
-
-
-class Type(StrEnum):
-    TTL_IDLE = "TTL_IDLE"
-
-
-class SandboxTTLIdleExpirationPolicy(BaseModel):
-    action: Action
-    type: Literal["TTL_IDLE"]
-    value: SandboxDuration
-
-
-class Type1(StrEnum):
-    TTL_MAX_AGE = "TTL_MAX_AGE"
-
-
 class SandboxTTLMaxAgeExpirationPolicy(BaseModel):
-    action: Action
+    action: Literal["DELETE"] | str
     type: Literal["TTL_MAX_AGE"]
-    value: SandboxDuration
-
-
-class Type2(StrEnum):
-    DATE = "DATE"
+    value: Annotated[
+        str,
+        Field(
+            description="Duration using seconds, minutes, hours, or composite durations such as 1h30m. Whole days and weeks are also supported, for example 7d or 2w.",
+            examples=["24h"],
+            pattern="^[+-]?(0|[0-9]+[dw]|([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h)(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))*)$",
+        ),
+    ]
 
 
 class SandboxDateExpirationPolicy(BaseModel):
-    action: Action
+    action: Literal["DELETE"] | str
     type: Literal["DATE"]
     value: Annotated[AwareDatetime, Field(examples=["2026-09-23T21:26:58Z"])]
 
@@ -9142,19 +8951,12 @@ class SandboxEnv(BaseModel):
     ] = None
 
 
-class Protocol(StrEnum):
-    HTTP = "HTTP"
-    TCP = "TCP"
-    UDP = "UDP"
-    TLS = "TLS"
-
-
 class SandboxPort(BaseModel):
     name: Annotated[
         str | None, Field(description="The name of the port", examples=["http"])
     ] = None
     protocol: Annotated[
-        Protocol | None,
+        Literal["HTTP", "TCP", "UDP", "TLS"] | str | None,
         Field(description="The protocol of the port", examples=["HTTP"]),
     ] = None
     target: Annotated[
@@ -9163,25 +8965,6 @@ class SandboxPort(BaseModel):
             description="The target port of the port", examples=[3000], ge=1, le=65535
         ),
     ]
-
-
-class SandboxMetadataLabels(RootModel[dict[str, str]]):
-    root: dict[str, str]
-
-
-class SandboxStatus(StrEnum):
-    DEPLOYING = "DEPLOYING"
-    DEPLOYED = "DEPLOYED"
-    FAILED = "FAILED"
-    DEACTIVATING = "DEACTIVATING"
-    DEACTIVATED = "DEACTIVATED"
-    DELETING = "DELETING"
-    TERMINATED = "TERMINATED"
-    ARCHIVING = "ARCHIVING"
-    ARCHIVED = "ARCHIVED"
-    UNARCHIVING = "UNARCHIVING"
-    BUILDING = "BUILDING"
-    UPLOADING = "UPLOADING"
 
 
 class SandboxApiPagination(BaseModel):
@@ -9198,13 +8981,6 @@ class SandboxApiPagination(BaseModel):
             min_length=1,
         ),
     ] = None
-
-
-class ImageStatus(StrEnum):
-    UPLOADING = "UPLOADING"
-    BUILDING = "BUILDING"
-    BUILT = "BUILT"
-    FAILED = "FAILED"
 
 
 class ImageTag(BaseModel):
@@ -9237,7 +9013,7 @@ class Image(BaseModel):
         ),
     ]
     status: Annotated[
-        ImageStatus,
+        Literal["UPLOADING", "BUILDING", "BUILT", "FAILED"] | str,
         Field(
             description="Image processing status. Only BUILT images are ready to use.",
             examples=["BUILT"],
@@ -9333,7 +9109,7 @@ class PushImageResponse(BaseModel):
         str, Field(description="Target image repository name.", examples=["base-image"])
     ]
     status: Annotated[
-        ImageStatus,
+        Literal["UPLOADING", "BUILDING", "BUILT", "FAILED"] | str,
         Field(
             description="Image processing status. Only BUILT images are ready to use.",
             examples=["BUILDING"],
@@ -9415,21 +9191,6 @@ class CleanupImagesResponse(BaseModel):
     ]
 
 
-class Checkpoints(
-    RootModel[
-        BasetenLatestCheckpointConfig
-        | BasetenNamedCheckpointConfig
-        | LoopsCheckpointConfig
-    ]
-):
-    root: Annotated[
-        BasetenLatestCheckpointConfig
-        | BasetenNamedCheckpointConfig
-        | LoopsCheckpointConfig,
-        Field(discriminator="typ"),
-    ]
-
-
 class LoadCheckpointConfig(BaseModel):
     enabled: Annotated[
         bool,
@@ -9443,7 +9204,19 @@ class LoadCheckpointConfig(BaseModel):
         ),
     ] = "/tmp/loaded_checkpoints"
     checkpoints: Annotated[
-        list[Checkpoints] | None,
+        list[
+            Annotated[
+                Annotated[
+                    BasetenLatestCheckpointConfig
+                    | BasetenNamedCheckpointConfig
+                    | LoopsCheckpointConfig,
+                    Field(discriminator="typ"),
+                ]
+                | dict[str, Any],
+                Field(union_mode="left_to_right"),
+            ]
+        ]
+        | None,
         Field(description="List of checkpoint configurations", title="Checkpoints"),
     ] = None
 
@@ -9466,11 +9239,12 @@ class GetAuditLogsParams(BaseModel):
         ),
     ] = 20
     direction: Annotated[
-        AuditLogSortDirection,
+        Literal["DESC", "ASC"] | str,
         Field(
-            description="Sort order by the time the action occurred. Defaults to DESC (newest first). Ignored when paginating with a cursor."
+            description="Sort order by the time the action occurred. Defaults to DESC (newest first). Ignored when paginating with a cursor.",
+            title="AuditLogSortDirectionV1",
         ),
-    ] = AuditLogSortDirection.DESC
+    ] = "DESC"
     search: Annotated[
         str | None,
         Field(
@@ -9479,7 +9253,30 @@ class GetAuditLogsParams(BaseModel):
         ),
     ] = None
     event_type_groups: Annotated[
-        list[AuditLogEventTypeGroup] | None,
+        list[
+            Literal[
+                "DEPLOYED",
+                "PROMOTED",
+                "ACTIVATED_DEACTIVATED",
+                "AUTOSCALING_SETTINGS",
+                "REQUEST_BACKPRESSURE_SETTINGS",
+                "INSTANCE_TYPE_CHANGED",
+                "ENVIRONMENT_SETTINGS",
+                "REPLICA_TERMINATED",
+                "DELETED",
+                "METADATA",
+                "SECRETS",
+                "API_KEYS",
+                "GATEWAY",
+                "CODE",
+                "WEBHOOK_SIGNING_SECRETS",
+                "USER_MANAGEMENT",
+                "DIRECTORY_GROUP_MANAGEMENT",
+                "SSH",
+            ]
+            | str
+        ]
+        | None,
         Field(
             description="When set, returns only entries whose event type falls in one of these groups.",
             title="Event Type Groups",
@@ -9514,7 +9311,7 @@ class GetAuditLogsParams(BaseModel):
         ),
     ] = None
     sources: Annotated[
-        list[AuditLogSource] | None,
+        list[Literal["UI", "API", "MCP", "SYSTEM", "OTHER"] | str] | None,
         Field(
             description="When set, returns only entries issued from one of these surfaces.",
             title="Sources",
@@ -9554,11 +9351,12 @@ class GetModelsAuditLogsParams(BaseModel):
         ),
     ] = 20
     direction: Annotated[
-        AuditLogSortDirection,
+        Literal["DESC", "ASC"] | str,
         Field(
-            description="Sort order by the time the action occurred. Defaults to DESC (newest first). Ignored when paginating with a cursor."
+            description="Sort order by the time the action occurred. Defaults to DESC (newest first). Ignored when paginating with a cursor.",
+            title="AuditLogSortDirectionV1",
         ),
-    ] = AuditLogSortDirection.DESC
+    ] = "DESC"
     search: Annotated[
         str | None,
         Field(
@@ -9567,7 +9365,30 @@ class GetModelsAuditLogsParams(BaseModel):
         ),
     ] = None
     event_type_groups: Annotated[
-        list[AuditLogEventTypeGroup] | None,
+        list[
+            Literal[
+                "DEPLOYED",
+                "PROMOTED",
+                "ACTIVATED_DEACTIVATED",
+                "AUTOSCALING_SETTINGS",
+                "REQUEST_BACKPRESSURE_SETTINGS",
+                "INSTANCE_TYPE_CHANGED",
+                "ENVIRONMENT_SETTINGS",
+                "REPLICA_TERMINATED",
+                "DELETED",
+                "METADATA",
+                "SECRETS",
+                "API_KEYS",
+                "GATEWAY",
+                "CODE",
+                "WEBHOOK_SIGNING_SECRETS",
+                "USER_MANAGEMENT",
+                "DIRECTORY_GROUP_MANAGEMENT",
+                "SSH",
+            ]
+            | str
+        ]
+        | None,
         Field(
             description="When set, returns only entries whose event type falls in one of these groups.",
             title="Event Type Groups",
@@ -9602,7 +9423,7 @@ class GetModelsAuditLogsParams(BaseModel):
         ),
     ] = None
     sources: Annotated[
-        list[AuditLogSource] | None,
+        list[Literal["UI", "API", "MCP", "SYSTEM", "OTHER"] | str] | None,
         Field(
             description="When set, returns only entries issued from one of these surfaces.",
             title="Sources",
@@ -9639,9 +9460,9 @@ class GetModelsDeploymentsLogsParams(BaseModel):
             title="End Epoch Millis",
         ),
     ] = None
-    direction: Annotated[SortOrder | None, Field(description="Sort order for logs")] = (
-        None
-    )
+    direction: Annotated[
+        Literal["asc", "desc"] | str | None, Field(description="Sort order for logs")
+    ] = None
     limit: Annotated[
         Limit | None,
         Field(
@@ -9651,7 +9472,7 @@ class GetModelsDeploymentsLogsParams(BaseModel):
         ),
     ] = Limit.model_validate(500)
     min_level: Annotated[
-        LogLevel | None,
+        Literal["DEBUG", "INFO", "WARNING", "ERROR"] | str | None,
         Field(
             description="Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level."
         ),
@@ -9701,11 +9522,12 @@ class GetModelsDeploymentsLogsParams(BaseModel):
 
 class GetModelsDeploymentsMetricsParams(BaseModel):
     mode: Annotated[
-        ModelMetricMode,
+        Literal["CURRENT", "SUMMARY", "SERIES"] | str,
         Field(
-            description="'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration."
+            description="'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration.",
+            title="ModelMetricModeV1",
         ),
-    ] = ModelMetricMode.CURRENT
+    ] = "CURRENT"
     start_epoch_millis: Annotated[
         int | None,
         Field(
@@ -9744,9 +9566,9 @@ class GetModelsEnvironmentsLogsParams(BaseModel):
             title="End Epoch Millis",
         ),
     ] = None
-    direction: Annotated[SortOrder | None, Field(description="Sort order for logs")] = (
-        None
-    )
+    direction: Annotated[
+        Literal["asc", "desc"] | str | None, Field(description="Sort order for logs")
+    ] = None
     limit: Annotated[
         Limit | None,
         Field(
@@ -9756,7 +9578,7 @@ class GetModelsEnvironmentsLogsParams(BaseModel):
         ),
     ] = Limit.model_validate(500)
     min_level: Annotated[
-        LogLevel | None,
+        Literal["DEBUG", "INFO", "WARNING", "ERROR"] | str | None,
         Field(
             description="Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level."
         ),
@@ -9806,11 +9628,12 @@ class GetModelsEnvironmentsLogsParams(BaseModel):
 
 class GetModelsEnvironmentsMetricsParams(BaseModel):
     mode: Annotated[
-        ModelMetricMode,
+        Literal["CURRENT", "SUMMARY", "SERIES"] | str,
         Field(
-            description="'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration."
+            description="'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration.",
+            title="ModelMetricModeV1",
         ),
-    ] = ModelMetricMode.CURRENT
+    ] = "CURRENT"
     start_epoch_millis: Annotated[
         int | None,
         Field(
@@ -9852,11 +9675,12 @@ class GetChainsAuditLogsParams(BaseModel):
         ),
     ] = 20
     direction: Annotated[
-        AuditLogSortDirection,
+        Literal["DESC", "ASC"] | str,
         Field(
-            description="Sort order by the time the action occurred. Defaults to DESC (newest first). Ignored when paginating with a cursor."
+            description="Sort order by the time the action occurred. Defaults to DESC (newest first). Ignored when paginating with a cursor.",
+            title="AuditLogSortDirectionV1",
         ),
-    ] = AuditLogSortDirection.DESC
+    ] = "DESC"
     search: Annotated[
         str | None,
         Field(
@@ -9865,7 +9689,30 @@ class GetChainsAuditLogsParams(BaseModel):
         ),
     ] = None
     event_type_groups: Annotated[
-        list[AuditLogEventTypeGroup] | None,
+        list[
+            Literal[
+                "DEPLOYED",
+                "PROMOTED",
+                "ACTIVATED_DEACTIVATED",
+                "AUTOSCALING_SETTINGS",
+                "REQUEST_BACKPRESSURE_SETTINGS",
+                "INSTANCE_TYPE_CHANGED",
+                "ENVIRONMENT_SETTINGS",
+                "REPLICA_TERMINATED",
+                "DELETED",
+                "METADATA",
+                "SECRETS",
+                "API_KEYS",
+                "GATEWAY",
+                "CODE",
+                "WEBHOOK_SIGNING_SECRETS",
+                "USER_MANAGEMENT",
+                "DIRECTORY_GROUP_MANAGEMENT",
+                "SSH",
+            ]
+            | str
+        ]
+        | None,
         Field(
             description="When set, returns only entries whose event type falls in one of these groups.",
             title="Event Type Groups",
@@ -9900,7 +9747,7 @@ class GetChainsAuditLogsParams(BaseModel):
         ),
     ] = None
     sources: Annotated[
-        list[AuditLogSource] | None,
+        list[Literal["UI", "API", "MCP", "SYSTEM", "OTHER"] | str] | None,
         Field(
             description="When set, returns only entries issued from one of these surfaces.",
             title="Sources",
@@ -9937,9 +9784,9 @@ class GetChainsDeploymentsChainletsLogsParams(BaseModel):
             title="End Epoch Millis",
         ),
     ] = None
-    direction: Annotated[SortOrder | None, Field(description="Sort order for logs")] = (
-        None
-    )
+    direction: Annotated[
+        Literal["asc", "desc"] | str | None, Field(description="Sort order for logs")
+    ] = None
     limit: Annotated[
         Limit | None,
         Field(
@@ -9949,7 +9796,7 @@ class GetChainsDeploymentsChainletsLogsParams(BaseModel):
         ),
     ] = Limit.model_validate(500)
     min_level: Annotated[
-        LogLevel | None,
+        Literal["DEBUG", "INFO", "WARNING", "ERROR"] | str | None,
         Field(
             description="Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level."
         ),
@@ -10012,9 +9859,9 @@ class GetTrainingProjectsJobsLogsParams(BaseModel):
             title="End Epoch Millis",
         ),
     ] = None
-    direction: Annotated[SortOrder | None, Field(description="Sort order for logs")] = (
-        None
-    )
+    direction: Annotated[
+        Literal["asc", "desc"] | str | None, Field(description="Sort order for logs")
+    ] = None
     limit: Annotated[
         Limit | None,
         Field(
@@ -10024,7 +9871,7 @@ class GetTrainingProjectsJobsLogsParams(BaseModel):
         ),
     ] = Limit.model_validate(500)
     min_level: Annotated[
-        LogLevel | None,
+        Literal["DEBUG", "INFO", "WARNING", "ERROR"] | str | None,
         Field(
             description="Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level."
         ),
@@ -10041,12 +9888,13 @@ class GetLoopsCapabilitiesParams(BaseModel):
         ),
     ] = None
     use_case: Annotated[
-        LoopsUseCase,
+        Literal["rl", "sft"] | str,
         Field(
             description="What the caller intends to run. Defaults to 'rl', the stricter of the two: an RL run needs both a trainer and a sampler, so anything enabled for 'rl' is also enabled for 'sft'.",
             examples=["rl"],
+            title="LoopsUseCaseV1",
         ),
-    ] = LoopsUseCase.rl
+    ] = "rl"
     max_seq_len: Annotated[
         MaxSeqLen | None,
         Field(
@@ -10072,9 +9920,9 @@ class GetLoopsDeploymentsLogsParams(BaseModel):
             title="End Epoch Millis",
         ),
     ] = None
-    direction: Annotated[SortOrder | None, Field(description="Sort order for logs")] = (
-        None
-    )
+    direction: Annotated[
+        Literal["asc", "desc"] | str | None, Field(description="Sort order for logs")
+    ] = None
     limit: Annotated[
         Limit | None,
         Field(
@@ -10084,7 +9932,7 @@ class GetLoopsDeploymentsLogsParams(BaseModel):
         ),
     ] = Limit.model_validate(500)
     min_level: Annotated[
-        LogLevel | None,
+        Literal["DEBUG", "INFO", "WARNING", "ERROR"] | str | None,
         Field(
             description="Minimum log severity to include. Omit to return all log lines, including lines that have no level. Any explicit value returns lines at or above that severity and drops lines without a level."
         ),
@@ -10107,11 +9955,14 @@ class GetModelApisUsageParams(BaseModel):
         ),
     ] = None
     bucket_width: Annotated[
-        BucketWidth,
-        Field(description="Width of each time bucket: 1m, 1h, or 1d. Defaults to 1d."),
-    ] = BucketWidth.field_1d
+        Literal["1m", "1h", "1d"] | str,
+        Field(
+            description="Width of each time bucket: 1m, 1h, or 1d. Defaults to 1d.",
+            title="BucketWidth",
+        ),
+    ] = "1d"
     group_by: Annotated[
-        list[UsageDimension] | None,
+        list[Literal["api_key", "user", "model"] | str] | None,
         Field(
             description="Dimensions to break usage down by, repeated once per dimension: api_key, user, model. Defaults to model.",
             title="Group By",
@@ -10186,7 +10037,7 @@ class GetBillingModelApisParams(BaseModel):
         ),
     ] = None
     group_by: Annotated[
-        list[ModelApiCostDimension] | None,
+        list[Literal["api_key_prefix", "user", "model", "service_tier"] | str] | None,
         Field(
             description="Dimensions to break costs down by, repeated once per dimension: api_key_prefix, user, model, or service_tier. Each result represents one observed combination of the requested dimensions within that day. For example, grouping by api_key_prefix and user returns each API-key and user pair that had usage. Combinations without usage are omitted, so result counts can differ between days. Omit for daily organization totals.",
             title="Group By",
@@ -10254,7 +10105,7 @@ class GetRoutesUsageParams(BaseModel):
         ),
     ] = None
     group_by: Annotated[
-        list[RouteUsageDimension] | None,
+        list[Literal["USER", "MODEL", "PROVIDER"] | str] | None,
         Field(
             description="Dimensions to break usage down by, repeated once per dimension: USER, MODEL, or PROVIDER. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. Defaults to MODEL.",
             title="Group By",
@@ -10275,7 +10126,18 @@ class GetRoutesUsageParams(BaseModel):
         ),
     ] = None
     providers: Annotated[
-        list[RouteProvider] | None,
+        list[
+            Literal[
+                "BASETEN_MODEL_API",
+                "OPENAI",
+                "ANTHROPIC",
+                "XAI",
+                "VERTEX",
+                "OPENAI_COMPATIBLE",
+            ]
+            | str
+        ]
+        | None,
         Field(
             description="Return only usage for these providers, repeated once per provider.",
             title="Providers",
@@ -10449,7 +10311,13 @@ class AuditLogEventAutoscalingScheduleChange(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    action: AuditLogEventAutoscalingScheduleAction
+    action: Annotated[
+        Literal["CREATED", "UPDATED", "DELETED", "UNCHANGED"] | str,
+        Field(
+            description="What an autoscaling change did to one schedule.",
+            title="AuditLogEventAutoscalingScheduleActionV1",
+        ),
+    ]
     schedule_id: Annotated[str, Field(title="Schedule Id")]
     previous: AuditLogEventAutoscalingScheduleSettings | None
     current: AuditLogEventAutoscalingScheduleSettings | None
@@ -10554,7 +10422,16 @@ class AuditLogEventModelPromotionControlAction(BaseModel):
     deployment_name: Annotated[str, Field(title="Deployment Name")]
     environment_name: Annotated[str, Field(title="Environment Name")]
     environment_id: Annotated[str | None, Field(title="Environment Id")]
-    action: AuditLogPromotionControlAction
+    action: Annotated[
+        Literal[
+            "PAUSE", "RESUME", "FORCE_CANCEL", "FORCE_ROLL_FORWARD", "GRACEFUL_CANCEL"
+        ]
+        | str,
+        Field(
+            description="User-initiated promotion control signal recorded on a promotion-control event.",
+            title="AuditLogPromotionControlActionV1",
+        ),
+    ]
 
 
 class Deployment(BaseModel):
@@ -10586,7 +10463,26 @@ class Deployment(BaseModel):
             title="Is Development",
         ),
     ]
-    status: Annotated[DeploymentStatus, Field(description="Status of the deployment")]
+    status: Annotated[
+        Literal[
+            "BUILDING",
+            "DEPLOYING",
+            "DEPLOY_FAILED",
+            "LOADING_MODEL",
+            "ACTIVE",
+            "UNHEALTHY",
+            "BUILD_FAILED",
+            "BUILD_STOPPED",
+            "DEACTIVATING",
+            "INACTIVE",
+            "FAILED",
+            "UPDATING",
+            "SCALED_TO_ZERO",
+            "WAKING_UP",
+        ]
+        | str,
+        Field(description="Status of the deployment", title="DeploymentStatusV1"),
+    ]
     active_replica_count: Annotated[
         int,
         Field(description="Number of active replicas", title="Active Replica Count"),
@@ -10671,12 +10567,17 @@ class RetryDeploymentResponse(BaseModel):
 class ModelMetricDescriptor(BaseModel):
     name: Annotated[str, Field(description="Canonical metric name.", title="Name")]
     unit_hint: Annotated[
-        ModelMetricUnitHint, Field(description="Advisory unit of the metric's values.")
+        Literal["PER_SECOND", "SECONDS", "BYTES", "MEBIBYTES", "COUNT", "RATIO"] | str,
+        Field(
+            description="Advisory unit of the metric's values.",
+            title="ModelMetricUnitHintV1",
+        ),
     ]
     kind: Annotated[
-        ModelMetricKind,
+        Literal["GAUGE", "COUNTER", "HISTOGRAM"] | str,
         Field(
-            description="Semantic hint for how the metric behaves (GAUGE, COUNTER, HISTOGRAM)."
+            description="Semantic hint for how the metric behaves (GAUGE, COUNTER, HISTOGRAM).",
+            title="ModelMetricKindV1",
         ),
     ]
     label_sets: Annotated[
@@ -10696,7 +10597,10 @@ class GetModelMetricsResponse(BaseModel):
     end_epoch_millis: Annotated[
         int, Field(description="End of the returned window.", title="End Epoch Millis")
     ]
-    mode: Annotated[ModelMetricMode, Field(description="The aggregation mode used.")]
+    mode: Annotated[
+        Literal["CURRENT", "SUMMARY", "SERIES"] | str,
+        Field(description="The aggregation mode used.", title="ModelMetricModeV1"),
+    ]
     step_seconds: Annotated[
         int | None,
         Field(
@@ -10742,7 +10646,18 @@ class AutoscalingSchedule(BaseModel):
         ),
     ]
     weekdays: Annotated[
-        list[AutoscalingScheduleWeekday],
+        list[
+            Literal[
+                "SUNDAY",
+                "MONDAY",
+                "TUESDAY",
+                "WEDNESDAY",
+                "THURSDAY",
+                "FRIDAY",
+                "SATURDAY",
+            ]
+            | str
+        ],
         Field(description="Weekdays on which the schedule runs", title="Weekdays"),
     ]
     start_hour: Annotated[
@@ -10768,12 +10683,6 @@ class AutoscalingSchedule(BaseModel):
     ]
 
 
-class Schedules(RootModel[AutoscalingSchedule | OneTimeAutoscalingSchedule]):
-    root: Annotated[
-        AutoscalingSchedule | OneTimeAutoscalingSchedule, Field(discriminator="cadence")
-    ]
-
-
 class EnvironmentAutoscalingSchedules(BaseModel):
     timezone: Annotated[
         str | None,
@@ -10783,7 +10692,16 @@ class EnvironmentAutoscalingSchedules(BaseModel):
         ),
     ] = None
     schedules: Annotated[
-        list[Schedules],
+        list[
+            Annotated[
+                Annotated[
+                    AutoscalingSchedule | OneTimeAutoscalingSchedule,
+                    Field(discriminator="cadence"),
+                ]
+                | dict[str, Any],
+                Field(union_mode="left_to_right"),
+            ]
+        ],
         Field(
             description="Autoscaling schedules ordered by creation time and stable identifier",
             title="Schedules",
@@ -10799,12 +10717,13 @@ class EnvironmentAutoscalingSchedules(BaseModel):
 
 class RollingDeployConfig(BaseModel):
     rolling_deploy_strategy: Annotated[
-        RollingDeployStrategy,
+        Literal["REPLICA"] | str,
         Field(
             description="The rolling deploy strategy to use for promotions.",
             examples=["REPLICA"],
+            title="RollingDeployStrategyV1",
         ),
-    ] = RollingDeployStrategy.REPLICA
+    ] = "REPLICA"
     max_surge_percent: Annotated[
         int,
         Field(
@@ -10857,7 +10776,7 @@ class UpdatePromotionSettings(BaseModel):
         ),
     ] = None
     promotion_cleanup_strategy: Annotated[
-        PromotionCleanupStrategy | None,
+        Literal["KEEP", "SCALE_TO_ZERO", "DEACTIVATE"] | str | None,
         Field(
             description="The cleanup strategy to use after a promotion completes.",
             examples=["SCALE_TO_ZERO"],
@@ -11045,7 +10964,24 @@ class ChainDeployment(BaseModel):
         Field(description="Chainlets in the chain deployment", title="Chainlets"),
     ]
     status: Annotated[
-        DeploymentStatus, Field(description="Status of the chain deployment")
+        Literal[
+            "BUILDING",
+            "DEPLOYING",
+            "DEPLOY_FAILED",
+            "LOADING_MODEL",
+            "ACTIVE",
+            "UNHEALTHY",
+            "BUILD_FAILED",
+            "BUILD_STOPPED",
+            "DEACTIVATING",
+            "INACTIVE",
+            "FAILED",
+            "UPDATING",
+            "SCALED_TO_ZERO",
+            "WAKING_UP",
+        ]
+        | str,
+        Field(description="Status of the chain deployment", title="DeploymentStatusV1"),
     ]
 
 
@@ -11221,7 +11157,7 @@ class TrainingJob(BaseModel):
         ),
     ] = None
     checkpoint_sync_status: Annotated[
-        CheckpointSyncStatus | None,
+        Literal["SYNCING", "COMPLETED"] | str | None,
         Field(description="Checkpoint sync status of the training job."),
     ] = None
     priority: Annotated[
@@ -11232,11 +11168,12 @@ class TrainingJob(BaseModel):
         ),
     ] = 0
     availability_model: Annotated[
-        V1AvailabilityModel,
+        Literal["dedicated", "spot"] | str,
         Field(
-            description="Capacity guarantee for the job. 'dedicated' is non-preemptible on-demand capacity; 'spot' is interruptible."
+            description="Capacity guarantee for the job. 'dedicated' is non-preemptible on-demand capacity; 'spot' is interruptible.",
+            title="V1AvailabilityModel",
         ),
-    ] = V1AvailabilityModel.dedicated
+    ] = "dedicated"
     user: Annotated[
         User | None, Field(description="The user who created the training job.")
     ] = None
@@ -11712,7 +11649,15 @@ class APIKeyInfo(BaseModel):
         ),
     ] = None
     type: Annotated[
-        APIKeyCategory,
+        Literal[
+            "PERSONAL",
+            "ROUTES",
+            "WORKSPACE_MANAGE_ALL",
+            "WORKSPACE_EXPORT_METRICS",
+            "WORKSPACE_INVOKE",
+            "WORKSPACE_MANAGE_API_KEYS",
+        ]
+        | str,
         Field(
             description="Type of the API key.",
             examples=[
@@ -11723,6 +11668,7 @@ class APIKeyInfo(BaseModel):
                 "WORKSPACE_INVOKE",
                 "WORKSPACE_MANAGE_ALL",
             ],
+            title="APIKeyCategory",
         ),
     ]
     model_ids: Annotated[
@@ -11992,9 +11938,17 @@ class BillableResource(BaseModel):
         str, Field(description="Unique identifier of the resource", title="Id")
     ]
     kind: Annotated[
-        ResourceKind,
+        Literal[
+            "LOOPS_SAMPLER",
+            "LOOPS_TRAINER",
+            "MODEL_DEPLOYMENT",
+            "TRAINING_JOB",
+            "CHAINLET",
+        ]
+        | str,
         Field(
-            description="Resource kind (MODEL_DEPLOYMENT, CHAINLET, TRAINING_JOB, LOOPS_TRAINER, or LOOPS_SAMPLER)"
+            description="Resource kind (MODEL_DEPLOYMENT, CHAINLET, TRAINING_JOB, LOOPS_TRAINER, or LOOPS_SAMPLER)",
+            title="ResourceKind",
         ),
     ]
     name: Annotated[
@@ -12318,15 +12272,19 @@ class Route(BaseModel):
         ),
     ]
     target: Annotated[
-        RouteTargetBasetenModelAPI
-        | RouteTargetAnthropic
-        | RouteTargetOpenAI
-        | RouteTargetXAI,
-        Field(
-            description="Configured upstream target.",
-            discriminator="type",
-            title="Target",
-        ),
+        Annotated[
+            RouteTargetBasetenModelAPI
+            | RouteTargetAnthropic
+            | RouteTargetOpenAI
+            | RouteTargetXAI,
+            Field(
+                description="Configured upstream target.",
+                discriminator="type",
+                title="Target",
+            ),
+        ]
+        | dict[str, Any],
+        Field(union_mode="left_to_right"),
     ]
     metadata: Annotated[
         ExploreMetadata | None,
@@ -12383,9 +12341,10 @@ class RoutesUsageResponse(BaseModel):
 
 class RouteHarnessModel(BaseModel):
     source: Annotated[
-        RouteHarnessModelSource,
+        Literal["team", "baseten"] | str,
         Field(
-            description="Who chose this role's route: `team` if a team admin set it, or `baseten` if it is Baseten's default, chosen from the team's Model API routes."
+            description="Who chose this role's route: `team` if a team admin set it, or `baseten` if it is Baseten's default, chosen from the team's Model API routes.",
+            title="RouteHarnessModelSource",
         ),
     ]
     route: Annotated[Route, Field(description="Route to use for this role.")]
@@ -12426,15 +12385,31 @@ class UpdateRouteHarnessConfigRequest(
     ]
 ):
     root: Annotated[
-        UpdateClaudeCodeHarnessConfig
-        | UpdateOpenCodeHarnessConfig
-        | UpdateCodexHarnessConfig,
-        Field(discriminator="harness", title="UpdateRouteHarnessConfigRequestV1"),
+        Annotated[
+            UpdateClaudeCodeHarnessConfig
+            | UpdateOpenCodeHarnessConfig
+            | UpdateCodexHarnessConfig,
+            Field(discriminator="harness", title="UpdateRouteHarnessConfigRequestV1"),
+        ]
+        | dict[str, Any],
+        Field(union_mode="left_to_right"),
     ]
 
 
 class EndpointTarget(BaseModel):
-    provider: Annotated[GatewayProvider, Field(description="Upstream provider.")]
+    provider: Annotated[
+        Literal[
+            "ANTHROPIC",
+            "OPENAI",
+            "XAI",
+            "BASETEN",
+            "BASETEN_MODEL_API",
+            "VERTEX",
+            "OPENAI_COMPATIBLE",
+        ]
+        | str,
+        Field(description="Upstream provider.", title="GatewayProvider"),
+    ]
     secret_id: Annotated[
         str | None, Field(description="Referenced secret, if any.", title="Secret Id")
     ] = None
@@ -12477,8 +12452,11 @@ class Endpoint(BaseModel):
         ),
     ]
     region: Annotated[
-        SharedEndpointRegion,
-        Field(description="Region this endpoint's routing serves."),
+        Literal["UNRESTRICTED", "EU"] | str,
+        Field(
+            description="Region this endpoint's routing serves.",
+            title="SharedEndpointRegionV1",
+        ),
     ]
     created_at: Annotated[
         AwareDatetime, Field(description="Creation time, ISO 8601.", title="Created At")
@@ -12507,12 +12485,27 @@ class EndpointsResponse(BaseModel):
 
 class EffectiveUsageLimit(BaseModel):
     type: Annotated[
-        LimitType,
-        Field(description="The type of the usage limit", examples=["REQUEST", "TOKEN"]),
+        Literal[
+            "REQUEST",
+            "TOKEN",
+            "CONCURRENT_REQUEST",
+            "UNCACHED_INPUT_TOKEN",
+            "OUTPUT_TOKEN",
+        ]
+        | str,
+        Field(
+            description="The type of the usage limit",
+            examples=["REQUEST", "TOKEN"],
+            title="LimitTypeV1",
+        ),
     ]
     unit: Annotated[
-        UsageLimitUnit,
-        Field(description="The unit of the usage limit", examples=["DAY"]),
+        Literal["DAY"] | str,
+        Field(
+            description="The unit of the usage limit",
+            examples=["DAY"],
+            title="UsageLimitUnitV1",
+        ),
     ]
     threshold: Annotated[
         int,
@@ -12535,7 +12528,8 @@ class EffectiveUsageLimit(BaseModel):
 
 class GroupHierarchy(BaseModel):
     limit_enforcement: Annotated[
-        LimitEnforcement, Field(examples=["CASCADING", "INDEPENDENT"])
+        Literal["CASCADING", "INDEPENDENT"] | str,
+        Field(examples=["CASCADING", "INDEPENDENT"], title="LimitEnforcementV1"),
     ]
     parent_group_id: Annotated[
         str | None, Field(examples=["abc123"], title="Parent Group Id")
@@ -12580,24 +12574,6 @@ class UpdateGroupRequest(BaseModel):
             description="Per-model rate and usage limit configuration.", title="Models"
         ),
     ] = None
-
-
-class SandboxExpirationPolicy(
-    RootModel[
-        SandboxTTLIdleExpirationPolicy
-        | SandboxTTLMaxAgeExpirationPolicy
-        | SandboxDateExpirationPolicy
-    ]
-):
-    root: Annotated[
-        SandboxTTLIdleExpirationPolicy
-        | SandboxTTLMaxAgeExpirationPolicy
-        | SandboxDateExpirationPolicy,
-        Field(
-            description="Expiration policy. The type determines whether value is a duration or an absolute timestamp.",
-            discriminator="type",
-        ),
-    ]
 
 
 class SandboxProxyConfig(BaseModel):
@@ -12647,16 +12623,6 @@ class SandboxProxyConfig(BaseModel):
     ] = None
 
 
-class SandboxPorts(RootModel[list[SandboxPort]]):
-    root: Annotated[
-        list[SandboxPort],
-        Field(
-            description="Set of ports for a resource",
-            examples=[[{"name": "http", "protocol": "HTTP", "target": 3000}]],
-        ),
-    ]
-
-
 class ListImagesResponse(BaseModel):
     items: Annotated[list[Image], Field(description="Image repositories on this page.")]
     pagination: SandboxApiPagination
@@ -12701,7 +12667,13 @@ class SandboxLibraryImage(BaseModel):
             description="Recommended memory allocation in megabytes.", examples=[4096]
         ),
     ] = None
-    ports: SandboxPorts | None = None
+    ports: Annotated[
+        list[SandboxPort] | None,
+        Field(
+            description="Set of ports for a resource",
+            examples=[[{"name": "http", "protocol": "HTTP", "target": 3000}]],
+        ),
+    ] = None
     categories: Annotated[
         list[str] | None, Field(description="Categories of the image.")
     ] = None
@@ -12749,67 +12721,126 @@ class AuditLogEntry(BaseModel):
         ),
     ]
     event_type: Annotated[
-        AuditLogEventType, Field(description="Type of action that was recorded.")
-    ]
-    event_data: Annotated[
-        AuditLogEventModelDeployed
-        | AuditLogEventModelDeploymentActivated
-        | AuditLogEventModelDeploymentDeactivated
-        | AuditLogEventModelDeploymentRetried
-        | AuditLogEventModelDeploymentPromoted
-        | AuditLogEventModelDeploymentAutoscalingSettingsChanged
-        | AuditLogEventModelDeploymentRequestBackpressureSettingsChanged
-        | AuditLogEventModelDeploymentInstanceTypeChanged
-        | AuditLogEventModelDeploymentDeleted
-        | AuditLogEventModelDeleted
-        | AuditLogEventModelRenamed
-        | AuditLogEventChainDeployed
-        | AuditLogEventChainDeploymentActivated
-        | AuditLogEventChainDeploymentDeactivated
-        | AuditLogEventChainDeploymentPromoted
-        | AuditLogEventChainletAutoscalingSettingsChanged
-        | AuditLogEventChainletInstanceTypeChanged
-        | AuditLogEventChainDeploymentDeleted
-        | AuditLogEventChainDeleted
-        | AuditLogEventChainEnvironmentCreated
-        | AuditLogEventChainEnvironmentUpdated
-        | AuditLogEventSecretUpdated
-        | AuditLogEventSecretDeleted
-        | AuditLogEventApiKeyCreated
-        | AuditLogEventApiKeyDeleted
-        | AuditLogEventGatewayEndpointCreated
-        | AuditLogEventGatewayEndpointUpdated
-        | AuditLogEventGatewayEndpointDeleted
-        | AuditLogEventProviderConnectionCreated
-        | AuditLogEventProviderConnectionUpdated
-        | AuditLogEventProviderConnectionDeleted
-        | AuditLogEventUserInvited
-        | AuditLogEventUserJoinedOrganization
-        | AuditLogEventWebhookSigningSecretCreated
-        | AuditLogEventWebhookSigningSecretRotated
-        | AuditLogEventWebhookSigningSecretDeleted
-        | AuditLogEventUserRoleUpdated
-        | AuditLogEventUserTeamRoleUpdated
-        | AuditLogEventUserRemoved
-        | AuditLogEventDirectoryGroupRoleUpdated
-        | AuditLogEventRequireGroupBasedAdminsEnabled
-        | AuditLogEventEnvironmentCreated
-        | AuditLogEventEnvironmentUpdated
-        | AuditLogEventEnvironmentDeleted
-        | AuditLogEventReplicaTerminated
-        | AuditLogEventModelPromotionControlAction
-        | AuditLogEventSshCertificateSigned
-        | AuditLogEventVolumeDeleted
-        | AuditLogEventVolumeVersionDeleted
-        | AuditLogEventVolumeVersionRestored,
+        Literal[
+            "MODEL_DEPLOYED",
+            "MODEL_DEPLOYMENT_ACTIVATED",
+            "MODEL_DEPLOYMENT_DEACTIVATED",
+            "MODEL_DEPLOYMENT_RETRIED",
+            "MODEL_DEPLOYMENT_PROMOTED",
+            "MODEL_DEPLOYMENT_AUTOSCALING_SETTINGS_CHANGED",
+            "MODEL_DEPLOYMENT_REQUEST_BACKPRESSURE_SETTINGS_CHANGED",
+            "MODEL_DEPLOYMENT_INSTANCE_TYPE_CHANGED",
+            "MODEL_DEPLOYMENT_DELETED",
+            "MODEL_DELETED",
+            "MODEL_RENAMED",
+            "CHAIN_DEPLOYED",
+            "CHAIN_DEPLOYMENT_ACTIVATED",
+            "CHAIN_DEPLOYMENT_DEACTIVATED",
+            "CHAIN_DEPLOYMENT_PROMOTED",
+            "CHAINLET_AUTOSCALING_SETTINGS_CHANGED",
+            "CHAINLET_INSTANCE_TYPE_CHANGED",
+            "CHAIN_DEPLOYMENT_DELETED",
+            "CHAIN_DELETED",
+            "CHAIN_ENVIRONMENT_CREATED",
+            "CHAIN_ENVIRONMENT_UPDATED",
+            "SECRET_UPDATED",
+            "SECRET_DELETED",
+            "API_KEY_CREATED",
+            "API_KEY_DELETED",
+            "GATEWAY_ENDPOINT_CREATED",
+            "GATEWAY_ENDPOINT_UPDATED",
+            "GATEWAY_ENDPOINT_DELETED",
+            "PROVIDER_CONNECTION_CREATED",
+            "PROVIDER_CONNECTION_UPDATED",
+            "PROVIDER_CONNECTION_DELETED",
+            "USER_INVITED",
+            "USER_JOINED_ORGANIZATION",
+            "WEBHOOK_SIGNING_SECRET_CREATED",
+            "WEBHOOK_SIGNING_SECRET_ROTATED",
+            "WEBHOOK_SIGNING_SECRET_DELETED",
+            "USER_ROLE_UPDATED",
+            "USER_TEAM_ROLE_UPDATED",
+            "USER_REMOVED",
+            "DIRECTORY_GROUP_ROLE_UPDATED",
+            "REQUIRE_GROUP_BASED_ADMINS_ENABLED",
+            "ENVIRONMENT_CREATED",
+            "ENVIRONMENT_UPDATED",
+            "ENVIRONMENT_DELETED",
+            "REPLICA_TERMINATED",
+            "MODEL_PROMOTION_CONTROL_ACTION",
+            "SSH_CERTIFICATE_SIGNED",
+            "VOLUME_DELETED",
+            "VOLUME_VERSION_DELETED",
+            "VOLUME_VERSION_RESTORED",
+        ]
+        | str,
         Field(
-            description="Structured details of the action, discriminated by `event_type`.",
-            discriminator="event_type",
-            title="Event Data",
+            description="Type of action that was recorded.", title="AuditLogEventTypeV1"
         ),
     ]
+    event_data: Annotated[
+        Annotated[
+            AuditLogEventModelDeployed
+            | AuditLogEventModelDeploymentActivated
+            | AuditLogEventModelDeploymentDeactivated
+            | AuditLogEventModelDeploymentRetried
+            | AuditLogEventModelDeploymentPromoted
+            | AuditLogEventModelDeploymentAutoscalingSettingsChanged
+            | AuditLogEventModelDeploymentRequestBackpressureSettingsChanged
+            | AuditLogEventModelDeploymentInstanceTypeChanged
+            | AuditLogEventModelDeploymentDeleted
+            | AuditLogEventModelDeleted
+            | AuditLogEventModelRenamed
+            | AuditLogEventChainDeployed
+            | AuditLogEventChainDeploymentActivated
+            | AuditLogEventChainDeploymentDeactivated
+            | AuditLogEventChainDeploymentPromoted
+            | AuditLogEventChainletAutoscalingSettingsChanged
+            | AuditLogEventChainletInstanceTypeChanged
+            | AuditLogEventChainDeploymentDeleted
+            | AuditLogEventChainDeleted
+            | AuditLogEventChainEnvironmentCreated
+            | AuditLogEventChainEnvironmentUpdated
+            | AuditLogEventSecretUpdated
+            | AuditLogEventSecretDeleted
+            | AuditLogEventApiKeyCreated
+            | AuditLogEventApiKeyDeleted
+            | AuditLogEventGatewayEndpointCreated
+            | AuditLogEventGatewayEndpointUpdated
+            | AuditLogEventGatewayEndpointDeleted
+            | AuditLogEventProviderConnectionCreated
+            | AuditLogEventProviderConnectionUpdated
+            | AuditLogEventProviderConnectionDeleted
+            | AuditLogEventUserInvited
+            | AuditLogEventUserJoinedOrganization
+            | AuditLogEventWebhookSigningSecretCreated
+            | AuditLogEventWebhookSigningSecretRotated
+            | AuditLogEventWebhookSigningSecretDeleted
+            | AuditLogEventUserRoleUpdated
+            | AuditLogEventUserTeamRoleUpdated
+            | AuditLogEventUserRemoved
+            | AuditLogEventDirectoryGroupRoleUpdated
+            | AuditLogEventRequireGroupBasedAdminsEnabled
+            | AuditLogEventEnvironmentCreated
+            | AuditLogEventEnvironmentUpdated
+            | AuditLogEventEnvironmentDeleted
+            | AuditLogEventReplicaTerminated
+            | AuditLogEventModelPromotionControlAction
+            | AuditLogEventSshCertificateSigned
+            | AuditLogEventVolumeDeleted
+            | AuditLogEventVolumeVersionDeleted
+            | AuditLogEventVolumeVersionRestored,
+            Field(
+                description="Structured details of the action, discriminated by `event_type`.",
+                discriminator="event_type",
+                title="Event Data",
+            ),
+        ]
+        | dict[str, Any],
+        Field(union_mode="left_to_right"),
+    ]
     source: Annotated[
-        AuditLogSource | None,
+        Literal["UI", "API", "MCP", "SYSTEM", "OTHER"] | str | None,
         Field(description="Surface that issued the action, if known."),
     ] = None
     actor: Annotated[
@@ -12865,12 +12896,12 @@ class PromotionSettings(BaseModel):
         ),
     ] = False
     promotion_cleanup_strategy: Annotated[
-        PromotionCleanupStrategy | None,
+        Literal["KEEP", "SCALE_TO_ZERO", "DEACTIVATE"] | str | None,
         Field(
             description="The cleanup strategy to use after a promotion completes.",
             examples=["SCALE_TO_ZERO"],
         ),
-    ] = PromotionCleanupStrategy.SCALE_TO_ZERO
+    ] = "SCALE_TO_ZERO"
     rolling_deploy_config: Annotated[
         RollingDeployConfig | None,
         Field(description="Rolling deploy configuration for promotions"),
@@ -12936,7 +12967,15 @@ class DockerAuth(BaseModel):
         str, Field(description="Registry to authenticate with", title="Registry")
     ]
     auth_method: Annotated[
-        DockerAuthType,
+        Literal[
+            "GCP_SERVICE_ACCOUNT_JSON",
+            "AWS_IAM",
+            "AWS_OIDC",
+            "GCP_OIDC",
+            "REGISTRY_SECRET",
+            "AWS_ASSUME_ROLE",
+        ]
+        | str,
         Field(
             description="Method to authenticate with the registry",
             examples=[
@@ -12947,6 +12986,7 @@ class DockerAuth(BaseModel):
                 "REGISTRY_SECRET",
                 "AWS_ASSUME_ROLE",
             ],
+            title="DockerAuthType",
         ),
     ]
     gcp_service_account_json_docker_auth: Annotated[
@@ -13053,14 +13093,14 @@ class GetLoopsDeploymentMetricsResponse(BaseModel):
 
 class RouteHarnessConfig(BaseModel):
     models: Annotated[
-        dict[RouteHarnessRole, RouteHarnessModel],
+        dict[Literal["primary", "background"] | str, RouteHarnessModel],
         Field(description="Route for each model role, keyed by role.", title="Models"),
     ]
 
 
 class RouteHarnessConfigsResponse(BaseModel):
     harness_configs: Annotated[
-        dict[RouteHarness, RouteHarnessConfig],
+        dict[Literal["claude-code", "opencode", "codex"] | str, RouteHarnessConfig],
         Field(
             description="Default models for each harness, keyed by harness. A harness is omitted when none of its roles has a route.",
             title="Harness Configs",
@@ -13112,7 +13152,19 @@ class GroupsResponse(BaseModel):
 
 class SandboxLifecycle(BaseModel):
     expiration_policies: Annotated[
-        list[SandboxExpirationPolicy] | None,
+        list[
+            Annotated[
+                Annotated[
+                    SandboxTTLIdleExpirationPolicy
+                    | SandboxTTLMaxAgeExpirationPolicy
+                    | SandboxDateExpirationPolicy,
+                    Field(discriminator="type"),
+                ]
+                | dict[str, Any],
+                Field(union_mode="left_to_right"),
+            ]
+        ]
+        | None,
         Field(
             description="List of expiration policies. Multiple policies can be combined; whichever condition is met first triggers the action.",
             examples=[
@@ -13273,7 +13325,7 @@ class SandboxConfiguration(BaseModel):
         ),
     ] = None
     ports: Annotated[
-        SandboxPorts | None,
+        list[SandboxPort] | None,
         Field(
             description="Set of ports for a resource",
             examples=[[{"name": "http", "protocol": "HTTP", "target": 3000}]],
@@ -13289,7 +13341,7 @@ class SandboxConfiguration(BaseModel):
         ),
     ] = None
     labels: Annotated[
-        SandboxMetadataLabels | None,
+        dict[str, str] | None,
         Field(
             description="Key-value pairs for organizing and filtering resources. Labels can be used to categorize resources by environment, project, team, or any custom taxonomy.",
             examples=[
@@ -13402,7 +13454,7 @@ class CreateSandboxRequest(BaseModel):
         ),
     ] = 4096
     ports: Annotated[
-        SandboxPorts | None,
+        list[SandboxPort] | None,
         Field(
             description="Set of ports for a resource",
             examples=[[{"name": "http", "protocol": "HTTP", "target": 3000}]],
@@ -13418,7 +13470,7 @@ class CreateSandboxRequest(BaseModel):
         ),
     ] = None
     labels: Annotated[
-        SandboxMetadataLabels | None,
+        dict[str, str] | None,
         Field(
             description="Key-value pairs for organizing and filtering resources. Labels can be used to categorize resources by environment, project, team, or any custom taxonomy.",
             examples=[
@@ -13483,7 +13535,7 @@ class UpdateSandboxRequest(BaseModel):
         ),
     ] = None
     ports: Annotated[
-        SandboxPorts | None,
+        list[SandboxPort] | None,
         Field(
             description="Set of ports for a resource",
             examples=[[{"name": "http", "protocol": "HTTP", "target": 3000}]],
@@ -13499,7 +13551,7 @@ class UpdateSandboxRequest(BaseModel):
         ),
     ] = None
     labels: Annotated[
-        SandboxMetadataLabels | None,
+        dict[str, str] | None,
         Field(
             description="Key-value pairs for organizing and filtering resources. Labels can be used to categorize resources by environment, project, team, or any custom taxonomy.",
             examples=[
@@ -13530,7 +13582,21 @@ class Sandbox(SandboxConfiguration):
         ),
     ]
     status: Annotated[
-        SandboxStatus,
+        Literal[
+            "DEPLOYING",
+            "DEPLOYED",
+            "FAILED",
+            "DEACTIVATING",
+            "DEACTIVATED",
+            "DELETING",
+            "TERMINATED",
+            "ARCHIVING",
+            "ARCHIVED",
+            "UNARCHIVING",
+            "BUILDING",
+            "UPLOADING",
+        ]
+        | str,
         Field(description="Sandbox deployment status.", examples=["DEPLOYED"]),
     ]
     created_at: Annotated[
@@ -13732,10 +13798,11 @@ class UpdateEnvironmentResponse(BaseModel):
         ),
     ]
     status: Annotated[
-        UpdateAutoscalingSettingsStatus,
+        Literal["ACCEPTED", "QUEUED", "UNCHANGED"] | str,
         Field(
             deprecated=True,
             description="Deprecated. Kept for legacy autoscaling-only update operation behavior.",
+            title="UpdateAutoscalingSettingsStatusV1",
         ),
     ]
     message: Annotated[

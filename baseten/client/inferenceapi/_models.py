@@ -3,8 +3,7 @@
 
 from __future__ import annotations
 
-from enum import StrEnum
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import AnyUrl, BaseModel, Field, RootModel
 
@@ -27,51 +26,22 @@ class InferenceRetryConfig(BaseModel):
     ] = 5000
 
 
-class Status(StrEnum):
-    QUEUED = "QUEUED"
-    IN_PROGRESS = "IN_PROGRESS"
-    SUCCEEDED = "SUCCEEDED"
-    FAILED = "FAILED"
-    EXPIRED = "EXPIRED"
-    CANCELED = "CANCELED"
-    WEBHOOK_FAILED = "WEBHOOK_FAILED"
-
-
-class WebhookStatus(StrEnum):
-    PENDING = "PENDING"
-    SUCCEEDED = "SUCCEEDED"
-    FAILED = "FAILED"
-    CANCELED = "CANCELED"
-    NO_WEBHOOK_PROVIDED = "NO_WEBHOOK_PROVIDED"
-
-
-class Code(StrEnum):
-    MODEL_PREDICT_ERROR = "MODEL_PREDICT_ERROR"
-    MODEL_PREDICT_TIMEOUT = "MODEL_PREDICT_TIMEOUT"
-    MODEL_NOT_READY = "MODEL_NOT_READY"
-    MODEL_DOES_NOT_EXIST = "MODEL_DOES_NOT_EXIST"
-    MODEL_UNAVAILABLE = "MODEL_UNAVAILABLE"
-    MODEL_INVALID_INPUT = "MODEL_INVALID_INPUT"
-    ASYNC_REQUEST_NOT_SUPPORTED = "ASYNC_REQUEST_NOT_SUPPORTED"
-    INTERNAL_SERVER_ERROR = "INTERNAL_SERVER_ERROR"
-
-
 class AsyncRequestError(BaseModel):
-    code: Annotated[Code, Field(description="The type of error that occurred.")]
+    code: Annotated[
+        Literal[
+            "MODEL_PREDICT_ERROR",
+            "MODEL_PREDICT_TIMEOUT",
+            "MODEL_NOT_READY",
+            "MODEL_DOES_NOT_EXIST",
+            "MODEL_UNAVAILABLE",
+            "MODEL_INVALID_INPUT",
+            "ASYNC_REQUEST_NOT_SUPPORTED",
+            "INTERNAL_SERVER_ERROR",
+        ]
+        | str,
+        Field(description="The type of error that occurred."),
+    ]
     message: Annotated[str, Field(description="Details of the error.")]
-
-
-class ErrorCode(StrEnum):
-    timeout = "timeout"
-    client_error = "client_error"
-    model_unavailable = "model_unavailable"
-    model_not_ready = "model_not_ready"
-    model_does_not_exist = "model_does_not_exist"
-    rate_limited = "rate_limited"
-    payload_too_large = "payload_too_large"
-    unauthorized = "unauthorized"
-    application_error = "application_error"
-    internal_baseten_error = "internal_baseten_error"
 
 
 class ErrorResponse(BaseModel):
@@ -79,7 +49,21 @@ class ErrorResponse(BaseModel):
         None
     )
     error_code: Annotated[
-        ErrorCode | None, Field(description="Machine-readable error code.")
+        Literal[
+            "timeout",
+            "client_error",
+            "model_unavailable",
+            "model_not_ready",
+            "model_does_not_exist",
+            "rate_limited",
+            "payload_too_large",
+            "unauthorized",
+            "application_error",
+            "internal_baseten_error",
+        ]
+        | str
+        | None,
+        Field(description="Machine-readable error code."),
     ] = None
     detail: Annotated[
         str | None, Field(description="Additional error details, if available.")
@@ -182,9 +166,22 @@ class AsyncRequestStatusResponse(BaseModel):
     deployment_id: Annotated[
         str, Field(description="The ID of the deployment that executed the request.")
     ]
-    status: Annotated[Status, Field(description="The status of the async request.")]
+    status: Annotated[
+        Literal[
+            "QUEUED",
+            "IN_PROGRESS",
+            "SUCCEEDED",
+            "FAILED",
+            "EXPIRED",
+            "CANCELED",
+            "WEBHOOK_FAILED",
+        ]
+        | str,
+        Field(description="The status of the async request."),
+    ]
     webhook_status: Annotated[
-        WebhookStatus,
+        Literal["PENDING", "SUCCEEDED", "FAILED", "CANCELED", "NO_WEBHOOK_PROVIDED"]
+        | str,
         Field(
             description="The status of sending the prediction result to the provided webhook."
         ),
