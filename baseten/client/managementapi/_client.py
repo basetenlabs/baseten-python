@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import urllib.parse
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, TypeVar
 
@@ -23,7 +24,7 @@ from ._models import (
     Chains,
     ChainTombstone,
     CleanupImagesParams,
-    CleanupImagesResponse,
+    CleanupSandboxImagesResponse,
     CreateApiKeyForGroupRequest,
     CreateApiKeyForGroupResponse,
     CreateAPIKeyRequest,
@@ -45,6 +46,7 @@ from ._models import (
     CreateLoopsSessionResponse,
     CreateModelDeploymentRequest,
     CreateModelRequest,
+    CreateRouteConnectionRequest,
     CreateRouteRequest,
     CreateSandboxParams,
     CreateSandboxRequest,
@@ -60,7 +62,6 @@ from ._models import (
     DeactivateResponse,
     DeleteImageParams,
     DeleteImageTagParams,
-    DeleteRoutesHarnessConfigsParams,
     DeleteSandboxParams,
     DeleteVolumeRequest,
     DeleteVolumeResponse,
@@ -129,9 +130,12 @@ from ._models import (
     GetModelsEnvironmentsLogsParams,
     GetModelsEnvironmentsMetricsParams,
     GetModelsParams,
-    GetRoutesHarnessConfigsParams,
+    GetRoutesConnectionsParams,
     GetRoutesParams,
     GetRoutesUsageParams,
+    GetSandboxConfigurationResponse,
+    GetSandboxLogsParams,
+    GetSandboxMetricsParams,
     GetSandboxParams,
     GetTeamsLoopsRunsParams,
     GetTeamsLoopsSamplersParams,
@@ -156,8 +160,6 @@ from ._models import (
     GetVolumesVersionsParams,
     Group,
     GroupsResponse,
-    Image,
-    ImageBuildLogsResponse,
     InstanceTypePrices,
     InstanceTypes,
     KeysForGroupResponse,
@@ -169,16 +171,15 @@ from ._models import (
     LibraryListingVersionTombstone,
     ListAuditLogsResponse,
     ListImagesParams,
-    ListImagesResponse,
     ListImageTagsParams,
-    ListImageTagsResponse,
     ListLoopsCheckpointsResponse,
     ListLoopsDeploymentsResponse,
     ListLoopsRunsResponse,
     ListLoopsSamplersResponse,
     ListSandboxesParams,
     ListSandboxesResponse,
-    ListSandboxLibraryImagesParams,
+    ListSandboxImagesResponse,
+    ListSandboxImageTagsResponse,
     ListSandboxLibraryImagesResponse,
     ListTrainingJobsResponse,
     ListTrainingProjectsResponse,
@@ -209,8 +210,8 @@ from ._models import (
     PromoteToChainEnvironmentRequest,
     PromoteToEnvironmentRequest,
     PushImageParams,
-    PushImageRequest,
-    PushImageResponse,
+    PushSandboxImageRequest,
+    PushSandboxImageResponse,
     RecreateTrainingJobResponse,
     Regions,
     RegisterAPIKeyRequest,
@@ -220,20 +221,24 @@ from ._models import (
     RestoreVolumeVersionResponse,
     RetryDeploymentResponse,
     Route,
-    RouteHarnessConfig,
-    RouteHarnessConfigsResponse,
-    RouteHarnessConfigTombstone,
-    RouteSpendLimit,
+    RouteConnection,
+    RouteConnectionsResponse,
+    RouteConnectionTombstone,
     RoutesResponse,
     RoutesUsageResponse,
+    RouteTeamSettings,
     RouteTombstone,
+    RouteUserSettings,
     Sandbox,
+    SandboxImage,
+    SandboxImageBuildLogsResponse,
+    SandboxLogs,
+    SandboxMetrics,
     SearchTrainingJobsRequest,
     SearchTrainingJobsResponse,
     Secret,
     Secrets,
     SecretTombstone,
-    SetRouteHarnessConfigRequest,
     SignalPromotionResponse,
     SignSSHCertificateRequest,
     SignSSHCertificateResponse,
@@ -265,9 +270,10 @@ from ._models import (
     UpdateLibraryListingVersionRequest,
     UpdateModelRequest,
     UpdateRequestBackpressureSettings,
-    UpdateRouteHarnessConfigRequest,
+    UpdateRouteConnectionRequest,
     UpdateRouteRequest,
-    UpdateRouteSpendLimitRequest,
+    UpdateRouteTeamSettingsRequest,
+    UpdateRouteUserSettingsRequest,
     UpdateSandboxParams,
     UpdateSandboxRequest,
     UpdateTrainingJobRequest,
@@ -319,16 +325,40 @@ class ApiClient:
     They may change without notice between versions.
     """
 
-    def __init__(self, http_client: httpx.Client) -> None:
-        """Create a new client. The caller is responsible for closing *http_client*."""
+    def __init__(
+        self,
+        http_client: httpx.Client,
+        *,
+        base_url: str | None = None,
+        auth: httpx.Auth | None = None,
+        headers: Mapping[str, str] | None = None,
+        timeout: httpx.Timeout | None = None,
+    ) -> None:
+        """Create a new client. The caller is responsible for closing *http_client*.
+
+        The keyword arguments apply to this client's requests only, so one
+        HTTP client can serve several APIs. Each one left ``None`` falls back
+        to the HTTP client's own setting.
+
+        Args:
+            http_client: HTTP client to send requests with.
+            base_url: Base URL that request paths are appended to.
+            auth: Authentication for each request.
+            headers: Headers for each request, added to the HTTP client's own.
+            timeout: Timeouts for each request.
+        """
         self._http_client = http_client
+        self._base_url = base_url
+        self._auth = auth
+        self._headers = headers
+        self._timeout = timeout
 
     def cleanup_images(
         self, *, params: CleanupImagesParams | None = None
-    ) -> CleanupImagesResponse:
+    ) -> CleanupSandboxImagesResponse:
         """Clean up unused images"""
         return self._do_json(
-            CleanupImagesResponse,
+            CleanupSandboxImagesResponse,
             _ApiRequest(
                 method="POST",
                 path_fmt="/v1/sandboxes/cleanup_images",
@@ -424,10 +454,10 @@ class ApiClient:
 
     def delete_image(
         self, *, image_name: str, params: DeleteImageParams | None = None
-    ) -> Image:
+    ) -> SandboxImage:
         """Delete a sandbox image"""
         return self._do_json(
-            Image,
+            SandboxImage,
             _ApiRequest(
                 method="DELETE",
                 path_fmt="/v1/sandboxes/images/{}",
@@ -445,10 +475,10 @@ class ApiClient:
         image_name: str,
         tag_name: str,
         params: DeleteImageTagParams | None = None,
-    ) -> Image:
+    ) -> SandboxImage:
         """Delete an image tag"""
         return self._do_json(
-            Image,
+            SandboxImage,
             _ApiRequest(
                 method="DELETE",
                 path_fmt="/v1/sandboxes/images/{}/tags/{}",
@@ -575,18 +605,18 @@ class ApiClient:
             ),
         )
 
-    def delete_routes_harness_configs(
-        self, *, harness: str, params: DeleteRoutesHarnessConfigsParams
-    ) -> RouteHarnessConfigTombstone:
-        """Clears default models for a coding harness"""
+    def delete_routes_connections(
+        self, *, connection_id: str
+    ) -> RouteConnectionTombstone:
+        """Deletes a connection"""
         return self._do_json(
-            RouteHarnessConfigTombstone,
+            RouteConnectionTombstone,
             _ApiRequest(
                 method="DELETE",
-                path_fmt="/v1/routes/harness-configs/{}",
-                path_args=[harness],
+                path_fmt="/v1/routes/connections/{}",
+                path_args=[connection_id],
                 body=None,
-                query=params,
+                query=None,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -1118,10 +1148,10 @@ class ApiClient:
 
     def get_image(
         self, *, image_name: str, params: GetImageParams | None = None
-    ) -> Image:
+    ) -> SandboxImage:
         """Get a sandbox image"""
         return self._do_json(
-            Image,
+            SandboxImage,
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/sandboxes/images/{}",
@@ -1135,10 +1165,10 @@ class ApiClient:
 
     def get_image_build_logs(
         self, *, image_name: str, params: GetImageBuildLogsParams | None = None
-    ) -> ImageBuildLogsResponse:
+    ) -> SandboxImageBuildLogsResponse:
         """Get image build logs"""
         return self._do_json(
-            ImageBuildLogsResponse,
+            SandboxImageBuildLogsResponse,
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/sandboxes/images/{}/logs",
@@ -1860,15 +1890,15 @@ class ApiClient:
             ),
         )
 
-    def get_routes_harness_configs(
-        self, *, params: GetRoutesHarnessConfigsParams
-    ) -> RouteHarnessConfigsResponse:
-        """Lists default models for coding harnesses"""
+    def get_routes_connections(
+        self, *, params: GetRoutesConnectionsParams | None = None
+    ) -> RouteConnectionsResponse:
+        """Lists connections"""
         return self._do_json(
-            RouteHarnessConfigsResponse,
+            RouteConnectionsResponse,
             _ApiRequest(
                 method="GET",
-                path_fmt="/v1/routes/harness-configs",
+                path_fmt="/v1/routes/connections",
                 path_args=[],
                 body=None,
                 query=params,
@@ -1892,13 +1922,28 @@ class ApiClient:
             ),
         )
 
-    def get_routes_spend_limits(self, *, user_id: str) -> RouteSpendLimit:
-        """Gets a user's spend limits"""
+    def get_routes_settings_teams(self, *, team_id: str) -> RouteTeamSettings:
+        """Gets a team's route settings"""
         return self._do_json(
-            RouteSpendLimit,
+            RouteTeamSettings,
             _ApiRequest(
                 method="GET",
-                path_fmt="/v1/routes/spend_limits/{}",
+                path_fmt="/v1/routes/settings/teams/{}",
+                path_args=[team_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_routes_settings_users(self, *, user_id: str) -> RouteUserSettings:
+        """Gets a user's route settings"""
+        return self._do_json(
+            RouteUserSettings,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/routes/settings/users/{}",
                 path_args=[user_id],
                 body=None,
                 query=None,
@@ -1933,6 +1978,55 @@ class ApiClient:
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/sandboxes/instances/{}",
+                path_args=[sandbox_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_sandbox_configuration(self) -> GetSandboxConfigurationResponse:
+        """Get sandbox configuration"""
+        return self._do_json(
+            GetSandboxConfigurationResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/configuration",
+                path_args=[],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_sandbox_logs(
+        self, *, sandbox_name: str, params: GetSandboxLogsParams
+    ) -> SandboxLogs:
+        """Get sandbox logs"""
+        return self._do_json(
+            SandboxLogs,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/instances/{}/logs",
+                path_args=[sandbox_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_sandbox_metrics(
+        self, *, sandbox_name: str, params: GetSandboxMetricsParams
+    ) -> SandboxMetrics:
+        """Get sandbox metrics"""
+        return self._do_json(
+            SandboxMetrics,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/instances/{}/metrics",
                 path_args=[sandbox_name],
                 body=None,
                 query=params,
@@ -2494,10 +2588,10 @@ class ApiClient:
 
     def list_image_tags(
         self, *, image_name: str, params: ListImageTagsParams | None = None
-    ) -> ListImageTagsResponse:
+    ) -> ListSandboxImageTagsResponse:
         """List image tags"""
         return self._do_json(
-            ListImageTagsResponse,
+            ListSandboxImageTagsResponse,
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/sandboxes/images/{}/tags",
@@ -2511,10 +2605,10 @@ class ApiClient:
 
     def list_images(
         self, *, params: ListImagesParams | None = None
-    ) -> ListImagesResponse:
+    ) -> ListSandboxImagesResponse:
         """List sandbox images"""
         return self._do_json(
-            ListImagesResponse,
+            ListSandboxImagesResponse,
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/sandboxes/images",
@@ -2526,9 +2620,7 @@ class ApiClient:
             ),
         )
 
-    def list_sandbox_library_images(
-        self, *, params: ListSandboxLibraryImagesParams | None = None
-    ) -> ListSandboxLibraryImagesResponse:
+    def list_sandbox_library_images(self) -> ListSandboxLibraryImagesResponse:
         """List built-in sandbox images"""
         return self._do_json(
             ListSandboxLibraryImagesResponse,
@@ -2537,7 +2629,7 @@ class ApiClient:
                 path_fmt="/v1/sandboxes/library_images",
                 path_args=[],
                 body=None,
-                query=params,
+                query=None,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -2826,7 +2918,7 @@ class ApiClient:
         )
 
     def patch_routes(self, *, route_id: str, request: UpdateRouteRequest) -> Route:
-        """Updates a route's display name or description"""
+        """Updates a route"""
         return self._do_json(
             Route,
             _ApiRequest(
@@ -2840,16 +2932,16 @@ class ApiClient:
             ),
         )
 
-    def patch_routes_harness_configs(
-        self, *, request: UpdateRouteHarnessConfigRequest
-    ) -> RouteHarnessConfig:
-        """Updates default models for a coding harness"""
+    def patch_routes_connections(
+        self, *, connection_id: str, request: UpdateRouteConnectionRequest
+    ) -> RouteConnection:
+        """Updates a connection"""
         return self._do_json(
-            RouteHarnessConfig,
+            RouteConnection,
             _ApiRequest(
                 method="PATCH",
-                path_fmt="/v1/routes/harness-configs",
-                path_args=[],
+                path_fmt="/v1/routes/connections/{}",
+                path_args=[connection_id],
                 body=request,
                 query=None,
                 success_codes=[200],
@@ -2857,15 +2949,32 @@ class ApiClient:
             ),
         )
 
-    def patch_routes_spend_limits(
-        self, *, user_id: str, request: UpdateRouteSpendLimitRequest
-    ) -> RouteSpendLimit:
-        """Updates a user's spend limits"""
+    def patch_routes_settings_teams(
+        self, *, team_id: str, request: UpdateRouteTeamSettingsRequest
+    ) -> RouteTeamSettings:
+        """Updates a team's route settings"""
         return self._do_json(
-            RouteSpendLimit,
+            RouteTeamSettings,
             _ApiRequest(
                 method="PATCH",
-                path_fmt="/v1/routes/spend_limits/{}",
+                path_fmt="/v1/routes/settings/teams/{}",
+                path_args=[team_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def patch_routes_settings_users(
+        self, *, user_id: str, request: UpdateRouteUserSettingsRequest
+    ) -> RouteUserSettings:
+        """Updates a user's route settings"""
+        return self._do_json(
+            RouteUserSettings,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/routes/settings/users/{}",
                 path_args=[user_id],
                 body=request,
                 query=None,
@@ -3817,6 +3926,23 @@ class ApiClient:
             ),
         )
 
+    def post_routes_connections(
+        self, *, request: CreateRouteConnectionRequest
+    ) -> RouteConnection:
+        """Creates a connection"""
+        return self._do_json(
+            RouteConnection,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/routes/connections",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     def post_secrets(self, *, request: UpsertSecretRequest) -> Secret:
         """Upserts a secret"""
         return self._do_json(
@@ -4220,11 +4346,11 @@ class ApiClient:
         )
 
     def push_image(
-        self, *, params: PushImageParams | None = None, request: PushImageRequest
-    ) -> PushImageResponse:
+        self, *, params: PushImageParams | None = None, request: PushSandboxImageRequest
+    ) -> PushSandboxImageResponse:
         """Push a sandbox image"""
         return self._do_json(
-            PushImageResponse,
+            PushSandboxImageResponse,
             _ApiRequest(
                 method="POST",
                 path_fmt="/v1/sandboxes/images",
@@ -4232,23 +4358,6 @@ class ApiClient:
                 body=request,
                 query=params,
                 success_codes=[202],
-                error_codes=None,
-            ),
-        )
-
-    def put_routes_harness_configs(
-        self, *, request: SetRouteHarnessConfigRequest
-    ) -> RouteHarnessConfig:
-        """Sets default models for a coding harness"""
-        return self._do_json(
-            RouteHarnessConfig,
-            _ApiRequest(
-                method="PUT",
-                path_fmt="/v1/routes/harness-configs",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
                 error_codes=None,
             ),
         )
@@ -4281,7 +4390,7 @@ class ApiClient:
         json_body = None
         content_body = None
         files_body = None
-        headers: dict[str, str] = {}
+        headers: dict[str, str] = {**(self._headers or {})}
         if request.accept is not None:
             headers["Accept"] = request.accept
         if request.body is not None:
@@ -4315,16 +4424,22 @@ class ApiClient:
                 params = request.query
         return self._http_client.build_request(
             request.method,
-            path,
+            path if self._base_url is None else self._base_url.rstrip("/") + path,
             json=json_body,
             content=content_body,
             files=files_body,
             params=params,
             headers=headers,
+            timeout=httpx.USE_CLIENT_DEFAULT
+            if self._timeout is None
+            else self._timeout,
         )
 
     def _do(self, request: _ApiRequest) -> httpx.Response:
-        response = self._http_client.send(self._build_request(request))
+        response = self._http_client.send(
+            self._build_request(request),
+            auth=httpx.USE_CLIENT_DEFAULT if self._auth is None else self._auth,
+        )
         if response.status_code not in request.success_codes:
             raise ResponseError(status_code=response.status_code, body=response.text)
         return response
@@ -4347,16 +4462,40 @@ class AsyncApiClient:
     They may change without notice between versions.
     """
 
-    def __init__(self, http_client: httpx.AsyncClient) -> None:
-        """Create a new client. The caller is responsible for closing *http_client*."""
+    def __init__(
+        self,
+        http_client: httpx.AsyncClient,
+        *,
+        base_url: str | None = None,
+        auth: httpx.Auth | None = None,
+        headers: Mapping[str, str] | None = None,
+        timeout: httpx.Timeout | None = None,
+    ) -> None:
+        """Create a new client. The caller is responsible for closing *http_client*.
+
+        The keyword arguments apply to this client's requests only, so one
+        HTTP client can serve several APIs. Each one left ``None`` falls back
+        to the HTTP client's own setting.
+
+        Args:
+            http_client: HTTP client to send requests with.
+            base_url: Base URL that request paths are appended to.
+            auth: Authentication for each request.
+            headers: Headers for each request, added to the HTTP client's own.
+            timeout: Timeouts for each request.
+        """
         self._http_client = http_client
+        self._base_url = base_url
+        self._auth = auth
+        self._headers = headers
+        self._timeout = timeout
 
     async def cleanup_images(
         self, *, params: CleanupImagesParams | None = None
-    ) -> CleanupImagesResponse:
+    ) -> CleanupSandboxImagesResponse:
         """Clean up unused images"""
         return await self._do_json(
-            CleanupImagesResponse,
+            CleanupSandboxImagesResponse,
             _ApiRequest(
                 method="POST",
                 path_fmt="/v1/sandboxes/cleanup_images",
@@ -4452,10 +4591,10 @@ class AsyncApiClient:
 
     async def delete_image(
         self, *, image_name: str, params: DeleteImageParams | None = None
-    ) -> Image:
+    ) -> SandboxImage:
         """Delete a sandbox image"""
         return await self._do_json(
-            Image,
+            SandboxImage,
             _ApiRequest(
                 method="DELETE",
                 path_fmt="/v1/sandboxes/images/{}",
@@ -4473,10 +4612,10 @@ class AsyncApiClient:
         image_name: str,
         tag_name: str,
         params: DeleteImageTagParams | None = None,
-    ) -> Image:
+    ) -> SandboxImage:
         """Delete an image tag"""
         return await self._do_json(
-            Image,
+            SandboxImage,
             _ApiRequest(
                 method="DELETE",
                 path_fmt="/v1/sandboxes/images/{}/tags/{}",
@@ -4603,18 +4742,18 @@ class AsyncApiClient:
             ),
         )
 
-    async def delete_routes_harness_configs(
-        self, *, harness: str, params: DeleteRoutesHarnessConfigsParams
-    ) -> RouteHarnessConfigTombstone:
-        """Clears default models for a coding harness"""
+    async def delete_routes_connections(
+        self, *, connection_id: str
+    ) -> RouteConnectionTombstone:
+        """Deletes a connection"""
         return await self._do_json(
-            RouteHarnessConfigTombstone,
+            RouteConnectionTombstone,
             _ApiRequest(
                 method="DELETE",
-                path_fmt="/v1/routes/harness-configs/{}",
-                path_args=[harness],
+                path_fmt="/v1/routes/connections/{}",
+                path_args=[connection_id],
                 body=None,
-                query=params,
+                query=None,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -5150,10 +5289,10 @@ class AsyncApiClient:
 
     async def get_image(
         self, *, image_name: str, params: GetImageParams | None = None
-    ) -> Image:
+    ) -> SandboxImage:
         """Get a sandbox image"""
         return await self._do_json(
-            Image,
+            SandboxImage,
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/sandboxes/images/{}",
@@ -5167,10 +5306,10 @@ class AsyncApiClient:
 
     async def get_image_build_logs(
         self, *, image_name: str, params: GetImageBuildLogsParams | None = None
-    ) -> ImageBuildLogsResponse:
+    ) -> SandboxImageBuildLogsResponse:
         """Get image build logs"""
         return await self._do_json(
-            ImageBuildLogsResponse,
+            SandboxImageBuildLogsResponse,
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/sandboxes/images/{}/logs",
@@ -5894,15 +6033,15 @@ class AsyncApiClient:
             ),
         )
 
-    async def get_routes_harness_configs(
-        self, *, params: GetRoutesHarnessConfigsParams
-    ) -> RouteHarnessConfigsResponse:
-        """Lists default models for coding harnesses"""
+    async def get_routes_connections(
+        self, *, params: GetRoutesConnectionsParams | None = None
+    ) -> RouteConnectionsResponse:
+        """Lists connections"""
         return await self._do_json(
-            RouteHarnessConfigsResponse,
+            RouteConnectionsResponse,
             _ApiRequest(
                 method="GET",
-                path_fmt="/v1/routes/harness-configs",
+                path_fmt="/v1/routes/connections",
                 path_args=[],
                 body=None,
                 query=params,
@@ -5926,13 +6065,28 @@ class AsyncApiClient:
             ),
         )
 
-    async def get_routes_spend_limits(self, *, user_id: str) -> RouteSpendLimit:
-        """Gets a user's spend limits"""
+    async def get_routes_settings_teams(self, *, team_id: str) -> RouteTeamSettings:
+        """Gets a team's route settings"""
         return await self._do_json(
-            RouteSpendLimit,
+            RouteTeamSettings,
             _ApiRequest(
                 method="GET",
-                path_fmt="/v1/routes/spend_limits/{}",
+                path_fmt="/v1/routes/settings/teams/{}",
+                path_args=[team_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_routes_settings_users(self, *, user_id: str) -> RouteUserSettings:
+        """Gets a user's route settings"""
+        return await self._do_json(
+            RouteUserSettings,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/routes/settings/users/{}",
                 path_args=[user_id],
                 body=None,
                 query=None,
@@ -5967,6 +6121,55 @@ class AsyncApiClient:
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/sandboxes/instances/{}",
+                path_args=[sandbox_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_sandbox_configuration(self) -> GetSandboxConfigurationResponse:
+        """Get sandbox configuration"""
+        return await self._do_json(
+            GetSandboxConfigurationResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/configuration",
+                path_args=[],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_sandbox_logs(
+        self, *, sandbox_name: str, params: GetSandboxLogsParams
+    ) -> SandboxLogs:
+        """Get sandbox logs"""
+        return await self._do_json(
+            SandboxLogs,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/instances/{}/logs",
+                path_args=[sandbox_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_sandbox_metrics(
+        self, *, sandbox_name: str, params: GetSandboxMetricsParams
+    ) -> SandboxMetrics:
+        """Get sandbox metrics"""
+        return await self._do_json(
+            SandboxMetrics,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/instances/{}/metrics",
                 path_args=[sandbox_name],
                 body=None,
                 query=params,
@@ -6530,10 +6733,10 @@ class AsyncApiClient:
 
     async def list_image_tags(
         self, *, image_name: str, params: ListImageTagsParams | None = None
-    ) -> ListImageTagsResponse:
+    ) -> ListSandboxImageTagsResponse:
         """List image tags"""
         return await self._do_json(
-            ListImageTagsResponse,
+            ListSandboxImageTagsResponse,
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/sandboxes/images/{}/tags",
@@ -6547,10 +6750,10 @@ class AsyncApiClient:
 
     async def list_images(
         self, *, params: ListImagesParams | None = None
-    ) -> ListImagesResponse:
+    ) -> ListSandboxImagesResponse:
         """List sandbox images"""
         return await self._do_json(
-            ListImagesResponse,
+            ListSandboxImagesResponse,
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/sandboxes/images",
@@ -6562,9 +6765,7 @@ class AsyncApiClient:
             ),
         )
 
-    async def list_sandbox_library_images(
-        self, *, params: ListSandboxLibraryImagesParams | None = None
-    ) -> ListSandboxLibraryImagesResponse:
+    async def list_sandbox_library_images(self) -> ListSandboxLibraryImagesResponse:
         """List built-in sandbox images"""
         return await self._do_json(
             ListSandboxLibraryImagesResponse,
@@ -6573,7 +6774,7 @@ class AsyncApiClient:
                 path_fmt="/v1/sandboxes/library_images",
                 path_args=[],
                 body=None,
-                query=params,
+                query=None,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -6866,7 +7067,7 @@ class AsyncApiClient:
     async def patch_routes(
         self, *, route_id: str, request: UpdateRouteRequest
     ) -> Route:
-        """Updates a route's display name or description"""
+        """Updates a route"""
         return await self._do_json(
             Route,
             _ApiRequest(
@@ -6880,16 +7081,16 @@ class AsyncApiClient:
             ),
         )
 
-    async def patch_routes_harness_configs(
-        self, *, request: UpdateRouteHarnessConfigRequest
-    ) -> RouteHarnessConfig:
-        """Updates default models for a coding harness"""
+    async def patch_routes_connections(
+        self, *, connection_id: str, request: UpdateRouteConnectionRequest
+    ) -> RouteConnection:
+        """Updates a connection"""
         return await self._do_json(
-            RouteHarnessConfig,
+            RouteConnection,
             _ApiRequest(
                 method="PATCH",
-                path_fmt="/v1/routes/harness-configs",
-                path_args=[],
+                path_fmt="/v1/routes/connections/{}",
+                path_args=[connection_id],
                 body=request,
                 query=None,
                 success_codes=[200],
@@ -6897,15 +7098,32 @@ class AsyncApiClient:
             ),
         )
 
-    async def patch_routes_spend_limits(
-        self, *, user_id: str, request: UpdateRouteSpendLimitRequest
-    ) -> RouteSpendLimit:
-        """Updates a user's spend limits"""
+    async def patch_routes_settings_teams(
+        self, *, team_id: str, request: UpdateRouteTeamSettingsRequest
+    ) -> RouteTeamSettings:
+        """Updates a team's route settings"""
         return await self._do_json(
-            RouteSpendLimit,
+            RouteTeamSettings,
             _ApiRequest(
                 method="PATCH",
-                path_fmt="/v1/routes/spend_limits/{}",
+                path_fmt="/v1/routes/settings/teams/{}",
+                path_args=[team_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def patch_routes_settings_users(
+        self, *, user_id: str, request: UpdateRouteUserSettingsRequest
+    ) -> RouteUserSettings:
+        """Updates a user's route settings"""
+        return await self._do_json(
+            RouteUserSettings,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/routes/settings/users/{}",
                 path_args=[user_id],
                 body=request,
                 query=None,
@@ -7865,6 +8083,23 @@ class AsyncApiClient:
             ),
         )
 
+    async def post_routes_connections(
+        self, *, request: CreateRouteConnectionRequest
+    ) -> RouteConnection:
+        """Creates a connection"""
+        return await self._do_json(
+            RouteConnection,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/routes/connections",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     async def post_secrets(self, *, request: UpsertSecretRequest) -> Secret:
         """Upserts a secret"""
         return await self._do_json(
@@ -8272,11 +8507,11 @@ class AsyncApiClient:
         )
 
     async def push_image(
-        self, *, params: PushImageParams | None = None, request: PushImageRequest
-    ) -> PushImageResponse:
+        self, *, params: PushImageParams | None = None, request: PushSandboxImageRequest
+    ) -> PushSandboxImageResponse:
         """Push a sandbox image"""
         return await self._do_json(
-            PushImageResponse,
+            PushSandboxImageResponse,
             _ApiRequest(
                 method="POST",
                 path_fmt="/v1/sandboxes/images",
@@ -8284,23 +8519,6 @@ class AsyncApiClient:
                 body=request,
                 query=params,
                 success_codes=[202],
-                error_codes=None,
-            ),
-        )
-
-    async def put_routes_harness_configs(
-        self, *, request: SetRouteHarnessConfigRequest
-    ) -> RouteHarnessConfig:
-        """Sets default models for a coding harness"""
-        return await self._do_json(
-            RouteHarnessConfig,
-            _ApiRequest(
-                method="PUT",
-                path_fmt="/v1/routes/harness-configs",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
                 error_codes=None,
             ),
         )
@@ -8333,7 +8551,7 @@ class AsyncApiClient:
         json_body = None
         content_body = None
         files_body = None
-        headers: dict[str, str] = {}
+        headers: dict[str, str] = {**(self._headers or {})}
         if request.accept is not None:
             headers["Accept"] = request.accept
         if request.body is not None:
@@ -8367,16 +8585,22 @@ class AsyncApiClient:
                 params = request.query
         return self._http_client.build_request(
             request.method,
-            path,
+            path if self._base_url is None else self._base_url.rstrip("/") + path,
             json=json_body,
             content=content_body,
             files=files_body,
             params=params,
             headers=headers,
+            timeout=httpx.USE_CLIENT_DEFAULT
+            if self._timeout is None
+            else self._timeout,
         )
 
     async def _do(self, request: _ApiRequest) -> httpx.Response:
-        response = await self._http_client.send(self._build_request(request))
+        response = await self._http_client.send(
+            self._build_request(request),
+            auth=httpx.USE_CLIENT_DEFAULT if self._auth is None else self._auth,
+        )
         if response.status_code not in request.success_codes:
             raise ResponseError(status_code=response.status_code, body=response.text)
         return response

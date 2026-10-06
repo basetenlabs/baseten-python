@@ -112,6 +112,20 @@ def test_raw_only_stream_keeps_plain_name() -> None:
     client.close()
 
 
+def test_raw_only_headers_sends_no_accept() -> None:
+    fake = FakeTransport(200, raw_content=b"")
+    client = make_sync_client(fake)
+
+    response = client.api.head_filesystem(path="/app")
+
+    response.close()
+    assert fake.capture.method == "HEAD"
+    assert fake.capture.path == "/filesystem/%2Fapp"
+    # httpx's default, since the generated client sets none.
+    assert fake.capture.headers["accept"] == "*/*"
+    client.close()
+
+
 def test_aliased_field_passed_and_sent_by_api_name() -> None:
     fake = FakeTransport(
         200, {"manifest": {"createdAt": "now", "root": "/", "version": 1}}
@@ -210,17 +224,17 @@ async def test_async_client_round_trip() -> None:
 @pytest.mark.asyncio
 async def test_async_raw_sibling() -> None:
     fake = FakeTransport(
-        200, raw_content=b"event: done", content_type="text/event-stream"
+        200, raw_content=b'{"type":"stdout"}\n', content_type="application/x-ndjson"
     )
     client = make_async_client(fake)
 
     response = await client.api.post_process_raw(
         request=baseten.client.sandboxapi.ProcessRequest(command="ls"),
-        accept="text/event-stream",
+        accept="application/x-ndjson",
     )
 
     await response.aread()
-    assert response.content == b"event: done"
+    assert response.content == b'{"type":"stdout"}\n'
     await response.aclose()
-    assert fake.capture.headers["accept"] == "text/event-stream"
+    assert fake.capture.headers["accept"] == "application/x-ndjson"
     await client.close()
