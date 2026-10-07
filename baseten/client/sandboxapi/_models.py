@@ -284,7 +284,13 @@ class PortMonitorRequest(BaseModel):
 
 
 class ProcessLogs(BaseModel):
-    logs: Annotated[str, Field(examples=["logs output"])]
+    logs: Annotated[
+        str,
+        Field(
+            description="Concatenation of the returned stdout followed by the returned stderr. Output from the two streams is not interleaved.",
+            examples=["logs output"],
+        ),
+    ]
     stderr: Annotated[str, Field(examples=["stderr output"])]
     stdout: Annotated[str, Field(examples=["stdout output"])]
 
@@ -805,14 +811,6 @@ class UpgradeStatus(BaseModel):
 
 
 class GetFilesystemResponse(RootModel[Directory | FileWithContent | bytes]):
-    root: Directory | FileWithContent | bytes
-
-
-class GetFilesystemTreeResponse(RootModel[Directory | FileWithContent | bytes]):
-    root: Directory | FileWithContent | bytes
-
-
-class PutFilesystemTreeResponse(RootModel[Directory | FileWithContent | bytes]):
     root: Directory | FileWithContent | bytes
 
 

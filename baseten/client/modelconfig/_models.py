@@ -496,7 +496,9 @@ class ModelTRTLLMRuntimeConfiguration(BaseModel):
     served_model_name: Annotated[str | None, Field(title="Served Model Name")] = None
     total_token_limit: Annotated[int, Field(title="Total Token Limit")] = 500000
     webserver_default_route: Annotated[
-        Literal["/v1/embeddings", "/rerank", "/predict", "/predict_tokens"]
+        Literal[
+            "/v1/embeddings", "/v1/systemone", "/rerank", "/predict", "/predict_tokens"
+        ]
         | str
         | None,
         Field(title="Webserver Default Route"),
@@ -957,15 +959,15 @@ class BaseImage(BaseModel):
         str,
         Field(
             description="The path to the Docker image.",
-            examples=["vllm/vllm-openai:v0.7.3", "nvcr.io/nvidia/nemo:23.03"],
+            examples=["vllm/vllm-openai:v0.29.0", "nvcr.io/nvidia/nemo:23.03"],
             title="Image",
         ),
     ] = ""
     python_executable_path: Annotated[
         str,
         Field(
-            description="A path to the Python executable on the image.",
-            examples=["/usr/bin/python"],
+            description="A path to the Python executable on the image. Truss uses `python3` from the image's PATH when this is empty.",
+            examples=["/usr/bin/python3"],
             title="Python Executable Path",
         ),
     ] = ""

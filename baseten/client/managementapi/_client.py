@@ -44,6 +44,7 @@ from ._models import (
     CreateLoopsSamplerRequest,
     CreateLoopsSamplerResponse,
     CreateLoopsSessionResponse,
+    CreateLoopsTrainerRequest,
     CreateModelDeploymentRequest,
     CreateModelRequest,
     CreateRouteConnectionRequest,
@@ -3430,7 +3431,7 @@ class ApiClient:
         )
 
     def post_loops_trainers(
-        self, *, request: CreateLoopsRunRequest
+        self, *, request: CreateLoopsTrainerRequest
     ) -> CreateLoopsRunResponse:
         """Creates a Loops trainer"""
         return self._do_json(
@@ -4042,7 +4043,7 @@ class ApiClient:
         )
 
     def post_teams_loops_trainers(
-        self, *, team_id: str, request: CreateLoopsRunRequest
+        self, *, team_id: str, request: CreateLoopsTrainerRequest
     ) -> CreateLoopsRunResponse:
         """Creates a Loops trainer"""
         return self._do_json(
@@ -7585,7 +7586,7 @@ class AsyncApiClient:
         )
 
     async def post_loops_trainers(
-        self, *, request: CreateLoopsRunRequest
+        self, *, request: CreateLoopsTrainerRequest
     ) -> CreateLoopsRunResponse:
         """Creates a Loops trainer"""
         return await self._do_json(
@@ -8201,7 +8202,7 @@ class AsyncApiClient:
         )
 
     async def post_teams_loops_trainers(
-        self, *, team_id: str, request: CreateLoopsRunRequest
+        self, *, team_id: str, request: CreateLoopsTrainerRequest
     ) -> CreateLoopsRunResponse:
         """Creates a Loops trainer"""
         return await self._do_json(

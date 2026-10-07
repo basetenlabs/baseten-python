@@ -342,7 +342,9 @@ class SandboxProcess:
             identifier: PID or name of the process.
         """
         with self._context.api() as api:
-            response = api.get_process_logs_stream(identifier=identifier)
+            response = api.get_process_logs_stream(
+                identifier=identifier, accept="text/plain"
+            )
         return SandboxStream(response, _log_lines)
 
     def wait(
@@ -533,7 +535,9 @@ class AsyncSandboxProcess:
     ) -> AsyncSandboxStream[SandboxProcessLogLine]:
         """Stream a process's output. As :meth:`SandboxProcess.stream_logs`."""
         with self._context.api() as api:
-            response = await api.get_process_logs_stream(identifier=identifier)
+            response = await api.get_process_logs_stream(
+                identifier=identifier, accept="text/plain"
+            )
         return AsyncSandboxStream(response, _log_lines_async)
 
     async def wait(

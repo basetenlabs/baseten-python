@@ -5608,7 +5608,118 @@ class Name3(RootModel[str]):
     ] = None
 
 
+class SamplerNumReplicas(RootModel[int]):
+    root: Annotated[
+        int | None,
+        Field(
+            description="Number of replicas the run's sampler runs, applied as both its minimum and maximum. Must be at least 1. If omitted, a new sampler uses the platform defaults and a sampler reused from an earlier run keeps its settings. A run that already has a sampler keeps it unchanged. When the run ends, its sampler is scaled down.",
+            ge=1,
+            title="Sampler Num Replicas",
+        ),
+    ] = None
+
+
 class CreateLoopsRunRequest(BaseModel):
+    session_id: Annotated[
+        str,
+        Field(
+            description="ID of the Loops session this run belongs to.",
+            title="Session Id",
+        ),
+    ]
+    base_model: Annotated[
+        str,
+        Field(description="Base model ID (e.g. 'Qwen/Qwen3-8B').", title="Base Model"),
+    ]
+    name: Annotated[
+        Name3 | None,
+        Field(
+            description="Optional display name for the run. Defaults to the base model name when omitted.",
+            title="Name",
+        ),
+    ] = None
+    max_seq_len: Annotated[
+        int | None,
+        Field(
+            description="Maximum prompt length (in tokens) the run must handle. Set this to the longest training example you plan to send. Defaults to the maximum supported by the model configuration.",
+            title="Max Seq Len",
+        ),
+    ] = None
+    lora_rank: Annotated[
+        int, Field(description="LoRA rank.", ge=1, title="Lora Rank")
+    ] = 64
+    seed: Annotated[
+        int | None, Field(description="Random seed for reproducibility.", title="Seed")
+    ] = None
+    scale_down_delay_seconds: Annotated[
+        int,
+        Field(
+            description="Seconds of inactivity before the run scales to zero. Must be between 1 and 3600 (1 hour). Defaults to 900 (15 minutes).",
+            gt=0,
+            le=3600,
+            title="Scale Down Delay Seconds",
+        ),
+    ] = 900
+    availability_model: Annotated[
+        Literal["dedicated", "spot"] | str,
+        Field(
+            description="Capacity the trainer runs on. 'dedicated' is not preempted. 'spot' runs below inference and reaches idle reserved capacity, but the run is stopped if its GPUs are reclaimed and cannot be resumed.",
+            examples=["spot"],
+            title="V1AvailabilityModel",
+        ),
+    ] = "dedicated"
+    replicas: Annotated[
+        int,
+        Field(
+            description="Number of data-parallel trainer replicas. Each replica is one full copy of the model's preset node group, so the trainer deployment runs (preset node_count * replicas) nodes (e.g. replicas=4 on a 4-node preset → 16 nodes, 4 DP workers). Must be a positive integer. Defaults to 1.",
+            ge=1,
+            title="Replicas",
+        ),
+    ] = 1
+    path: Annotated[
+        str | None,
+        Field(
+            description="Optional bt:// URI of an existing checkpoint to load weights from on startup. Form: bt://loops:<run_id>/weights/<checkpoint_name>.",
+            examples=["bt://loops:k4q95w5/weights/step-100"],
+            title="Path",
+        ),
+    ] = None
+    reuse_from_run_id: Annotated[
+        str | None,
+        Field(
+            description="Optional ID of a prior Loops run whose trainer and/or sampler should be reused for this run instead of provisioning fresh. The prior run must use the same base model and belong to the same team.",
+            title="Reuse From Run Id",
+        ),
+    ] = None
+    reuse_from_session_id: Annotated[
+        str | None,
+        Field(
+            description="Optional ID of a prior Loops session whose trainer and/or sampler should be reused for this run. Deprecated in favor of reuse_from_run_id.",
+            title="Reuse From Session Id",
+        ),
+    ] = None
+    sampler_num_replicas: Annotated[
+        SamplerNumReplicas | None,
+        Field(
+            description="Number of replicas the run's sampler runs, applied as both its minimum and maximum. Must be at least 1. If omitted, a new sampler uses the platform defaults and a sampler reused from an earlier run keeps its settings. A run that already has a sampler keeps it unchanged. When the run ends, its sampler is scaled down.",
+            title="Sampler Num Replicas",
+        ),
+    ] = None
+
+
+class DeactivateLoopsRunResponse(BaseModel):
+    id: Annotated[str, Field(description="The deactivated Loops run ID.", title="Id")]
+    base_model: Annotated[
+        str,
+        Field(
+            description="The base model whose Loops run was deactivated.",
+            title="Base Model",
+        ),
+    ]
+    user: Annotated[User, Field(description="The user who owns the Loops run.")]
+
+
+class CreateLoopsTrainerRequest(BaseModel):
     session_id: Annotated[
         str,
         Field(
@@ -5689,22 +5800,21 @@ class CreateLoopsRunRequest(BaseModel):
     ] = None
 
 
-class DeactivateLoopsRunResponse(BaseModel):
-    id: Annotated[str, Field(description="The deactivated Loops run ID.", title="Id")]
-    base_model: Annotated[
-        str,
-        Field(
-            description="The base model whose Loops run was deactivated.",
-            title="Base Model",
-        ),
-    ]
-    user: Annotated[User, Field(description="The user who owns the Loops run.")]
-
-
 class ListLoopsSamplersResponse(BaseModel):
     samplers: Annotated[
         list[LoopsSampler], Field(description="List of samplers.", title="Samplers")
     ]
+
+
+class NumReplicas(RootModel[int]):
+    root: Annotated[
+        int | None,
+        Field(
+            description="Number of replicas the sampler runs, applied as both its minimum and maximum. Must be at least 1. If omitted, a new sampler uses the platform defaults and a paired sampler reused from an earlier run keeps its settings. A run that already has a sampler keeps it unchanged, and when a run ends, its sampler is scaled down.",
+            ge=1,
+            title="Num Replicas",
+        ),
+    ] = None
 
 
 class CreateLoopsSamplerRequest(BaseModel):
@@ -5755,6 +5865,13 @@ class CreateLoopsSamplerRequest(BaseModel):
         Field(
             description="Optional ID of a prior Loops session to reuse a trainer and/or sampler from. Deprecated.",
             title="Reuse From Session Id",
+        ),
+    ] = None
+    num_replicas: Annotated[
+        NumReplicas | None,
+        Field(
+            description="Number of replicas the sampler runs, applied as both its minimum and maximum. Must be at least 1. If omitted, a new sampler uses the platform defaults and a paired sampler reused from an earlier run keeps its settings. A run that already has a sampler keeps it unchanged, and when a run ends, its sampler is scaled down.",
+            title="Num Replicas",
         ),
     ] = None
 
@@ -8821,7 +8938,7 @@ class EffectiveRateLimit(BaseModel):
     ]
 
 
-class Name4(RootModel[str]):
+class Name5(RootModel[str]):
     root: Annotated[
         str | None,
         Field(
@@ -8835,7 +8952,7 @@ class Name4(RootModel[str]):
 
 class GroupMetadata(BaseModel):
     name: Annotated[
-        Name4 | None,
+        Name5 | None,
         Field(
             description="Optional display name for the group.",
             examples=["Acme prod"],
@@ -8904,7 +9021,7 @@ class CreateGroupHierarchy(BaseModel):
 
 class UpdateGroupMetadata(BaseModel):
     name: Annotated[
-        Name4 | None,
+        Name5 | None,
         Field(
             description="Optional display name for the group.",
             examples=["Acme prod"],

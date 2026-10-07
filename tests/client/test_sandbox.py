@@ -100,15 +100,21 @@ def test_raw_returns_response_unread_with_accept() -> None:
 
 
 def test_raw_only_stream_keeps_plain_name() -> None:
-    fake = FakeTransport(200, raw_content=b"log line\n", content_type="text/plain")
+    fake = FakeTransport(
+        200,
+        raw_content=b'{"type":"stdout","data":"log line\\n"}\n',
+        content_type="application/x-ndjson",
+    )
     client = make_sync_client(fake)
 
-    response = client.api.get_process_logs_stream(identifier="proc-1")
+    response = client.api.get_process_logs_stream(
+        identifier="proc-1", accept="application/x-ndjson"
+    )
 
     response.read()
-    assert response.content == b"log line\n"
+    assert response.content == b'{"type":"stdout","data":"log line\\n"}\n'
     response.close()
-    assert fake.capture.headers["accept"] == "text/plain"
+    assert fake.capture.headers["accept"] == "application/x-ndjson"
     client.close()
 
 
