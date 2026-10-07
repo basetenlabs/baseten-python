@@ -3,8 +3,7 @@
 
 from __future__ import annotations
 
-from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel
 
@@ -326,14 +325,6 @@ class ProcessRequest(BaseModel):
     workingDir: Annotated[str | None, Field(examples=["/home/user"])] = None
 
 
-class Status(StrEnum):
-    failed = "failed"
-    killed = "killed"
-    stopped = "stopped"
-    running = "running"
-    completed = "completed"
-
-
 class ProcessResponse(BaseModel):
     command: Annotated[str, Field(examples=["ls -la"])]
     completedAt: Annotated[str, Field(examples=["Wed, 01 Jan 2023 12:01:00 GMT"])]
@@ -352,7 +343,10 @@ class ProcessResponse(BaseModel):
     restartCount: Annotated[int | None, Field(examples=[2])] = None
     restartOnFailure: Annotated[bool | None, Field(examples=[True])] = None
     startedAt: Annotated[str, Field(examples=["Wed, 01 Jan 2023 12:00:00 GMT"])]
-    status: Annotated[Status, Field(examples=["running"])]
+    status: Annotated[
+        Literal["failed", "killed", "stopped", "running", "completed"] | str,
+        Field(examples=["running"]),
+    ]
     stderr: Annotated[str, Field(examples=["stderr output"])]
     stdin: Annotated[
         bool | None,
@@ -556,33 +550,6 @@ class GetProcessResponse(RootModel[list[ProcessResponse]]):
     root: list[ProcessResponse]
 
 
-class ArchiveChangeKind(StrEnum):
-    ChangeAdded = "added"
-    ChangeModified = "modified"
-    ChangeDeleted = "deleted"
-
-
-class ArchiveExportState(StrEnum):
-    ExportRunning = "running"
-    ExportSucceeded = "succeeded"
-    ExportFailed = "failed"
-
-
-class ArchiveQuiesceState(StrEnum):
-    StateActive = "active"
-    StateQuiescing = "quiescing"
-    StateQuiesced = "quiesced"
-    StateRestoring = "restoring"
-
-
-class ArchiveRestoreState(StrEnum):
-    RestoreDownloading = "downloading"
-    RestoreExtracting = "extracting"
-    RestoreRelaunching = "relaunching"
-    RestoreSucceeded = "succeeded"
-    RestoreFailed = "failed"
-
-
 class FilesystemUploadedPart(BaseModel):
     etag: Annotated[
         str | None, Field(examples=["5d41402abc4b2a76b9719d911017c592"])
@@ -596,13 +563,6 @@ class HandlerReloadResponse(BaseModel):
     applied: int | None = None
     generation: int | None = None
     removed: int | None = None
-
-
-class ProcessUpgradeState(StrEnum):
-    UpgradeStateIdle = "idle"
-    UpgradeStateRunning = "running"
-    UpgradeStateCompleted = "completed"
-    UpgradeStateFailed = "failed"
 
 
 class Directory(BaseModel):
@@ -705,7 +665,10 @@ class ExportProgress(BaseModel):
         ),
     ] = None
     startedAt: str | None = None
-    state: Annotated[ArchiveExportState | None, Field(examples=["running"])] = None
+    state: Annotated[
+        Literal["running", "succeeded", "failed"] | str | None,
+        Field(examples=["running"]),
+    ] = None
     uploaded: Annotated[
         bool | None,
         Field(
@@ -757,7 +720,12 @@ class RestoreProgress(BaseModel):
         ),
     ] = None
     startedAt: str | None = None
-    state: Annotated[ArchiveRestoreState | None, Field(examples=["extracting"])] = None
+    state: Annotated[
+        Literal["downloading", "extracting", "relaunching", "succeeded", "failed"]
+        | str
+        | None,
+        Field(examples=["extracting"]),
+    ] = None
 
 
 class UpgradeStatus(BaseModel):
@@ -785,7 +753,7 @@ class UpgradeStatus(BaseModel):
         str | None, Field(description="When the upgrade was attempted")
     ] = None
     status: Annotated[
-        ProcessUpgradeState,
+        Literal["idle", "running", "completed", "failed"] | str,
         Field(
             description="Current state (idle, running, completed, failed)",
             examples=["running"],
@@ -816,7 +784,9 @@ class PutFilesystemTreeResponse(RootModel[Directory | FileWithContent | bytes]):
 
 
 class ArchiveChange(BaseModel):
-    kind: Annotated[ArchiveChangeKind, Field(examples=["added"])]
+    kind: Annotated[
+        Literal["added", "modified", "deleted"] | str, Field(examples=["added"])
+    ]
     path: Annotated[
         str,
         Field(
@@ -920,7 +890,10 @@ class QuiesceStatus(BaseModel):
     since: Annotated[
         str | None, Field(description="Since is when the sandbox left StateActive.")
     ] = None
-    state: Annotated[ArchiveQuiesceState, Field(examples=["quiesced"])]
+    state: Annotated[
+        Literal["active", "quiescing", "quiesced", "restoring"] | str,
+        Field(examples=["quiesced"]),
+    ]
     stoppedProcesses: Annotated[
         list[str] | None,
         Field(

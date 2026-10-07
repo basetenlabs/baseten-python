@@ -105,6 +105,77 @@ def test_get_query_params_omitted_when_absent() -> None:
     client.close()
 
 
+def test_enum_values_open() -> None:
+    fake = FakeTransport(
+        200,
+        {
+            "name": "my-sandbox",
+            "url": "https://sandbox.example.com",
+            "status": "SOME_NEW_STATUS",
+            "created_at": "2024-01-01T00:00:00Z",
+            "lifecycle": {
+                "expiration_policies": [
+                    {"type": "TTL_IDLE", "action": "SOME_NEW_ACTION", "value": "1h"},
+                    {
+                        "type": "DATE",
+                        "action": "DELETE",
+                        "value": "2024-02-01T00:00:00Z",
+                    },
+                ]
+            },
+        },
+    )
+    client = make_sync_client(fake)
+
+    # Values the server adds after generation come through as strings, while
+    # discriminators still pick their union member.
+    resp = client.api.get_sandbox(sandbox_name="my-sandbox")
+    assert resp.status == "SOME_NEW_STATUS"
+    assert resp.lifecycle is not None
+    assert resp.lifecycle.expiration_policies is not None
+    idle, date = resp.lifecycle.expiration_policies
+    assert isinstance(idle, baseten.client.managementapi.SandboxTTLIdleExpirationPolicy)
+    assert idle.action == "SOME_NEW_ACTION"
+    assert isinstance(date, baseten.client.managementapi.SandboxDateExpirationPolicy)
+    assert date.action == "DELETE"
+    client.close()
+
+
+def test_tagged_union_unknown_variant() -> None:
+    entry = {
+        "id": "entry-1",
+        "created": "2024-01-01T00:00:00Z",
+        "actor": {"type": "USER"},
+    }
+    known = baseten.client.managementapi.AuditLogEntry.model_validate(
+        {
+            **entry,
+            "event_type": "API_KEY_DELETED",
+            "event_data": {
+                "event_type": "API_KEY_DELETED",
+                "api_key_id": "key-1",
+                "api_key_type": "PERSONAL",
+                "prefix": "abc",
+            },
+        }
+    )
+    unknown = baseten.client.managementapi.AuditLogEntry.model_validate(
+        {
+            **entry,
+            "event_type": "SOME_NEW_EVENT",
+            "event_data": {"event_type": "SOME_NEW_EVENT", "detail": 1},
+        }
+    )
+
+    # A known tag still picks its member, and a variant the server adds after
+    # generation comes through as the raw dict.
+    assert isinstance(
+        known.event_data, baseten.client.managementapi.AuditLogEventApiKeyDeleted
+    )
+    assert unknown.event_type == "SOME_NEW_EVENT"
+    assert unknown.event_data == {"event_type": "SOME_NEW_EVENT", "detail": 1}
+
+
 @pytest.mark.asyncio
 async def test_path_params_escaped() -> None:
     fake = FakeTransport(200, MINIMAL_MODEL)

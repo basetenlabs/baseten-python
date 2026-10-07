@@ -201,6 +201,14 @@ def run_datamodel_codegen(
         # is optional to pass, but only accepts None if the schema is nullable.
         "--strict-nullable",
         "--disable-timestamp",
+        # Enums as Literal fields, which postprocess opens to accept values
+        # the server adds later. Enum classes would reject those, and named
+        # enum schemas would otherwise become RootModel wrappers.
+        "--enum-field-as-literal",
+        "all",
+        # Inline a root model used as a field's whole type, so the field holds
+        # the plain value rather than a wrapper read through `.root`.
+        "--collapse-root-models",
         "--formatters",
         "ruff-format",
         "ruff-check",

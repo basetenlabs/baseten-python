@@ -33,7 +33,7 @@ def test_vllm_config():
     assert config.requirements == ["vllm==0.5.4"]
     assert config.resources is not None
     assert config.resources.accelerator is not None
-    assert config.resources.accelerator.root == "A100"
+    assert config.resources.accelerator == "A100"
     assert config.resources.model_extra == {"use_gpu": True}
     assert config.runtime is not None
     assert config.runtime.predict_concurrency == 128
@@ -71,16 +71,12 @@ def test_whisper_config():
         == "baseten/trtllm-server:r23.12_baseten_v0.9.0.dev2024022000"
     )
     assert config.model_cache is not None
-    assert len(config.model_cache.root) == 1
-    assert (
-        config.model_cache.root[0].repo_id == "baseten/trtllm-whisper-a10g-large-v2-1"
-    )
-    assert config.model_cache.root[0].use_volume is True
+    assert len(config.model_cache) == 1
+    assert config.model_cache[0].repo_id == "baseten/trtllm-whisper-a10g-large-v2-1"
+    assert config.model_cache[0].use_volume is True
     assert config.external_data is not None
-    assert len(config.external_data.root) == 1
-    assert (
-        config.external_data.root[0].local_data_path == "assets/multilingual.tiktoken"
-    )
+    assert len(config.external_data) == 1
+    assert config.external_data[0].local_data_path == "assets/multilingual.tiktoken"
 
 
 def test_chatterbox_config():
@@ -107,7 +103,7 @@ def test_chatterbox_config():
     assert config.python_version == "py312"
     assert config.resources is not None
     assert config.resources.accelerator is not None
-    assert config.resources.accelerator.root == "H100"
+    assert config.resources.accelerator == "H100"
     assert config.resources.cpu == "1"
     assert config.resources.memory == "40Gi"
     assert config.resources.model_extra == {"use_gpu": True}

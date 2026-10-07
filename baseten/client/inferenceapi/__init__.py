@@ -19,8 +19,6 @@ from ._models import (
     AsyncRunRemoteInput,
     AsyncRunRemoteOutput,
     CancelAsyncRequestOutput,
-    Code,
-    ErrorCode,
     ErrorResponse,
     GetAsyncQueueStatusOutput,
     InferenceRetryConfig,
@@ -28,8 +26,6 @@ from ._models import (
     PredictOutput,
     RunRemoteInput,
     RunRemoteOutput,
-    Status,
-    WebhookStatus,
 )
 
 __all__ = [
@@ -42,8 +38,6 @@ __all__ = [
     "AsyncRunRemoteInput",
     "AsyncRunRemoteOutput",
     "CancelAsyncRequestOutput",
-    "Code",
-    "ErrorCode",
     "ErrorResponse",
     "GetAsyncQueueStatusOutput",
     "InferenceRetryConfig",
@@ -53,6 +47,4 @@ __all__ = [
     "ResponseErrorResponse",
     "RunRemoteInput",
     "RunRemoteOutput",
-    "Status",
-    "WebhookStatus",
 ]
