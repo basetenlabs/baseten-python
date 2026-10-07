@@ -10,6 +10,8 @@ import importlib
 import inspect
 import pathlib
 
+from sphinx.util.docstrings import separate_metadata
+
 project = "Baseten Python SDK"
 html_title = "Baseten SDK"
 html_theme = "furo"
@@ -83,5 +85,24 @@ def _generate_class_pages(app):
             )
 
 
+def _hide_private_constructor(
+    app, what, name, obj, options, signature, return_annotation
+):
+    """Drop a class's signature when its ``__init__`` is marked ``:meta private:``.
+
+    Autodoc honors the marker on members but not on constructors, whose
+    signature it shows on the class itself. Users get instances of such classes
+    from SDK methods rather than constructing them.
+    """
+    if what != "class":
+        return None
+    init_doc = inspect.getdoc(obj.__dict__.get("__init__")) or ""
+    _, metadata = separate_metadata(init_doc)
+    if "private" in metadata:
+        return "", None
+    return None
+
+
 def setup(app):
     app.connect("builder-inited", _generate_class_pages)
+    app.connect("autodoc-process-signature", _hide_private_constructor)

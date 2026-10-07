@@ -100,15 +100,35 @@ def test_raw_returns_response_unread_with_accept() -> None:
 
 
 def test_raw_only_stream_keeps_plain_name() -> None:
-    fake = FakeTransport(200, raw_content=b"log line\n", content_type="text/plain")
+    fake = FakeTransport(
+        200,
+        raw_content=b'{"type":"stdout","data":"log line\\n"}\n',
+        content_type="application/x-ndjson",
+    )
     client = make_sync_client(fake)
 
-    response = client.api.get_process_logs_stream(identifier="proc-1")
+    response = client.api.get_process_logs_stream(
+        identifier="proc-1", accept="application/x-ndjson"
+    )
 
     response.read()
-    assert response.content == b"log line\n"
+    assert response.content == b'{"type":"stdout","data":"log line\\n"}\n'
     response.close()
-    assert fake.capture.headers["accept"] == "text/plain"
+    assert fake.capture.headers["accept"] == "application/x-ndjson"
+    client.close()
+
+
+def test_raw_only_headers_sends_no_accept() -> None:
+    fake = FakeTransport(200, raw_content=b"")
+    client = make_sync_client(fake)
+
+    response = client.api.head_filesystem(path="/app")
+
+    response.close()
+    assert fake.capture.method == "HEAD"
+    assert fake.capture.path == "/filesystem/%2Fapp"
+    # httpx's default, since the generated client sets none.
+    assert fake.capture.headers["accept"] == "*/*"
     client.close()
 
 
@@ -210,17 +230,17 @@ async def test_async_client_round_trip() -> None:
 @pytest.mark.asyncio
 async def test_async_raw_sibling() -> None:
     fake = FakeTransport(
-        200, raw_content=b"event: done", content_type="text/event-stream"
+        200, raw_content=b'{"type":"stdout"}\n', content_type="application/x-ndjson"
     )
     client = make_async_client(fake)
 
     response = await client.api.post_process_raw(
         request=baseten.client.sandboxapi.ProcessRequest(command="ls"),
-        accept="text/event-stream",
+        accept="application/x-ndjson",
     )
 
     await response.aread()
-    assert response.content == b"event: done"
+    assert response.content == b'{"type":"stdout"}\n'
     await response.aclose()
-    assert fake.capture.headers["accept"] == "text/event-stream"
+    assert fake.capture.headers["accept"] == "application/x-ndjson"
     await client.close()

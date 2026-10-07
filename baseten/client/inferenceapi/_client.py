@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import urllib.parse
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal, TypeVar
 
@@ -72,9 +73,33 @@ class ApiClient:
     They may change without notice between versions.
     """
 
-    def __init__(self, http_client: httpx.Client) -> None:
-        """Create a new client. The caller is responsible for closing *http_client*."""
+    def __init__(
+        self,
+        http_client: httpx.Client,
+        *,
+        base_url: str | None = None,
+        auth: httpx.Auth | None = None,
+        headers: Mapping[str, str] | None = None,
+        timeout: httpx.Timeout | None = None,
+    ) -> None:
+        """Create a new client. The caller is responsible for closing *http_client*.
+
+        The keyword arguments apply to this client's requests only, so one
+        HTTP client can serve several APIs. Each one left ``None`` falls back
+        to the HTTP client's own setting.
+
+        Args:
+            http_client: HTTP client to send requests with.
+            base_url: Base URL that request paths are appended to.
+            auth: Authentication for each request.
+            headers: Headers for each request, added to the HTTP client's own.
+            timeout: Timeouts for each request.
+        """
         self._http_client = http_client
+        self._base_url = base_url
+        self._auth = auth
+        self._headers = headers
+        self._timeout = timeout
 
     def async_predict(
         self, *, env_name: str, request: AsyncPredictRequest
@@ -848,7 +873,7 @@ class ApiClient:
         json_body = None
         content_body = None
         files_body = None
-        headers: dict[str, str] = {}
+        headers: dict[str, str] = {**(self._headers or {})}
         if request.accept is not None:
             headers["Accept"] = request.accept
         if request.body is not None:
@@ -882,16 +907,22 @@ class ApiClient:
                 params = request.query
         return self._http_client.build_request(
             request.method,
-            path,
+            path if self._base_url is None else self._base_url.rstrip("/") + path,
             json=json_body,
             content=content_body,
             files=files_body,
             params=params,
             headers=headers,
+            timeout=httpx.USE_CLIENT_DEFAULT
+            if self._timeout is None
+            else self._timeout,
         )
 
     def _do(self, request: _ApiRequest) -> httpx.Response:
-        response = self._http_client.send(self._build_request(request))
+        response = self._http_client.send(
+            self._build_request(request),
+            auth=httpx.USE_CLIENT_DEFAULT if self._auth is None else self._auth,
+        )
         if response.status_code not in request.success_codes:
             if request.error_codes and response.status_code in request.error_codes:
                 error_name = request.error_codes[response.status_code]
@@ -911,7 +942,11 @@ class ApiClient:
         return response
 
     def _do_raw(self, request: _ApiRequest) -> httpx.Response:
-        response = self._http_client.send(self._build_request(request), stream=True)
+        response = self._http_client.send(
+            self._build_request(request),
+            auth=httpx.USE_CLIENT_DEFAULT if self._auth is None else self._auth,
+            stream=True,
+        )
         if response.status_code not in request.success_codes:
             response.read()
             if request.error_codes and response.status_code in request.error_codes:
@@ -952,9 +987,33 @@ class AsyncApiClient:
     They may change without notice between versions.
     """
 
-    def __init__(self, http_client: httpx.AsyncClient) -> None:
-        """Create a new client. The caller is responsible for closing *http_client*."""
+    def __init__(
+        self,
+        http_client: httpx.AsyncClient,
+        *,
+        base_url: str | None = None,
+        auth: httpx.Auth | None = None,
+        headers: Mapping[str, str] | None = None,
+        timeout: httpx.Timeout | None = None,
+    ) -> None:
+        """Create a new client. The caller is responsible for closing *http_client*.
+
+        The keyword arguments apply to this client's requests only, so one
+        HTTP client can serve several APIs. Each one left ``None`` falls back
+        to the HTTP client's own setting.
+
+        Args:
+            http_client: HTTP client to send requests with.
+            base_url: Base URL that request paths are appended to.
+            auth: Authentication for each request.
+            headers: Headers for each request, added to the HTTP client's own.
+            timeout: Timeouts for each request.
+        """
         self._http_client = http_client
+        self._base_url = base_url
+        self._auth = auth
+        self._headers = headers
+        self._timeout = timeout
 
     async def async_predict(
         self, *, env_name: str, request: AsyncPredictRequest
@@ -1738,7 +1797,7 @@ class AsyncApiClient:
         json_body = None
         content_body = None
         files_body = None
-        headers: dict[str, str] = {}
+        headers: dict[str, str] = {**(self._headers or {})}
         if request.accept is not None:
             headers["Accept"] = request.accept
         if request.body is not None:
@@ -1772,16 +1831,22 @@ class AsyncApiClient:
                 params = request.query
         return self._http_client.build_request(
             request.method,
-            path,
+            path if self._base_url is None else self._base_url.rstrip("/") + path,
             json=json_body,
             content=content_body,
             files=files_body,
             params=params,
             headers=headers,
+            timeout=httpx.USE_CLIENT_DEFAULT
+            if self._timeout is None
+            else self._timeout,
         )
 
     async def _do(self, request: _ApiRequest) -> httpx.Response:
-        response = await self._http_client.send(self._build_request(request))
+        response = await self._http_client.send(
+            self._build_request(request),
+            auth=httpx.USE_CLIENT_DEFAULT if self._auth is None else self._auth,
+        )
         if response.status_code not in request.success_codes:
             if request.error_codes and response.status_code in request.error_codes:
                 error_name = request.error_codes[response.status_code]
@@ -1802,7 +1867,9 @@ class AsyncApiClient:
 
     async def _do_raw(self, request: _ApiRequest) -> httpx.Response:
         response = await self._http_client.send(
-            self._build_request(request), stream=True
+            self._build_request(request),
+            auth=httpx.USE_CLIENT_DEFAULT if self._auth is None else self._auth,
+            stream=True,
         )
         if response.status_code not in request.success_codes:
             await response.aread()

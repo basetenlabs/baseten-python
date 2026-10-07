@@ -789,8 +789,7 @@ class GetRoutesParams(BaseModel):
     team_id: Annotated[
         str | None,
         Field(
-            description="Filter by owning team ID. Preserved by the cursor; if repeated, must match the original filter.",
-            title="Team Id",
+            description="Identifier of the team whose routes to list.", title="Team Id"
         ),
     ] = None
     name: Annotated[
@@ -802,26 +801,64 @@ class GetRoutesParams(BaseModel):
     ] = None
 
 
-class GetRoutesHarnessConfigsParams(BaseModel):
-    team_id: Annotated[
-        str,
+class GetRoutesConnectionsParams(BaseModel):
+    cursor: Annotated[
+        str | None,
         Field(
-            description="Identifier of the team whose default models to list.",
-            min_length=1,
+            description="Opaque cursor returned by a previous page. Omit to fetch the first page.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of items to return.",
+            ge=1,
+            le=1000,
+            title="Limit",
+        ),
+    ] = 100
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Identifier of the team whose connections to list.",
             title="Team Id",
         ),
-    ]
+    ] = None
 
 
-class DeleteRoutesHarnessConfigsParams(BaseModel):
+class GetSandboxMetricsParams(BaseModel):
     team_id: Annotated[
-        str,
+        str | None,
         Field(
-            description="Identifier of the team whose default models to clear.",
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
             min_length=1,
-            title="Team Id",
         ),
-    ]
+    ] = None
+    start_time: AwareDatetime
+    end_time: AwareDatetime
+    interval_seconds: Literal[10, 30, 60, 300, 900, 3600] | str
+
+
+class GetSandboxLogsParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+    start_time: AwareDatetime
+    end_time: AwareDatetime
+    limit: Annotated[int, Field(ge=1, le=1000)] = 100
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque next_cursor from the previous page. Omit for the first page.",
+            max_length=4096,
+            min_length=1,
+        ),
+    ] = None
 
 
 class StatusItem(RootModel[str]):
@@ -915,16 +952,6 @@ class UpdateSandboxParams(BaseModel):
 
 
 class DeleteSandboxParams(BaseModel):
-    team_id: Annotated[
-        str | None,
-        Field(
-            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
-            min_length=1,
-        ),
-    ] = None
-
-
-class ListSandboxLibraryImagesParams(BaseModel):
     team_id: Annotated[
         str | None,
         Field(
@@ -1260,9 +1287,6 @@ class ListVolumeNamespacesResponse(BaseModel):
 
 
 class VolumeSyncAuthenticationAWSAssumeRole(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     role_arn: Annotated[
         str,
         Field(
@@ -1280,9 +1304,6 @@ class VolumeSyncAuthenticationAWSAssumeRole(BaseModel):
 
 
 class VolumeSyncAuthenticationAWSOIDC(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     role_arn: Annotated[
         str,
         Field(
@@ -1302,9 +1323,6 @@ class VolumeSyncAuthenticationAWSOIDC(BaseModel):
 
 
 class VolumeSyncAuthenticationGCPOIDC(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     service_account: Annotated[
         str,
         Field(
@@ -1324,9 +1342,6 @@ class VolumeSyncAuthenticationGCPOIDC(BaseModel):
 
 
 class VolumeSyncDestination(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     ref: Annotated[
         str,
         Field(
@@ -1360,9 +1375,6 @@ class AuthSecretName(RootModel[str]):
 
 
 class VolumeSyncSourceAzure(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     uri: Annotated[
         str,
         Field(
@@ -1392,9 +1404,6 @@ class VolumeSyncSourceAzure(BaseModel):
 
 
 class VolumeSyncSourceBasetenTraining(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     uri: Annotated[
         str,
         Field(
@@ -1417,9 +1426,6 @@ class VolumeSyncSourceBasetenTraining(BaseModel):
 
 
 class VolumeSyncSourceCoreWeave(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     uri: Annotated[
         str,
         Field(
@@ -1449,9 +1455,6 @@ class VolumeSyncSourceCoreWeave(BaseModel):
 
 
 class VolumeSyncSourceGCS(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     uri: Annotated[
         str,
         Field(
@@ -1487,9 +1490,6 @@ class VolumeSyncSourceGCS(BaseModel):
 
 
 class VolumeSyncSourceHuggingFace(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     uri: Annotated[
         str,
         Field(
@@ -1519,9 +1519,6 @@ class VolumeSyncSourceHuggingFace(BaseModel):
 
 
 class VolumeSyncSourceR2(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     uri: Annotated[
         str,
         Field(
@@ -1550,9 +1547,6 @@ class VolumeSyncSourceR2(BaseModel):
 
 
 class VolumeSyncSourceS3(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     uri: Annotated[
         str,
         Field(
@@ -2513,9 +2507,6 @@ class AuditLogActor(BaseModel):
 
 
 class AuditLogEventApiKeyCreated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["API_KEY_CREATED"], Field(title="Event Type")]
     api_key_id: Annotated[str, Field(title="Api Key Id")]
     api_key_type: Annotated[
@@ -2542,9 +2533,6 @@ class AuditLogEventApiKeyCreated(BaseModel):
 
 
 class AuditLogEventApiKeyDeleted(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["API_KEY_DELETED"], Field(title="Event Type")]
     api_key_id: Annotated[str, Field(title="Api Key Id")]
     api_key_type: Annotated[
@@ -2571,9 +2559,6 @@ class AuditLogEventApiKeyDeleted(BaseModel):
 
 
 class AuditLogEventAutoscalingScheduleSettings(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     min_replica: Annotated[int, Field(title="Min Replica")]
     max_replica: Annotated[int, Field(title="Max Replica")]
     concurrency_target: Annotated[int | None, Field(title="Concurrency Target")]
@@ -2600,9 +2585,6 @@ class AuditLogEventAutoscalingScheduleSettings(BaseModel):
 
 
 class AuditLogEventAutoscalingSettings(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     min_replica: Annotated[int, Field(title="Min Replica")]
     max_replica: Annotated[int, Field(title="Max Replica")]
     concurrency_target: Annotated[int, Field(title="Concurrency Target")]
@@ -2618,9 +2600,6 @@ class AuditLogEventAutoscalingSettings(BaseModel):
 
 
 class AuditLogEventChainDeleted(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["CHAIN_DELETED"], Field(title="Event Type")]
     chain_id: Annotated[str, Field(title="Chain Id")]
     chain_name: Annotated[str, Field(title="Chain Name")]
@@ -2628,9 +2607,6 @@ class AuditLogEventChainDeleted(BaseModel):
 
 
 class AuditLogEventChainDeployed(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["CHAIN_DEPLOYED"], Field(title="Event Type")]
     chain_id: Annotated[str, Field(title="Chain Id")]
     chain_name: Annotated[str, Field(title="Chain Name")]
@@ -2641,9 +2617,6 @@ class AuditLogEventChainDeployed(BaseModel):
 
 
 class AuditLogEventChainDeploymentActivated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["CHAIN_DEPLOYMENT_ACTIVATED"], Field(title="Event Type")
     ]
@@ -2654,9 +2627,6 @@ class AuditLogEventChainDeploymentActivated(BaseModel):
 
 
 class AuditLogEventChainDeploymentDeactivated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["CHAIN_DEPLOYMENT_DEACTIVATED"], Field(title="Event Type")
     ]
@@ -2667,9 +2637,6 @@ class AuditLogEventChainDeploymentDeactivated(BaseModel):
 
 
 class AuditLogEventChainDeploymentDeleted(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["CHAIN_DEPLOYMENT_DELETED"], Field(title="Event Type")
     ]
@@ -2680,9 +2647,6 @@ class AuditLogEventChainDeploymentDeleted(BaseModel):
 
 
 class AuditLogEventChainDeploymentPromoted(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["CHAIN_DEPLOYMENT_PROMOTED"], Field(title="Event Type")
     ]
@@ -2695,9 +2659,6 @@ class AuditLogEventChainDeploymentPromoted(BaseModel):
 
 
 class AuditLogEventChainEnvironmentCreated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["CHAIN_ENVIRONMENT_CREATED"], Field(title="Event Type")
     ]
@@ -2714,9 +2675,6 @@ class AuditLogEventChainEnvironmentCreated(BaseModel):
 
 
 class AuditLogEventChainEnvironmentUpdated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["CHAIN_ENVIRONMENT_UPDATED"], Field(title="Event Type")
     ]
@@ -2733,9 +2691,6 @@ class AuditLogEventChainEnvironmentUpdated(BaseModel):
 
 
 class AuditLogEventChainletAutoscalingSettingsChanged(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     min_replica: Annotated[int, Field(title="Min Replica")]
     max_replica: Annotated[int, Field(title="Max Replica")]
     concurrency_target: Annotated[int, Field(title="Concurrency Target")]
@@ -2761,9 +2716,6 @@ class AuditLogEventChainletAutoscalingSettingsChanged(BaseModel):
 
 
 class AuditLogEventChainletInstanceTypeChanged(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["CHAINLET_INSTANCE_TYPE_CHANGED"], Field(title="Event Type")
     ]
@@ -2777,9 +2729,6 @@ class AuditLogEventChainletInstanceTypeChanged(BaseModel):
 
 
 class AuditLogEventDirectoryGroupRoleUpdated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["DIRECTORY_GROUP_ROLE_UPDATED"], Field(title="Event Type")
     ]
@@ -2791,9 +2740,6 @@ class AuditLogEventDirectoryGroupRoleUpdated(BaseModel):
 
 
 class AuditLogEventEnvironmentCreated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     min_replica: Annotated[int, Field(title="Min Replica")]
     max_replica: Annotated[int, Field(title="Max Replica")]
     concurrency_target: Annotated[int, Field(title="Concurrency Target")]
@@ -2842,9 +2788,6 @@ class AuditLogEventEnvironmentCreated(BaseModel):
 
 
 class AuditLogEventEnvironmentDeleted(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["ENVIRONMENT_DELETED"], Field(title="Event Type")]
     model_id: Annotated[str, Field(title="Model Id")]
     model_name: Annotated[str, Field(title="Model Name")]
@@ -2852,9 +2795,6 @@ class AuditLogEventEnvironmentDeleted(BaseModel):
 
 
 class AuditLogEventEnvironmentSettings(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     min_replica: Annotated[int, Field(title="Min Replica")]
     max_replica: Annotated[int, Field(title="Max Replica")]
     concurrency_target: Annotated[int, Field(title="Concurrency Target")]
@@ -2898,9 +2838,6 @@ class AuditLogEventEnvironmentSettings(BaseModel):
 
 
 class AuditLogEventGatewayEndpointCreated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["GATEWAY_ENDPOINT_CREATED"], Field(title="Event Type")
     ]
@@ -2909,9 +2846,6 @@ class AuditLogEventGatewayEndpointCreated(BaseModel):
 
 
 class AuditLogEventGatewayEndpointDeleted(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["GATEWAY_ENDPOINT_DELETED"], Field(title="Event Type")
     ]
@@ -2920,9 +2854,6 @@ class AuditLogEventGatewayEndpointDeleted(BaseModel):
 
 
 class AuditLogEventGatewayEndpointUpdated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["GATEWAY_ENDPOINT_UPDATED"], Field(title="Event Type")
     ]
@@ -2932,18 +2863,12 @@ class AuditLogEventGatewayEndpointUpdated(BaseModel):
 
 
 class AuditLogEventModelDeleted(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["MODEL_DELETED"], Field(title="Event Type")]
     model_id: Annotated[str, Field(title="Model Id")]
     model_name: Annotated[str, Field(title="Model Name")]
 
 
 class AuditLogEventModelDeployed(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["MODEL_DEPLOYED"], Field(title="Event Type")]
     model_id: Annotated[str, Field(title="Model Id")]
     model_name: Annotated[str, Field(title="Model Name")]
@@ -2956,9 +2881,6 @@ class AuditLogEventModelDeployed(BaseModel):
 
 
 class AuditLogEventModelDeploymentActivated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["MODEL_DEPLOYMENT_ACTIVATED"], Field(title="Event Type")
     ]
@@ -2969,9 +2891,6 @@ class AuditLogEventModelDeploymentActivated(BaseModel):
 
 
 class AuditLogEventModelDeploymentDeactivated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["MODEL_DEPLOYMENT_DEACTIVATED"], Field(title="Event Type")
     ]
@@ -2982,9 +2901,6 @@ class AuditLogEventModelDeploymentDeactivated(BaseModel):
 
 
 class AuditLogEventModelDeploymentDeleted(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["MODEL_DEPLOYMENT_DELETED"], Field(title="Event Type")
     ]
@@ -2995,9 +2911,6 @@ class AuditLogEventModelDeploymentDeleted(BaseModel):
 
 
 class AuditLogEventModelDeploymentInstanceTypeChanged(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["MODEL_DEPLOYMENT_INSTANCE_TYPE_CHANGED"], Field(title="Event Type")
     ]
@@ -3009,9 +2922,6 @@ class AuditLogEventModelDeploymentInstanceTypeChanged(BaseModel):
 
 
 class AuditLogEventModelDeploymentPromoted(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["MODEL_DEPLOYMENT_PROMOTED"], Field(title="Event Type")
     ]
@@ -3024,9 +2934,6 @@ class AuditLogEventModelDeploymentPromoted(BaseModel):
 
 
 class AuditLogEventModelDeploymentRequestBackpressureSettingsChanged(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["MODEL_DEPLOYMENT_REQUEST_BACKPRESSURE_SETTINGS_CHANGED"],
         Field(title="Event Type"),
@@ -3040,9 +2947,6 @@ class AuditLogEventModelDeploymentRequestBackpressureSettingsChanged(BaseModel):
 
 
 class AuditLogEventModelDeploymentRetried(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["MODEL_DEPLOYMENT_RETRIED"], Field(title="Event Type")
     ]
@@ -3054,9 +2958,6 @@ class AuditLogEventModelDeploymentRetried(BaseModel):
 
 
 class AuditLogEventModelRenamed(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["MODEL_RENAMED"], Field(title="Event Type")]
     model_id: Annotated[str, Field(title="Model Id")]
     model_name: Annotated[str, Field(title="Model Name")]
@@ -3064,9 +2965,6 @@ class AuditLogEventModelRenamed(BaseModel):
 
 
 class AuditLogEventProviderConnectionCreated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["PROVIDER_CONNECTION_CREATED"], Field(title="Event Type")
     ]
@@ -3076,9 +2974,6 @@ class AuditLogEventProviderConnectionCreated(BaseModel):
 
 
 class AuditLogEventProviderConnectionDeleted(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["PROVIDER_CONNECTION_DELETED"], Field(title="Event Type")
     ]
@@ -3088,9 +2983,6 @@ class AuditLogEventProviderConnectionDeleted(BaseModel):
 
 
 class AuditLogEventProviderConnectionUpdated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["PROVIDER_CONNECTION_UPDATED"], Field(title="Event Type")
     ]
@@ -3100,9 +2992,6 @@ class AuditLogEventProviderConnectionUpdated(BaseModel):
 
 
 class AuditLogEventReplicaTerminated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["REPLICA_TERMINATED"], Field(title="Event Type")]
     model_id: Annotated[str, Field(title="Model Id")]
     model_name: Annotated[str, Field(title="Model Name")]
@@ -3112,9 +3001,6 @@ class AuditLogEventReplicaTerminated(BaseModel):
 
 
 class AuditLogEventRequireGroupBasedAdminsEnabled(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["REQUIRE_GROUP_BASED_ADMINS_ENABLED"], Field(title="Event Type")
     ]
@@ -3122,27 +3008,18 @@ class AuditLogEventRequireGroupBasedAdminsEnabled(BaseModel):
 
 
 class AuditLogEventSecretDeleted(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["SECRET_DELETED"], Field(title="Event Type")]
     secret_id: Annotated[str, Field(title="Secret Id")]
     secret_name: Annotated[str, Field(title="Secret Name")]
 
 
 class AuditLogEventSecretUpdated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["SECRET_UPDATED"], Field(title="Event Type")]
     secret_id: Annotated[str, Field(title="Secret Id")]
     secret_name: Annotated[str, Field(title="Secret Name")]
 
 
 class AuditLogEventSshCertificateSigned(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["SSH_CERTIFICATE_SIGNED"], Field(title="Event Type")]
     workload_type: Annotated[str, Field(title="Workload Type")]
     workload_id: Annotated[str, Field(title="Workload Id")]
@@ -3153,18 +3030,12 @@ class AuditLogEventSshCertificateSigned(BaseModel):
 
 
 class AuditLogEventUserInvited(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["USER_INVITED"], Field(title="Event Type")]
     invited_user_email: Annotated[str, Field(title="Invited User Email")]
     role_name: Annotated[str, Field(title="Role Name")]
 
 
 class AuditLogEventUserJoinedOrganization(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["USER_JOINED_ORGANIZATION"], Field(title="Event Type")
     ]
@@ -3173,17 +3044,11 @@ class AuditLogEventUserJoinedOrganization(BaseModel):
 
 
 class AuditLogEventUserRemoved(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["USER_REMOVED"], Field(title="Event Type")]
     removed_user_email: Annotated[str, Field(title="Removed User Email")]
 
 
 class AuditLogEventUserRoleUpdated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["USER_ROLE_UPDATED"], Field(title="Event Type")]
     user_id: Annotated[str, Field(title="User Id")]
     user_email: Annotated[str, Field(title="User Email")]
@@ -3191,9 +3056,6 @@ class AuditLogEventUserRoleUpdated(BaseModel):
 
 
 class AuditLogEventUserTeamRoleUpdated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["USER_TEAM_ROLE_UPDATED"], Field(title="Event Type")]
     user_id: Annotated[str, Field(title="User Id")]
     user_email: Annotated[str, Field(title="User Email")]
@@ -3203,9 +3065,6 @@ class AuditLogEventUserTeamRoleUpdated(BaseModel):
 
 
 class AuditLogEventVolumeDeleted(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["VOLUME_DELETED"], Field(title="Event Type")]
     volume_ref: Annotated[str, Field(title="Volume Ref")]
     namespace: Annotated[str, Field(title="Namespace")]
@@ -3214,9 +3073,6 @@ class AuditLogEventVolumeDeleted(BaseModel):
 
 
 class AuditLogEventVolumeVersionDeleted(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["VOLUME_VERSION_DELETED"], Field(title="Event Type")]
     volume_ref: Annotated[str, Field(title="Volume Ref")]
     namespace: Annotated[str, Field(title="Namespace")]
@@ -3226,9 +3082,6 @@ class AuditLogEventVolumeVersionDeleted(BaseModel):
 
 
 class AuditLogEventVolumeVersionRestored(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[Literal["VOLUME_VERSION_RESTORED"], Field(title="Event Type")]
     volume_ref: Annotated[str, Field(title="Volume Ref")]
     namespace: Annotated[str, Field(title="Namespace")]
@@ -3238,9 +3091,6 @@ class AuditLogEventVolumeVersionRestored(BaseModel):
 
 
 class AuditLogEventWebhookSigningSecretCreated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["WEBHOOK_SIGNING_SECRET_CREATED"], Field(title="Event Type")
     ]
@@ -3248,9 +3098,6 @@ class AuditLogEventWebhookSigningSecretCreated(BaseModel):
 
 
 class AuditLogEventWebhookSigningSecretDeleted(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["WEBHOOK_SIGNING_SECRET_DELETED"], Field(title="Event Type")
     ]
@@ -3258,9 +3105,6 @@ class AuditLogEventWebhookSigningSecretDeleted(BaseModel):
 
 
 class AuditLogEventWebhookSigningSecretRotated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["WEBHOOK_SIGNING_SECRET_ROTATED"], Field(title="Event Type")
     ]
@@ -5764,7 +5608,118 @@ class Name3(RootModel[str]):
     ] = None
 
 
+class SamplerNumReplicas(RootModel[int]):
+    root: Annotated[
+        int | None,
+        Field(
+            description="Number of replicas the run's sampler runs, applied as both its minimum and maximum. Must be at least 1. If omitted, a new sampler uses the platform defaults and a sampler reused from an earlier run keeps its settings. A run that already has a sampler keeps it unchanged. When the run ends, its sampler is scaled down.",
+            ge=1,
+            title="Sampler Num Replicas",
+        ),
+    ] = None
+
+
 class CreateLoopsRunRequest(BaseModel):
+    session_id: Annotated[
+        str,
+        Field(
+            description="ID of the Loops session this run belongs to.",
+            title="Session Id",
+        ),
+    ]
+    base_model: Annotated[
+        str,
+        Field(description="Base model ID (e.g. 'Qwen/Qwen3-8B').", title="Base Model"),
+    ]
+    name: Annotated[
+        Name3 | None,
+        Field(
+            description="Optional display name for the run. Defaults to the base model name when omitted.",
+            title="Name",
+        ),
+    ] = None
+    max_seq_len: Annotated[
+        int | None,
+        Field(
+            description="Maximum prompt length (in tokens) the run must handle. Set this to the longest training example you plan to send. Defaults to the maximum supported by the model configuration.",
+            title="Max Seq Len",
+        ),
+    ] = None
+    lora_rank: Annotated[
+        int, Field(description="LoRA rank.", ge=1, title="Lora Rank")
+    ] = 64
+    seed: Annotated[
+        int | None, Field(description="Random seed for reproducibility.", title="Seed")
+    ] = None
+    scale_down_delay_seconds: Annotated[
+        int,
+        Field(
+            description="Seconds of inactivity before the run scales to zero. Must be between 1 and 3600 (1 hour). Defaults to 900 (15 minutes).",
+            gt=0,
+            le=3600,
+            title="Scale Down Delay Seconds",
+        ),
+    ] = 900
+    availability_model: Annotated[
+        Literal["dedicated", "spot"] | str,
+        Field(
+            description="Capacity the trainer runs on. 'dedicated' is not preempted. 'spot' runs below inference and reaches idle reserved capacity, but the run is stopped if its GPUs are reclaimed and cannot be resumed.",
+            examples=["spot"],
+            title="V1AvailabilityModel",
+        ),
+    ] = "dedicated"
+    replicas: Annotated[
+        int,
+        Field(
+            description="Number of data-parallel trainer replicas. Each replica is one full copy of the model's preset node group, so the trainer deployment runs (preset node_count * replicas) nodes (e.g. replicas=4 on a 4-node preset → 16 nodes, 4 DP workers). Must be a positive integer. Defaults to 1.",
+            ge=1,
+            title="Replicas",
+        ),
+    ] = 1
+    path: Annotated[
+        str | None,
+        Field(
+            description="Optional bt:// URI of an existing checkpoint to load weights from on startup. Form: bt://loops:<run_id>/weights/<checkpoint_name>.",
+            examples=["bt://loops:k4q95w5/weights/step-100"],
+            title="Path",
+        ),
+    ] = None
+    reuse_from_run_id: Annotated[
+        str | None,
+        Field(
+            description="Optional ID of a prior Loops run whose trainer and/or sampler should be reused for this run instead of provisioning fresh. The prior run must use the same base model and belong to the same team.",
+            title="Reuse From Run Id",
+        ),
+    ] = None
+    reuse_from_session_id: Annotated[
+        str | None,
+        Field(
+            description="Optional ID of a prior Loops session whose trainer and/or sampler should be reused for this run. Deprecated in favor of reuse_from_run_id.",
+            title="Reuse From Session Id",
+        ),
+    ] = None
+    sampler_num_replicas: Annotated[
+        SamplerNumReplicas | None,
+        Field(
+            description="Number of replicas the run's sampler runs, applied as both its minimum and maximum. Must be at least 1. If omitted, a new sampler uses the platform defaults and a sampler reused from an earlier run keeps its settings. A run that already has a sampler keeps it unchanged. When the run ends, its sampler is scaled down.",
+            title="Sampler Num Replicas",
+        ),
+    ] = None
+
+
+class DeactivateLoopsRunResponse(BaseModel):
+    id: Annotated[str, Field(description="The deactivated Loops run ID.", title="Id")]
+    base_model: Annotated[
+        str,
+        Field(
+            description="The base model whose Loops run was deactivated.",
+            title="Base Model",
+        ),
+    ]
+    user: Annotated[User, Field(description="The user who owns the Loops run.")]
+
+
+class CreateLoopsTrainerRequest(BaseModel):
     session_id: Annotated[
         str,
         Field(
@@ -5845,22 +5800,21 @@ class CreateLoopsRunRequest(BaseModel):
     ] = None
 
 
-class DeactivateLoopsRunResponse(BaseModel):
-    id: Annotated[str, Field(description="The deactivated Loops run ID.", title="Id")]
-    base_model: Annotated[
-        str,
-        Field(
-            description="The base model whose Loops run was deactivated.",
-            title="Base Model",
-        ),
-    ]
-    user: Annotated[User, Field(description="The user who owns the Loops run.")]
-
-
 class ListLoopsSamplersResponse(BaseModel):
     samplers: Annotated[
         list[LoopsSampler], Field(description="List of samplers.", title="Samplers")
     ]
+
+
+class NumReplicas(RootModel[int]):
+    root: Annotated[
+        int | None,
+        Field(
+            description="Number of replicas the sampler runs, applied as both its minimum and maximum. Must be at least 1. If omitted, a new sampler uses the platform defaults and a paired sampler reused from an earlier run keeps its settings. A run that already has a sampler keeps it unchanged, and when a run ends, its sampler is scaled down.",
+            ge=1,
+            title="Num Replicas",
+        ),
+    ] = None
 
 
 class CreateLoopsSamplerRequest(BaseModel):
@@ -5911,6 +5865,13 @@ class CreateLoopsSamplerRequest(BaseModel):
         Field(
             description="Optional ID of a prior Loops session to reuse a trainer and/or sampler from. Deprecated.",
             title="Reuse From Session Id",
+        ),
+    ] = None
+    num_replicas: Annotated[
+        NumReplicas | None,
+        Field(
+            description="Number of replicas the sampler runs, applied as both its minimum and maximum. Must be at least 1. If omitted, a new sampler uses the platform defaults and a paired sampler reused from an earlier run keeps its settings. A run that already has a sampler keeps it unchanged, and when a run ends, its sampler is scaled down.",
+            title="Num Replicas",
         ),
     ] = None
 
@@ -7040,9 +7001,6 @@ class CreateLLMModelVersionRequest(BaseModel):
 
 
 class LibraryListingMetadata(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     parameter_count: Annotated[int | None, Field(title="Parameter Count")] = None
     context_length: Annotated[int | None, Field(title="Context Length")] = None
     input_modalities: Annotated[
@@ -7175,7 +7133,7 @@ class UpdateLibraryListingRequest(BaseModel):
     metadata: Annotated[
         LibraryListingMetadata | None,
         Field(
-            description="Model-level metadata for the listing. When provided, replaces the stored metadata. Unknown fields are rejected."
+            description="Model-level metadata for the listing. When provided, replaces the stored metadata."
         ),
     ] = None
 
@@ -7825,7 +7783,125 @@ class ExploreMetadataAPIFormats(BaseModel):
     ] = False
 
 
+class RouteRef(BaseModel):
+    id: Annotated[str, Field(description="Stable route identifier.", title="Id")]
+    slug: Annotated[
+        str,
+        Field(
+            description="Name of the route to send in the inference request's model field.",
+            title="Slug",
+        ),
+    ]
+
+
 class RouteTargetAnthropic(BaseModel):
+    type: Annotated[
+        Literal["ANTHROPIC"],
+        Field(description="Target kind for Anthropic.", title="Type"),
+    ]
+    model: Annotated[
+        str,
+        Field(
+            description="Model name sent to the provider.", min_length=1, title="Model"
+        ),
+    ]
+    secret_name: Annotated[
+        str,
+        Field(
+            description="Name of a credential secret owned by the route's team.",
+            min_length=1,
+            title="Secret Name",
+        ),
+    ]
+
+
+class RouteTargetBasetenModelAPI(BaseModel):
+    type: Annotated[
+        Literal["BASETEN_MODEL_API"],
+        Field(description="Target kind for a Baseten Model API.", title="Type"),
+    ]
+    model: Annotated[
+        str,
+        Field(description="Name of the target Model API.", min_length=1, title="Model"),
+    ]
+
+
+class RouteTargetClassifierModelBased(BaseModel):
+    type: Annotated[
+        Literal["CLASSIFIER_MODEL_BASED"],
+        Field(
+            description="Target kind for a classifier-model-based route.", title="Type"
+        ),
+    ]
+    classifier_model_id: Annotated[
+        str,
+        Field(
+            description="ID of the Baseten model that picks a route for each request.",
+            examples=["abcd123"],
+            title="Classifier Model Id",
+        ),
+    ]
+    classifier_environment_name: Annotated[
+        str | None,
+        Field(
+            description="Environment of the classifier model. Null for production.",
+            examples=["production"],
+            title="Classifier Environment Name",
+        ),
+    ]
+    default_route: Annotated[
+        RouteRef, Field(description="Route used when the classifier picks none.")
+    ]
+    allowed_routes: Annotated[
+        list[RouteRef],
+        Field(
+            description="Routes the classifier may pick, in creation order.",
+            title="Allowed Routes",
+        ),
+    ]
+
+
+class RouteTargetOpenAI(BaseModel):
+    type: Annotated[
+        Literal["OPENAI"], Field(description="Target kind for OpenAI.", title="Type")
+    ]
+    model: Annotated[
+        str,
+        Field(
+            description="Model name sent to the provider.", min_length=1, title="Model"
+        ),
+    ]
+    secret_name: Annotated[
+        str,
+        Field(
+            description="Name of a credential secret owned by the route's team.",
+            min_length=1,
+            title="Secret Name",
+        ),
+    ]
+
+
+class RouteTargetXAI(BaseModel):
+    type: Annotated[
+        Literal["XAI"], Field(description="Target kind for xAI.", title="Type")
+    ]
+    model: Annotated[
+        str,
+        Field(
+            description="Model name sent to the provider.", min_length=1, title="Model"
+        ),
+    ]
+    secret_name: Annotated[
+        str,
+        Field(
+            description="Name of a credential secret owned by the route's team.",
+            min_length=1,
+            title="Secret Name",
+        ),
+    ]
+
+
+class RouteTargetConfigAnthropic(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -7849,7 +7925,7 @@ class RouteTargetAnthropic(BaseModel):
     ]
 
 
-class RouteTargetBasetenModelAPI(BaseModel):
+class RouteTargetConfigBasetenModelAPI(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -7863,7 +7939,65 @@ class RouteTargetBasetenModelAPI(BaseModel):
     ]
 
 
-class RouteTargetOpenAI(BaseModel):
+class ClassifierEnvironmentName(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="Environment of the classifier model. Omit for production, which is returned as null.",
+            examples=["production"],
+            min_length=1,
+            title="Classifier Environment Name",
+        ),
+    ] = None
+
+
+class RouteTargetConfigClassifierModelBased(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    type: Annotated[
+        Literal["CLASSIFIER_MODEL_BASED"],
+        Field(
+            description="Target kind for a classifier-model-based route. Not intended for general use: classifiers are deployed by Baseten's post-training team.",
+            title="Type",
+        ),
+    ]
+    classifier_model_id: Annotated[
+        str,
+        Field(
+            description="ID of the Baseten model that picks a route for each request. Only classifiers deployed by Baseten's post-training team are supported.",
+            examples=["abcd123"],
+            min_length=1,
+            title="Classifier Model Id",
+        ),
+    ]
+    classifier_environment_name: Annotated[
+        ClassifierEnvironmentName | None,
+        Field(
+            description="Environment of the classifier model. Omit for production, which is returned as null.",
+            examples=["production"],
+            title="Classifier Environment Name",
+        ),
+    ] = None
+    allowed_route_ids: Annotated[
+        list[str],
+        Field(
+            description="IDs of the routes the classifier may pick. All must belong to the route's team and must not be routers themselves.",
+            examples=[["abc1234", "def5678"]],
+            title="Allowed Route Ids",
+        ),
+    ]
+    default_route_id: Annotated[
+        str,
+        Field(
+            description="ID of the allowed route used when the classifier picks none.",
+            examples=["abc1234"],
+            title="Default Route Id",
+        ),
+    ]
+
+
+class RouteTargetConfigOpenAI(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -7886,7 +8020,7 @@ class RouteTargetOpenAI(BaseModel):
     ]
 
 
-class RouteTargetXAI(BaseModel):
+class RouteTargetConfigXAI(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -7913,7 +8047,7 @@ class TeamId1(RootModel[str]):
     root: Annotated[
         str | None,
         Field(
-            description="Identifier of the team that owns the route. When omitted, uses your organization's default team.",
+            description="Identifier of the team that owns the route.",
             examples=["abc1234"],
             min_length=1,
             title="Team Id",
@@ -7953,7 +8087,7 @@ class CreateRouteRequest(BaseModel):
     team_id: Annotated[
         TeamId1 | None,
         Field(
-            description="Identifier of the team that owns the route. When omitted, uses your organization's default team.",
+            description="Identifier of the team that owns the route.",
             examples=["abc1234"],
             title="Team Id",
         ),
@@ -7968,10 +8102,11 @@ class CreateRouteRequest(BaseModel):
     ] = None
     target: Annotated[
         Annotated[
-            RouteTargetBasetenModelAPI
-            | RouteTargetAnthropic
-            | RouteTargetOpenAI
-            | RouteTargetXAI,
+            RouteTargetConfigBasetenModelAPI
+            | RouteTargetConfigAnthropic
+            | RouteTargetConfigOpenAI
+            | RouteTargetConfigXAI
+            | RouteTargetConfigClassifierModelBased,
             Field(
                 description="Upstream target for the route.",
                 discriminator="type",
@@ -8056,47 +8191,67 @@ class RoutesUsageResult(BaseModel):
     ]
 
 
-class RouteSpendLimit(BaseModel):
-    user_id: Annotated[
-        str, Field(description="ID of the user.", examples=["abc1234"], title="User Id")
-    ]
-    email: Annotated[
-        str | None,
+class RouteSpendLimitTeamDefault(BaseModel):
+    team_id: Annotated[
+        str,
         Field(
-            description="Email address of the user.",
-            examples=["dev@example.com"],
-            title="Email",
+            description="ID of the team the user's active Code key belongs to.",
+            examples=["abc1234"],
+            title="Team Id",
         ),
     ]
-    monthly_limit_usd: Annotated[
-        str | None,
+    per_member_monthly_limit_usd: Annotated[
+        str,
         Field(
-            description="Standing spend limit in USD for each UTC calendar month, returned as an exact decimal string. Null when the user has no standing limit.",
-            examples=["200"],
-            title="Monthly Limit Usd",
+            description="The team's per-member spend limit in USD for each UTC calendar month.",
+            examples=["100"],
+            title="Per Member Monthly Limit Usd",
         ),
     ]
 
 
-class UpdateRouteSpendLimitRequest(BaseModel):
+class UpdateRouteSpendLimitSetting(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    monthly_limit_usd: Annotated[
+    user_monthly_limit_usd: Annotated[
         str | None,
         Field(
-            description="Standing spend limit in USD for each UTC calendar month, as a non-negative decimal string with at most 9 decimal places. Send null to remove the limit; omit to leave it unchanged.",
+            description="Standing spend limit in USD for each UTC calendar month. Send null to remove the limit; omit to leave it unchanged.",
             examples=["200"],
-            title="Monthly Limit Usd",
+            title="User Monthly Limit Usd",
         ),
     ] = None
+
+
+class UpdateRouteUserSettingsRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    spend_limit: Annotated[
+        UpdateRouteSpendLimitSetting | None,
+        Field(
+            description="Spend limit fields to change. Pass null to remove the user's limit; omit to leave it unchanged."
+        ),
+    ] = None
+
+
+class RouteTeamSpendLimitSetting(BaseModel):
+    per_member_monthly_limit_usd: Annotated[
+        str | None,
+        Field(
+            description="Spend limit in USD for each UTC calendar month that applies to each member whose active Code key belongs to this team, unless the member has a limit of their own. Returned as an exact decimal string. Null when the team has no per-member limit.",
+            examples=["200"],
+            title="Per Member Monthly Limit Usd",
+        ),
+    ]
 
 
 class Primary(RootModel[str]):
     root: Annotated[
         str | None,
         Field(
-            description="Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use Baseten's default.",
+            description="Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use the team's default.",
             examples=["abc1234"],
             min_length=1,
             title="Primary",
@@ -8108,7 +8263,7 @@ class Background(RootModel[str]):
     root: Annotated[
         str | None,
         Field(
-            description="Route ID for background tasks, such as session titles. Omit to keep the current route, or pass null to use Baseten's default.",
+            description="Route ID for background tasks, such as session titles. Omit to keep the current route, or pass null to use the team's default.",
             examples=["def5678"],
             min_length=1,
             title="Background",
@@ -8123,7 +8278,7 @@ class UpdateBackgroundHarnessModels(BaseModel):
     primary: Annotated[
         Primary | None,
         Field(
-            description="Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use Baseten's default.",
+            description="Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use the team's default.",
             examples=["abc1234"],
             title="Primary",
         ),
@@ -8131,65 +8286,11 @@ class UpdateBackgroundHarnessModels(BaseModel):
     background: Annotated[
         Background | None,
         Field(
-            description="Route ID for background tasks, such as session titles. Omit to keep the current route, or pass null to use Baseten's default.",
+            description="Route ID for background tasks, such as session titles. Omit to keep the current route, or pass null to use the team's default.",
             examples=["def5678"],
             title="Background",
         ),
     ] = None
-
-
-class UpdateClaudeCodeHarnessConfig(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    team_id: Annotated[
-        str,
-        Field(
-            description="Identifier of the team whose default models to set. Every route must belong to this team.",
-            min_length=1,
-            title="Team Id",
-        ),
-    ]
-    harness: Annotated[
-        Literal["claude-code"],
-        Field(
-            description="Claude Code, which supports the `primary` and `background` roles.",
-            title="Harness",
-        ),
-    ]
-    models: Annotated[
-        UpdateBackgroundHarnessModels,
-        Field(
-            description="Route IDs for the model roles to change. Roles left out are unchanged."
-        ),
-    ]
-
-
-class UpdateOpenCodeHarnessConfig(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    team_id: Annotated[
-        str,
-        Field(
-            description="Identifier of the team whose default models to set. Every route must belong to this team.",
-            min_length=1,
-            title="Team Id",
-        ),
-    ]
-    harness: Annotated[
-        Literal["opencode"],
-        Field(
-            description="OpenCode, which supports the `primary` and `background` roles.",
-            title="Harness",
-        ),
-    ]
-    models: Annotated[
-        UpdateBackgroundHarnessModels,
-        Field(
-            description="Route IDs for the model roles to change. Roles left out are unchanged."
-        ),
-    ]
 
 
 class UpdatePrimaryHarnessModels(BaseModel):
@@ -8199,185 +8300,317 @@ class UpdatePrimaryHarnessModels(BaseModel):
     primary: Annotated[
         Primary | None,
         Field(
-            description="Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use Baseten's default.",
+            description="Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use the team's default.",
             examples=["abc1234"],
             title="Primary",
         ),
     ] = None
 
 
-class Primary2(RootModel[str]):
+class UpdateRouteHarnessDefaults(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    claude_code: Annotated[
+        UpdateBackgroundHarnessModels | None,
+        Field(
+            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
+        ),
+    ] = None
+    opencode: Annotated[
+        UpdateBackgroundHarnessModels | None,
+        Field(
+            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
+        ),
+    ] = None
+    codex: Annotated[
+        UpdatePrimaryHarnessModels | None,
+        Field(
+            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
+        ),
+    ] = None
+    pi: Annotated[
+        UpdatePrimaryHarnessModels | None,
+        Field(
+            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
+        ),
+    ] = None
+
+
+class UpdateRouteTeamSpendLimitSetting(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    per_member_monthly_limit_usd: Annotated[
+        str | None,
+        Field(
+            description="Spend limit in USD for each UTC calendar month that applies to each member whose active Code key belongs to this team, unless the member has a limit of their own. Send null to remove it; omit to leave it unchanged.",
+            examples=["200"],
+            title="Per Member Monthly Limit Usd",
+        ),
+    ] = None
+
+
+class UpdateRouteTeamSettingsRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    harness_defaults: Annotated[
+        UpdateRouteHarnessDefaults | None,
+        Field(
+            description="Harnesses to change; harnesses left out are unchanged. Pass null to clear every harness, so each role uses the team's default."
+        ),
+    ] = None
+    spend_limit: Annotated[
+        UpdateRouteTeamSpendLimitSetting | None,
+        Field(
+            description="Spend limit fields to change. Pass null to remove the team's per-member limit; omit to leave it unchanged."
+        ),
+    ] = None
+
+
+class RouteConnectionAnthropic(BaseModel):
+    provider: Annotated[
+        Literal["ANTHROPIC"],
+        Field(description="Provider kind for Anthropic.", title="Provider"),
+    ]
+    secret_id: Annotated[
+        str,
+        Field(
+            description="Identifier of the team secret holding the provider API key.",
+            title="Secret Id",
+        ),
+    ]
+    secret_name: Annotated[
+        str,
+        Field(
+            description="Name of the team secret holding the provider API key.",
+            title="Secret Name",
+        ),
+    ]
+
+
+class RouteConnectionOpenAI(BaseModel):
+    provider: Annotated[
+        Literal["OPENAI"],
+        Field(description="Provider kind for OpenAI.", title="Provider"),
+    ]
+    secret_id: Annotated[
+        str,
+        Field(
+            description="Identifier of the team secret holding the provider API key.",
+            title="Secret Id",
+        ),
+    ]
+    secret_name: Annotated[
+        str,
+        Field(
+            description="Name of the team secret holding the provider API key.",
+            title="Secret Name",
+        ),
+    ]
+
+
+class RouteConnectionXAI(BaseModel):
+    provider: Annotated[
+        Literal["XAI"], Field(description="Provider kind for xAI.", title="Provider")
+    ]
+    secret_id: Annotated[
+        str,
+        Field(
+            description="Identifier of the team secret holding the provider API key.",
+            title="Secret Id",
+        ),
+    ]
+    secret_name: Annotated[
+        str,
+        Field(
+            description="Name of the team secret holding the provider API key.",
+            title="Secret Name",
+        ),
+    ]
+
+
+class RouteConnectionConfigAnthropic(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    provider: Annotated[
+        Literal["ANTHROPIC"],
+        Field(description="Provider kind for Anthropic.", title="Provider"),
+    ]
+    secret_id: Annotated[
+        str,
+        Field(
+            description="Identifier of an existing secret, owned by the same team, that holds the provider API key.",
+            min_length=1,
+            title="Secret Id",
+        ),
+    ]
+
+
+class RouteConnectionConfigOpenAI(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    provider: Annotated[
+        Literal["OPENAI"],
+        Field(description="Provider kind for OpenAI.", title="Provider"),
+    ]
+    secret_id: Annotated[
+        str,
+        Field(
+            description="Identifier of an existing secret, owned by the same team, that holds the provider API key.",
+            min_length=1,
+            title="Secret Id",
+        ),
+    ]
+
+
+class RouteConnectionConfigXAI(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    provider: Annotated[
+        Literal["XAI"], Field(description="Provider kind for xAI.", title="Provider")
+    ]
+    secret_id: Annotated[
+        str,
+        Field(
+            description="Identifier of an existing secret, owned by the same team, that holds the provider API key.",
+            min_length=1,
+            title="Secret Id",
+        ),
+    ]
+
+
+class TeamId2(RootModel[str]):
     root: Annotated[
         str | None,
         Field(
-            description="Route ID for the primary model, which new sessions use. Omit to use Baseten's default.",
+            description="Identifier of the team that owns the connection.",
             examples=["abc1234"],
             min_length=1,
-            title="Primary",
+            title="Team Id",
         ),
     ] = None
 
 
-class Background1(RootModel[str]):
-    root: Annotated[
-        str | None,
-        Field(
-            description="Route ID for background tasks, such as session titles. Omit to use Baseten's default.",
-            examples=["def5678"],
-            min_length=1,
-            title="Background",
-        ),
-    ] = None
-
-
-class BackgroundHarnessModels(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    primary: Annotated[
-        Primary2 | None,
-        Field(
-            description="Route ID for the primary model, which new sessions use. Omit to use Baseten's default.",
-            examples=["abc1234"],
-            title="Primary",
-        ),
-    ] = None
-    background: Annotated[
-        Background1 | None,
-        Field(
-            description="Route ID for background tasks, such as session titles. Omit to use Baseten's default.",
-            examples=["def5678"],
-            title="Background",
-        ),
-    ] = None
-
-
-class PrimaryHarnessModels(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    primary: Annotated[
-        Primary2 | None,
-        Field(
-            description="Route ID for the primary model, which new sessions use. Omit to use Baseten's default.",
-            examples=["abc1234"],
-            title="Primary",
-        ),
-    ] = None
-
-
-class SetClaudeCodeHarnessConfig(BaseModel):
+class CreateRouteConnectionRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     team_id: Annotated[
-        str,
+        TeamId2 | None,
         Field(
-            description="Identifier of the team whose default models to set. Every route must belong to this team.",
-            min_length=1,
+            description="Identifier of the team that owns the connection.",
+            examples=["abc1234"],
             title="Team Id",
         ),
-    ]
-    harness: Annotated[
-        Literal["claude-code"],
-        Field(
-            description="Claude Code, which supports the `primary` and `background` roles.",
-            title="Harness",
-        ),
-    ]
-    models: Annotated[
-        BackgroundHarnessModels,
-        Field(
-            description="Route ID for each model role. Roles left out use Baseten's defaults."
-        ),
-    ]
-
-
-class SetCodexHarnessConfig(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    team_id: Annotated[
-        str,
-        Field(
-            description="Identifier of the team whose default models to set. Every route must belong to this team.",
-            min_length=1,
-            title="Team Id",
-        ),
-    ]
-    harness: Annotated[
-        Literal["codex"],
-        Field(
-            description="Codex, which supports only the `primary` role.",
-            title="Harness",
-        ),
-    ]
-    models: Annotated[
-        PrimaryHarnessModels,
-        Field(
-            description="Route ID for each model role. Roles left out use Baseten's defaults."
-        ),
-    ]
-
-
-class SetOpenCodeHarnessConfig(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    team_id: Annotated[
-        str,
-        Field(
-            description="Identifier of the team whose default models to set. Every route must belong to this team.",
-            min_length=1,
-            title="Team Id",
-        ),
-    ]
-    harness: Annotated[
-        Literal["opencode"],
-        Field(
-            description="OpenCode, which supports the `primary` and `background` roles.",
-            title="Harness",
-        ),
-    ]
-    models: Annotated[
-        BackgroundHarnessModels,
-        Field(
-            description="Route ID for each model role. Roles left out use Baseten's defaults."
-        ),
-    ]
-
-
-class SetRouteHarnessConfigRequest(
-    RootModel[
-        SetClaudeCodeHarnessConfig | SetOpenCodeHarnessConfig | SetCodexHarnessConfig
-    ]
-):
-    root: Annotated[
+    ] = None
+    config: Annotated[
         Annotated[
-            SetClaudeCodeHarnessConfig
-            | SetOpenCodeHarnessConfig
-            | SetCodexHarnessConfig,
-            Field(discriminator="harness", title="SetRouteHarnessConfigRequestV1"),
+            RouteConnectionConfigAnthropic
+            | RouteConnectionConfigOpenAI
+            | RouteConnectionConfigXAI,
+            Field(
+                description="Provider the connection authenticates with, and the team secret holding its API key.",
+                discriminator="provider",
+                examples=[{"provider": "ANTHROPIC", "secret_id": "abc1234"}],
+                title="Config",
+            ),
         ]
         | dict[str, Any],
         Field(union_mode="left_to_right"),
     ]
 
 
-class RouteHarnessConfigTombstone(BaseModel):
-    harness: Annotated[
-        Literal["claude-code", "opencode", "codex"] | str,
-        Field(
-            description="Harness whose default models were cleared.",
-            title="RouteHarness",
-        ),
-    ]
-    team_id: Annotated[
+class RouteConnectionTombstone(BaseModel):
+    id: Annotated[
         str,
+        Field(description="Stable identifier of the deleted connection.", title="Id"),
+    ]
+
+
+class SecretId(RootModel[str]):
+    root: Annotated[
+        str | None,
         Field(
-            description="Identifier of the team whose default models were cleared.",
-            title="Team Id",
+            description="Identifier of the new secret, owned by the connection's team, that holds the provider API key. Omit to keep the current secret.",
+            min_length=1,
+            title="Secret Id",
         ),
+    ] = None
+
+
+class UpdateRouteConnectionConfigAnthropic(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    provider: Annotated[
+        Literal["ANTHROPIC"],
+        Field(description="Provider kind for Anthropic.", title="Provider"),
+    ]
+    secret_id: Annotated[
+        SecretId | None,
+        Field(
+            description="Identifier of the new secret, owned by the connection's team, that holds the provider API key. Omit to keep the current secret.",
+            title="Secret Id",
+        ),
+    ] = None
+
+
+class UpdateRouteConnectionConfigOpenAI(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    provider: Annotated[
+        Literal["OPENAI"],
+        Field(description="Provider kind for OpenAI.", title="Provider"),
+    ]
+    secret_id: Annotated[
+        SecretId | None,
+        Field(
+            description="Identifier of the new secret, owned by the connection's team, that holds the provider API key. Omit to keep the current secret.",
+            title="Secret Id",
+        ),
+    ] = None
+
+
+class UpdateRouteConnectionConfigXAI(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    provider: Annotated[
+        Literal["XAI"], Field(description="Provider kind for xAI.", title="Provider")
+    ]
+    secret_id: Annotated[
+        SecretId | None,
+        Field(
+            description="Identifier of the new secret, owned by the connection's team, that holds the provider API key. Omit to keep the current secret.",
+            title="Secret Id",
+        ),
+    ] = None
+
+
+class UpdateRouteConnectionRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    config: Annotated[
+        Annotated[
+            UpdateRouteConnectionConfigAnthropic
+            | UpdateRouteConnectionConfigOpenAI
+            | UpdateRouteConnectionConfigXAI,
+            Field(
+                description="Connection fields to change. The provider must match the connection and is immutable.",
+                discriminator="provider",
+                examples=[{"provider": "ANTHROPIC", "secret_id": "abc1234"}],
+                title="Config",
+            ),
+        ]
+        | dict[str, Any],
+        Field(union_mode="left_to_right"),
     ]
 
 
@@ -8431,6 +8664,18 @@ class UpdateRouteRequest(BaseModel):
             description="New display label. Omit to keep the current label; null is not accepted.",
             examples=["Assistant"],
             title="Display Name",
+        ),
+    ] = None
+    target: Annotated[
+        RouteTargetConfigBasetenModelAPI
+        | RouteTargetConfigAnthropic
+        | RouteTargetConfigOpenAI
+        | RouteTargetConfigXAI
+        | RouteTargetConfigClassifierModelBased
+        | None,
+        Field(
+            description="Complete new target configuration. Omit to keep the current configuration; null is not accepted. Only the CLASSIFIER_MODEL_BASED configuration of a router route is mutable.",
+            title="Target",
         ),
     ] = None
 
@@ -8693,7 +8938,7 @@ class EffectiveRateLimit(BaseModel):
     ]
 
 
-class Name4(RootModel[str]):
+class Name5(RootModel[str]):
     root: Annotated[
         str | None,
         Field(
@@ -8707,7 +8952,7 @@ class Name4(RootModel[str]):
 
 class GroupMetadata(BaseModel):
     name: Annotated[
-        Name4 | None,
+        Name5 | None,
         Field(
             description="Optional display name for the group.",
             examples=["Acme prod"],
@@ -8776,7 +9021,7 @@ class CreateGroupHierarchy(BaseModel):
 
 class UpdateGroupMetadata(BaseModel):
     name: Annotated[
-        Name4 | None,
+        Name5 | None,
         Field(
             description="Optional display name for the group.",
             examples=["Acme prod"],
@@ -8854,14 +9099,90 @@ class RegisterAPIKeyResponse(BaseModel):
     ]
 
 
-class ImageBuildLog(BaseModel):
+class SandboxRegion(BaseModel):
+    name: Annotated[
+        str,
+        Field(
+            description="Public region identifier to use when creating a sandbox.",
+            examples=["us-was-1"],
+        ),
+    ]
+    country: Annotated[str, Field(description="Country code.", examples=["us"])]
+    continent: Annotated[str, Field(description="Continent code.", examples=["na"])]
+    location: Annotated[
+        str, Field(description="Region location.", examples=["Washington"])
+    ]
+    info_generation: Annotated[
+        Literal["CARBON"] | str,
+        Field(
+            description="Runtime generation supported by this region, using the public name CARBON. Actual runtime selection depends on the team and sandbox configuration."
+        ),
+    ]
+
+
+class SandboxLogEntry(BaseModel):
+    timestamp: AwareDatetime
+    message: str
+    severity: Annotated[int, Field(description="Numeric log severity.")]
+    trace_id: Annotated[
+        str,
+        Field(
+            description="Associated trace identifier, or an empty string when unavailable."
+        ),
+    ]
+    action: Annotated[
+        str | None,
+        Field(description="Action or command when present on the log entry."),
+    ] = None
+
+
+class ErrorRate(RootModel[float]):
+    root: Annotated[
+        float,
+        Field(
+            description="Fraction of requests returning 4xx or 5xx. Null when there are no requests.",
+            ge=0.0,
+            le=1.0,
+        ),
+    ]
+
+
+class SandboxMetricsPoint(BaseModel):
+    timestamp: Annotated[AwareDatetime, Field(description="Start of this interval.")]
+    requests: Annotated[
+        float | None,
+        Field(
+            description="Request count. Zero without traffic; null for intervals entirely before creation."
+        ),
+    ]
+    cpu_percent: Annotated[
+        float | None,
+        Field(
+            description="Peak CPU usage in this interval, where 100 is one full CPU core. Null without a sample."
+        ),
+    ]
+    memory_bytes: Annotated[
+        float | None,
+        Field(
+            description="Memory usage in bytes, averaged per series then maximum across series. Null without a sample."
+        ),
+    ]
+    error_rate: Annotated[
+        ErrorRate | None,
+        Field(
+            description="Fraction of requests returning 4xx or 5xx. Null when there are no requests."
+        ),
+    ]
+
+
+class SandboxImageBuildLog(BaseModel):
     timestamp: AwareDatetime
     message: str
     severity: Annotated[int, Field(description="Numeric OpenTelemetry severity level.")]
 
 
-class ImageBuildLogsResponse(BaseModel):
-    logs: list[ImageBuildLog]
+class SandboxImageBuildLogsResponse(BaseModel):
+    logs: list[SandboxImageBuildLog]
     total_count: Annotated[
         int,
         Field(
@@ -8876,7 +9197,7 @@ class SandboxTTLIdleExpirationPolicy(BaseModel):
     value: Annotated[
         str,
         Field(
-            description="Duration using seconds, minutes, hours, or composite durations such as 1h30m. Whole days and weeks are also supported, for example 7d or 2w.",
+            description="Duration using seconds, minutes, hours, or composite durations such as 1h30m. Whole days and weeks are also supported, for example 7d or 2w, where d is 24h and w is 7 × 24h. Days and weeks cannot be combined with other units, so 1d12h is rejected; use 36h instead. Values are returned exactly as sent, without normalization.",
             examples=["24h"],
             pattern="^[+-]?(0|[0-9]+[dw]|([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h)(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))*)$",
         ),
@@ -8889,7 +9210,7 @@ class SandboxTTLMaxAgeExpirationPolicy(BaseModel):
     value: Annotated[
         str,
         Field(
-            description="Duration using seconds, minutes, hours, or composite durations such as 1h30m. Whole days and weeks are also supported, for example 7d or 2w.",
+            description="Duration using seconds, minutes, hours, or composite durations such as 1h30m. Whole days and weeks are also supported, for example 7d or 2w, where d is 24h and w is 7 × 24h. Days and weeks cannot be combined with other units, so 1d12h is rejected; use 36h instead. Values are returned exactly as sent, without normalization.",
             examples=["24h"],
             pattern="^[+-]?(0|[0-9]+[dw]|([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h)(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))*)$",
         ),
@@ -8983,7 +9304,7 @@ class SandboxApiPagination(BaseModel):
     ] = None
 
 
-class ImageTag(BaseModel):
+class SandboxImageTag(BaseModel):
     name: Annotated[str, Field(description="Image tag name.", examples=["latest"])]
     created_at: Annotated[
         AwareDatetime | None,
@@ -9004,7 +9325,7 @@ class ImageTag(BaseModel):
     ] = None
 
 
-class Image(BaseModel):
+class SandboxImageSummary(BaseModel):
     name: Annotated[
         str,
         Field(
@@ -9053,31 +9374,19 @@ class Image(BaseModel):
             ge=0,
         ),
     ] = None
+
+
+class SandboxImage(SandboxImageSummary):
     tags: Annotated[
-        list[ImageTag],
+        list[SandboxImageTag] | None,
         Field(
-            description="Empty for list and get summary responses. Use GET /sandboxes/images/{image_name}/tags to retrieve paginated image versions.",
-            examples=[
-                [
-                    {
-                        "name": "latest",
-                        "created_at": "2026-09-16T21:20:00Z",
-                        "updated_at": "2026-09-16T21:25:00Z",
-                        "size": 134217728,
-                    },
-                    {
-                        "name": "20260915212000",
-                        "created_at": "2026-09-15T21:20:00Z",
-                        "updated_at": "2026-09-15T21:25:00Z",
-                        "size": 125829120,
-                    },
-                ]
-            ],
+            description="Empty for get summary responses. Use GET /sandboxes/images/{image_name}/tags to retrieve paginated image versions.",
+            examples=[[]],
         ),
-    ]
+    ] = None
 
 
-class PushImageRequest(BaseModel):
+class PushSandboxImageRequest(BaseModel):
     name: Annotated[
         str,
         Field(
@@ -9104,7 +9413,7 @@ class PushImageRequest(BaseModel):
     ] = None
 
 
-class PushImageResponse(BaseModel):
+class PushSandboxImageResponse(BaseModel):
     name: Annotated[
         str, Field(description="Target image repository name.", examples=["base-image"])
     ]
@@ -9176,7 +9485,7 @@ class SandboxLibraryImageCreationOptions(BaseModel):
     ] = None
 
 
-class CleanupImagesResponse(BaseModel):
+class CleanupSandboxImagesResponse(BaseModel):
     deleted: Annotated[
         int, Field(description="Number of image versions removed.", examples=[3], ge=0)
     ]
@@ -10308,9 +10617,6 @@ class EnvironmentGroups(BaseModel):
 
 
 class AuditLogEventAutoscalingScheduleChange(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     action: Annotated[
         Literal["CREATED", "UPDATED", "DELETED", "UNCHANGED"] | str,
         Field(
@@ -10324,9 +10630,6 @@ class AuditLogEventAutoscalingScheduleChange(BaseModel):
 
 
 class AuditLogEventEnvironmentUpdated(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     schedules: Annotated[
         list[AuditLogEventAutoscalingScheduleChange] | None, Field(title="Schedules")
     ]
@@ -10379,9 +10682,6 @@ class AuditLogEventEnvironmentUpdated(BaseModel):
 
 
 class AuditLogEventModelDeploymentAutoscalingSettingsChanged(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     schedules: Annotated[
         list[AuditLogEventAutoscalingScheduleChange] | None, Field(title="Schedules")
     ]
@@ -10410,9 +10710,6 @@ class AuditLogEventModelDeploymentAutoscalingSettingsChanged(BaseModel):
 
 
 class AuditLogEventModelPromotionControlAction(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
     event_type: Annotated[
         Literal["MODEL_PROMOTION_CONTROL_ACTION"], Field(title="Event Type")
     ]
@@ -12276,7 +12573,8 @@ class Route(BaseModel):
             RouteTargetBasetenModelAPI
             | RouteTargetAnthropic
             | RouteTargetOpenAI
-            | RouteTargetXAI,
+            | RouteTargetXAI
+            | RouteTargetClassifierModelBased,
             Field(
                 description="Configured upstream target.",
                 discriminator="type",
@@ -12289,7 +12587,7 @@ class Route(BaseModel):
     metadata: Annotated[
         ExploreMetadata | None,
         Field(
-            description="Resolved model metadata; null when the route has no linked metadata row."
+            description="Resolved model metadata; for a router, the envelope of its allowed routes' metadata. Null when nothing is linked."
         ),
     ]
     invoke_url: Annotated[
@@ -12339,60 +12637,111 @@ class RoutesUsageResponse(BaseModel):
     ]
 
 
+class RouteEffectiveSpendLimit(BaseModel):
+    monthly_limit_usd: Annotated[
+        str | None,
+        Field(
+            description="Spend limit in USD enforced for the current UTC calendar month: the user's own limit, else the team default. Null when no limit applies.",
+            examples=["200"],
+            title="Monthly Limit Usd",
+        ),
+    ]
+    source: Annotated[
+        Literal["user", "team"] | str | None,
+        Field(
+            description="Where the limit comes from: `user` when it is set on the user, `team` when it is the team default. Null when no limit applies."
+        ),
+    ]
+
+
+class RouteSpendLimitSetting(BaseModel):
+    user_monthly_limit_usd: Annotated[
+        str | None,
+        Field(
+            description="Standing spend limit in USD for each UTC calendar month set on the user. Null when the user has no limit of their own.",
+            examples=["200"],
+            title="User Monthly Limit Usd",
+        ),
+    ]
+    team_default: Annotated[
+        RouteSpendLimitTeamDefault | None,
+        Field(
+            description="Per-member limit of the team the user's active Code key belongs to. This limit applies when the user has no limit of their own. Null when there is none."
+        ),
+    ]
+    effective: Annotated[
+        RouteEffectiveSpendLimit,
+        Field(description="The effective limit enforced for the current month."),
+    ]
+
+
+class RouteUserSettings(BaseModel):
+    user_id: Annotated[
+        str, Field(description="ID of the user.", examples=["abc1234"], title="User Id")
+    ]
+    email: Annotated[
+        str | None,
+        Field(
+            description="Email address of the user.",
+            examples=["dev@example.com"],
+            title="Email",
+        ),
+    ]
+    spend_limit: Annotated[
+        RouteSpendLimitSetting,
+        Field(
+            description="Spend limit for Baseten Code. Applies to requests with Routes keys the user created; personal API keys are not limited."
+        ),
+    ]
+
+
 class RouteHarnessModel(BaseModel):
     source: Annotated[
-        Literal["team", "baseten"] | str,
+        Literal["user", "team"] | str,
         Field(
-            description="Who chose this role's route: `team` if a team admin set it, or `baseten` if it is Baseten's default, chosen from the team's Model API routes.",
-            title="RouteHarnessModelSource",
+            description="Where this role's route comes from. `team` covers both a route a team admin set and the default chosen from the team's Model API routes.",
+            title="RouteSettingSourceV1",
         ),
     ]
     route: Annotated[Route, Field(description="Route to use for this role.")]
 
 
-class UpdateCodexHarnessConfig(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
+class RouteConnection(BaseModel):
+    id: Annotated[str, Field(description="Stable connection identifier.", title="Id")]
     team_id: Annotated[
         str,
         Field(
-            description="Identifier of the team whose default models to set. Every route must belong to this team.",
-            min_length=1,
+            description="Identifier of the team that owns the connection.",
             title="Team Id",
         ),
     ]
-    harness: Annotated[
-        Literal["codex"],
-        Field(
-            description="Codex, which supports only the `primary` role.",
-            title="Harness",
-        ),
-    ]
-    models: Annotated[
-        UpdatePrimaryHarnessModels,
-        Field(
-            description="Route IDs for the model roles to change. Roles left out are unchanged."
-        ),
-    ]
-
-
-class UpdateRouteHarnessConfigRequest(
-    RootModel[
-        UpdateClaudeCodeHarnessConfig
-        | UpdateOpenCodeHarnessConfig
-        | UpdateCodexHarnessConfig
-    ]
-):
-    root: Annotated[
+    config: Annotated[
         Annotated[
-            UpdateClaudeCodeHarnessConfig
-            | UpdateOpenCodeHarnessConfig
-            | UpdateCodexHarnessConfig,
-            Field(discriminator="harness", title="UpdateRouteHarnessConfigRequestV1"),
+            RouteConnectionAnthropic | RouteConnectionOpenAI | RouteConnectionXAI,
+            Field(
+                description="Provider the connection authenticates with, and the team secret holding its API key.",
+                discriminator="provider",
+                title="Config",
+            ),
         ]
         | dict[str, Any],
         Field(union_mode="left_to_right"),
+    ]
+    created_at: Annotated[
+        AwareDatetime, Field(description="Creation time, ISO 8601.", title="Created At")
+    ]
+    updated_at: Annotated[
+        AwareDatetime,
+        Field(description="Last update time, ISO 8601.", title="Updated At"),
+    ]
+
+
+class RouteConnectionsResponse(BaseModel):
+    items: Annotated[
+        list[RouteConnection], Field(description="Items in this page.", title="Items")
+    ]
+    pagination: Annotated[
+        PaginationResponse, Field(description="Pagination metadata for the page.")
     ]
 
 
@@ -12576,6 +12925,36 @@ class UpdateGroupRequest(BaseModel):
     ] = None
 
 
+class GetSandboxConfigurationResponse(BaseModel):
+    regions: Annotated[
+        list[SandboxRegion],
+        Field(
+            description="Available Carbon-compatible regions, sorted by name. Empty when none are available."
+        ),
+    ]
+
+
+class SandboxLogs(BaseModel):
+    sandbox_name: str
+    start_time: AwareDatetime
+    end_time: AwareDatetime
+    logs: Annotated[list[SandboxLogEntry], Field(max_length=1000)]
+    next_cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor for the next page; null when there are no more entries."
+        ),
+    ]
+
+
+class SandboxMetrics(BaseModel):
+    sandbox_name: str
+    start_time: AwareDatetime
+    end_time: AwareDatetime
+    interval_seconds: int
+    data: Annotated[list[SandboxMetricsPoint], Field(max_length=10000)]
+
+
 class SandboxProxyConfig(BaseModel):
     allowed_domains: Annotated[
         list[str] | None,
@@ -12623,13 +13002,15 @@ class SandboxProxyConfig(BaseModel):
     ] = None
 
 
-class ListImagesResponse(BaseModel):
-    items: Annotated[list[Image], Field(description="Image repositories on this page.")]
+class ListSandboxImagesResponse(BaseModel):
+    items: Annotated[
+        list[SandboxImageSummary], Field(description="Image repositories on this page.")
+    ]
     pagination: SandboxApiPagination
 
 
-class ListImageTagsResponse(BaseModel):
-    items: list[ImageTag]
+class ListSandboxImageTagsResponse(BaseModel):
+    items: list[SandboxImageTag]
     pagination: SandboxApiPagination
 
 
@@ -13091,19 +13472,57 @@ class GetLoopsDeploymentMetricsResponse(BaseModel):
     ]
 
 
-class RouteHarnessConfig(BaseModel):
-    models: Annotated[
-        dict[Literal["primary", "background"] | str, RouteHarnessModel],
-        Field(description="Route for each model role, keyed by role.", title="Models"),
+class BackgroundHarnessDefaults(BaseModel):
+    primary: Annotated[
+        RouteHarnessModel | None,
+        Field(
+            description="Route for the primary model, which new sessions use. Null when the team has no route to use."
+        ),
+    ]
+    background: Annotated[
+        RouteHarnessModel | None,
+        Field(
+            description="Route for background tasks, such as session titles. Null when the team has no route to use."
+        ),
     ]
 
 
-class RouteHarnessConfigsResponse(BaseModel):
-    harness_configs: Annotated[
-        dict[Literal["claude-code", "opencode", "codex"] | str, RouteHarnessConfig],
+class PrimaryHarnessDefaults(BaseModel):
+    primary: Annotated[
+        RouteHarnessModel | None,
         Field(
-            description="Default models for each harness, keyed by harness. A harness is omitted when none of its roles has a route.",
-            title="Harness Configs",
+            description="Route for the primary model, which new sessions use. Null when the team has no route to use."
+        ),
+    ]
+
+
+class RouteHarnessDefaults(BaseModel):
+    claude_code: Annotated[
+        BackgroundHarnessDefaults, Field(description="Default models for Claude Code.")
+    ]
+    opencode: Annotated[
+        BackgroundHarnessDefaults, Field(description="Default models for OpenCode.")
+    ]
+    codex: Annotated[
+        PrimaryHarnessDefaults, Field(description="Default models for Codex.")
+    ]
+    pi: Annotated[PrimaryHarnessDefaults, Field(description="Default models for Pi.")]
+
+
+class RouteTeamSettings(BaseModel):
+    team_id: Annotated[
+        str, Field(description="ID of the team.", examples=["abc1234"], title="Team Id")
+    ]
+    harness_defaults: Annotated[
+        RouteHarnessDefaults,
+        Field(
+            description="Route for each model role of each coding harness. A role with no route set by a team admin uses the default chosen from the team's Model API routes: the recommended model for `primary` and the lowest-priced model for `background`. These defaults never use external-provider routes."
+        ),
+    ]
+    spend_limit: Annotated[
+        RouteTeamSpendLimitSetting,
+        Field(
+            description="Spend limits for Baseten Code for members whose active Code key belongs to this team."
         ),
     ]
 
@@ -13185,6 +13604,7 @@ class SandboxLifecycle(BaseModel):
         Field(
             description="Duration to keep the sandbox record after termination for log access (e.g., '1h', '24h', '7d'). Defaults to 5m. Subject to maximum quota limits.",
             examples=["24h"],
+            pattern="^[+-]?(0|[0-9]+[dw]|([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h)(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))*)$",
         ),
     ] = None
 
@@ -13230,13 +13650,6 @@ class SandboxNetwork(BaseModel):
 
 
 class SandboxConfiguration(BaseModel):
-    enabled: Annotated[
-        bool,
-        Field(
-            description="When false, the sandbox is disabled and will not accept connections",
-            examples=[True],
-        ),
-    ] = True
     lifecycle: Annotated[
         SandboxLifecycle | None,
         Field(
@@ -13481,13 +13894,6 @@ class CreateSandboxRequest(BaseModel):
 
 
 class UpdateSandboxRequest(BaseModel):
-    enabled: Annotated[
-        bool | None,
-        Field(
-            description="When false, the sandbox is disabled and will not accept connections",
-            examples=[True],
-        ),
-    ] = None
     lifecycle: Annotated[
         SandboxLifecycle | None,
         Field(
@@ -13508,13 +13914,6 @@ class UpdateSandboxRequest(BaseModel):
             ],
         ),
     ] = None
-    region: Annotated[
-        str | None,
-        Field(
-            description="Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the closest region is selected.",
-            examples=["us-pdx-1"],
-        ),
-    ] = None
     envs: Annotated[
         list[SandboxEnv] | None,
         Field(
@@ -13525,20 +13924,6 @@ class UpdateSandboxRequest(BaseModel):
                     {"name": "PORT", "secret": False, "value": "3000"},
                 ]
             ],
-        ),
-    ] = None
-    image: Annotated[
-        str | None,
-        Field(
-            description="Image reference including its tag. Built-in image references are returned in the canonical baseten/ namespace. Use baseten/base-image:latest to get started with the built-in sandbox execution API. This image is available directly without building, pushing, or listing images through GET /v1/sandboxes/images.",
-            examples=["baseten/base-image:latest"],
-        ),
-    ] = None
-    ports: Annotated[
-        list[SandboxPort] | None,
-        Field(
-            description="Set of ports for a resource",
-            examples=[[{"name": "http", "protocol": "HTTP", "target": 3000}]],
         ),
     ] = None
     external_id: Annotated[
@@ -13652,7 +14037,6 @@ class ListSandboxesResponse(BaseModel):
             examples=[
                 [
                     {
-                        "enabled": True,
                         "lifecycle": {
                             "expiration_policies": [
                                 {

@@ -90,6 +90,18 @@ def preprocess_spec(data: bytes) -> bytes:
     # generate dict[str, Any] instead.
     _fix_bare_object_schemas(doc)
 
+    # TODO: Remove once the spec drops tags from SandboxImageV1, as the server
+    # already has. Image get and delete responses omit tags, which the spec
+    # still requires, so the generated model rejects them.
+    for part in (
+        doc.get("components", {})
+        .get("schemas", {})
+        .get("SandboxImageV1", {})
+        .get("allOf", [])
+    ):
+        if "tags" in part.get("required", []):
+            part["required"].remove("tags")
+
     # Schema renames: a trailing V1 is stripped (ModelV1 -> Model) and names
     # that are not valid Python identifiers are folded to PascalCase
     # (archive.Change -> ArchiveChange).

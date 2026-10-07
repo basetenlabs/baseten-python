@@ -97,7 +97,11 @@ class ArchiveManifest(BaseModel):
 class ContentSearchMatch(BaseModel):
     column: Annotated[int, Field(examples=[10])]
     context: Annotated[
-        str | None, Field(examples=["previous line\ncurrent line\nnext line"])
+        str | None,
+        Field(
+            description="The matching line with up to contextLines lines before and after it, newline-separated; omitted when contextLines is 0",
+            examples=["previous line\ncurrent line\nnext line"],
+        ),
     ] = None
     line: Annotated[int, Field(examples=[42])]
     path: Annotated[str, Field(examples=["src/main.go"])]
@@ -280,7 +284,13 @@ class PortMonitorRequest(BaseModel):
 
 
 class ProcessLogs(BaseModel):
-    logs: Annotated[str, Field(examples=["logs output"])]
+    logs: Annotated[
+        str,
+        Field(
+            description="Concatenation of the returned stdout followed by the returned stderr. Output from the two streams is not interleaved.",
+            examples=["logs output"],
+        ),
+    ]
     stderr: Annotated[str, Field(examples=["stderr output"])]
     stdout: Annotated[str, Field(examples=["stdout output"])]
 
@@ -327,7 +337,13 @@ class ProcessRequest(BaseModel):
 
 class ProcessResponse(BaseModel):
     command: Annotated[str, Field(examples=["ls -la"])]
-    completedAt: Annotated[str, Field(examples=["Wed, 01 Jan 2023 12:01:00 GMT"])]
+    completedAt: Annotated[
+        str,
+        Field(
+            description="Completion time, same format as startedAt. Empty string while the process runs",
+            examples=["Wed, 01 Jan 2023 12:01:00 GMT"],
+        ),
+    ]
     exitCode: Annotated[int, Field(examples=[0])]
     keepAlive: Annotated[
         bool | None,
@@ -342,7 +358,13 @@ class ProcessResponse(BaseModel):
     pid: Annotated[str, Field(examples=["1234"])]
     restartCount: Annotated[int | None, Field(examples=[2])] = None
     restartOnFailure: Annotated[bool | None, Field(examples=[True])] = None
-    startedAt: Annotated[str, Field(examples=["Wed, 01 Jan 2023 12:00:00 GMT"])]
+    startedAt: Annotated[
+        str,
+        Field(
+            description="Start time as an HTTP date (RFC 1123, e.g. Wed, 01 Jan 2023 12:00:00 GMT)",
+            examples=["Wed, 01 Jan 2023 12:00:00 GMT"],
+        ),
+    ]
     status: Annotated[
         Literal["failed", "killed", "stopped", "running", "completed"] | str,
         Field(examples=["running"]),
@@ -451,6 +473,12 @@ class GetFilesystemContentSearchParams(BaseModel):
             description="Comma-separated directory names to skip (default: node_modules,vendor,.git,dist,build,target,__pycache__,.venv,.next,coverage)"
         ),
     ] = None
+    contextLines: Annotated[
+        int | None,
+        Field(
+            description="Lines to include before and after each match in its context field (default: 0, max: 20; invalid values count as 0)"
+        ),
+    ] = None
 
 
 class GetFilesystemFindParams(BaseModel):
@@ -484,13 +512,21 @@ class PutFilesystemMultipartPartParams(BaseModel):
 
 
 class GetFilesystemSearchParams(BaseModel):
+    query: Annotated[
+        str | None,
+        Field(
+            description="Fuzzy pattern matched against each relative path (e.g., mngo for src/main.go). When omitted, the search path itself is used as the pattern."
+        ),
+    ] = None
     maxResults: Annotated[
         int | None,
         Field(description="Maximum number of results to return (default: 20)"),
     ] = None
     patterns: Annotated[
         str | None,
-        Field(description="Comma-separated file patterns to include (e.g., *.go,*.js)"),
+        Field(
+            description="Accepted for compatibility but currently ignored; use filesystem-find for glob filtering"
+        ),
     ] = None
     excludeDirs: Annotated[
         str | None,
@@ -524,7 +560,10 @@ class DeleteFilesystemTreeParams(BaseModel):
 
 class GetWatchFilesystemParams(BaseModel):
     ignore: Annotated[
-        str | None, Field(description="Ignore patterns (comma-separated)")
+        str | None,
+        Field(
+            description="Comma-separated substrings; events whose full path contains one are skipped"
+        ),
     ] = None
 
 
@@ -775,14 +814,6 @@ class GetFilesystemResponse(RootModel[Directory | FileWithContent | bytes]):
     root: Directory | FileWithContent | bytes
 
 
-class GetFilesystemTreeResponse(RootModel[Directory | FileWithContent | bytes]):
-    root: Directory | FileWithContent | bytes
-
-
-class PutFilesystemTreeResponse(RootModel[Directory | FileWithContent | bytes]):
-    root: Directory | FileWithContent | bytes
-
-
 class ArchiveChange(BaseModel):
     kind: Annotated[
         Literal["added", "modified", "deleted"] | str, Field(examples=["added"])
@@ -843,12 +874,24 @@ class ExportResult(BaseModel):
 
 class HealthResponse(BaseModel):
     arch: Annotated[str, Field(examples=["amd64"])]
-    buildTime: Annotated[str, Field(examples=["2026-01-29T17:36:52+00:00"])]
+    buildTime: Annotated[
+        str,
+        Field(
+            description='Build time in RFC 3339 (UTC), or "unknown" for builds without it',
+            examples=["2026-01-29T17:36:52+00:00"],
+        ),
+    ]
     gitCommit: Annotated[str, Field(examples=["abc123"])]
     goVersion: Annotated[str, Field(examples=["go1.25.0"])]
     lastUpgrade: UpgradeStatus
     os: Annotated[str, Field(examples=["linux"])]
-    startedAt: Annotated[str, Field(examples=["2026-01-29T18:45:49+00:00"])]
+    startedAt: Annotated[
+        str,
+        Field(
+            description="API start time in RFC 3339",
+            examples=["2026-01-29T18:45:49+00:00"],
+        ),
+    ]
     status: Annotated[str, Field(examples=["ok"])]
     upgradeCount: Annotated[int, Field(examples=[0])]
     uptime: Annotated[str, Field(examples=["1h30m"])]

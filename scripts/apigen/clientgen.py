@@ -30,6 +30,9 @@ class _Operation:
     body_content_type: str
     json_responses: list[tuple[int, str]]
     raw_accepts: list[str]
+    # Whether a success response declares headers, which an operation without
+    # a body can only return as the raw response.
+    response_headers: bool
     success_codes: list[int]
     error_codes: dict[int, str] | None
     summary: str
@@ -122,6 +125,7 @@ def _extract_operations(spec: dict) -> list[_Operation]:
                     body_content_type=_body_content_type(spec, op_data),
                     json_responses=json_responses,
                     raw_accepts=_raw_response_accepts(spec, op_data),
+                    response_headers=_has_response_headers(spec, op_data),
                     success_codes=_extract_success_codes(op_data, http_method, path),
                     error_codes=_error_code_map(spec, op_data),
                     summary=op_data.get("summary", ""),
@@ -240,6 +244,14 @@ def _raw_response_accepts(spec: dict, op: dict) -> list[str]:
     return sorted(accepts)
 
 
+def _has_response_headers(spec: dict, op: dict) -> bool:
+    for resp_node in _success_responses(op).values():
+        resolved = _resolve_ref(spec, resp_node)
+        if resolved is not None and resolved.get("headers"):
+            return True
+    return False
+
+
 def _has_json_content(node: dict | None) -> bool:
     if node is None:
         return False
@@ -270,8 +282,13 @@ def _render_client(ops: list[_Operation]) -> str:
     # Status dispatch covers an operation with more than one success code and
     # at least one JSON schema among them, since the others may be bodyless.
     has_status_resp = any(op.json_responses and len(op.success_codes) > 1 for op in ops)
-    has_raw = any(op.raw_accepts for op in ops)
-    has_no_resp = any(not op.json_responses and not op.raw_accepts for op in ops)
+    has_raw = any(
+        op.raw_accepts or (not op.json_responses and op.response_headers) for op in ops
+    )
+    has_no_resp = any(
+        not op.json_responses and not op.raw_accepts and not op.response_headers
+        for op in ops
+    )
 
     error_refs = sorted({ref for op in ops for ref in (op.error_codes or {}).values()})
 
@@ -389,9 +406,33 @@ class {cls}:
     They may change without notice between versions.
     \"""
 
-    def __init__(self, http_client: {http_cls}) -> None:
-        \"""Create a new client. The caller is responsible for closing *http_client*.\"""
+    def __init__(
+        self,
+        http_client: {http_cls},
+        *,
+        base_url: str | None = None,
+        auth: httpx.Auth | None = None,
+        headers: Mapping[str, str] | None = None,
+        timeout: httpx.Timeout | None = None,
+    ) -> None:
+        \"""Create a new client. The caller is responsible for closing *http_client*.
+
+        The keyword arguments apply to this client's requests only, so one
+        HTTP client can serve several APIs. Each one left ``None`` falls back
+        to the HTTP client's own setting.
+
+        Args:
+            http_client: HTTP client to send requests with.
+            base_url: Base URL that request paths are appended to.
+            auth: Authentication for each request.
+            headers: Headers for each request, added to the HTTP client's own.
+            timeout: Timeouts for each request.
+        \"""
         self._http_client = http_client
+        self._base_url = base_url
+        self._auth = auth
+        self._headers = headers
+        self._timeout = timeout
 """
 
     for op in ops:
@@ -399,7 +440,9 @@ class {cls}:
             src += "\n" + _render_method(op, is_async=is_async, is_raw=False)
             if op.raw_accepts:
                 src += "\n" + _render_method(op, is_async=is_async, is_raw=True)
-        elif op.raw_accepts:
+        elif op.raw_accepts or op.response_headers:
+            # With no body, declared headers are the result, so only the raw
+            # response carries them.
             src += "\n" + _render_method(op, is_async=is_async, is_raw=True)
         else:
             src += "\n" + _render_method(op, is_async=is_async, is_raw=False)
@@ -431,7 +474,7 @@ class {cls}:
         json_body = None
         content_body = None
         files_body = None
-        headers: dict[str, str] = {{}}
+        headers: dict[str, str] = {{**(self._headers or {{}})}}
         if request.accept is not None:
             headers["Accept"] = request.accept
         if request.body is not None:
@@ -465,16 +508,20 @@ class {cls}:
                 params = request.query
         return self._http_client.build_request(
             request.method,
-            path,
+            path if self._base_url is None else self._base_url.rstrip("/") + path,
             json=json_body,
             content=content_body,
             files=files_body,
             params=params,
             headers=headers,
+            timeout=httpx.USE_CLIENT_DEFAULT if self._timeout is None else self._timeout,
         )
 
     {adef} _do(self, request: _ApiRequest) -> httpx.Response:
-        response = {aw}self._http_client.send(self._build_request(request))
+        response = {aw}self._http_client.send(
+            self._build_request(request),
+            auth=httpx.USE_CLIENT_DEFAULT if self._auth is None else self._auth,
+        )
         if response.status_code not in request.success_codes:
 {error_dispatch}\
             raise ResponseError(status_code=response.status_code, body=response.text)
@@ -485,7 +532,11 @@ class {cls}:
         resp_read = "await response.aread()" if is_async else "response.read()"
         src += f"""
     {adef} _do_raw(self, request: _ApiRequest) -> httpx.Response:
-        response = {aw}self._http_client.send(self._build_request(request), stream=True)
+        response = {aw}self._http_client.send(
+            self._build_request(request),
+            auth=httpx.USE_CLIENT_DEFAULT if self._auth is None else self._auth,
+            stream=True,
+        )
         if response.status_code not in request.success_codes:
             {resp_read}
 {error_dispatch}\
@@ -563,7 +614,7 @@ def _render_method(op: _Operation, *, is_async: bool, is_raw: bool) -> str:
         accept_type = "Literal[" + ", ".join(repr(c) for c in content_types) + "]"
         kwargs.append(f"accept: {accept_type}")
         accept_expr = "accept"
-    elif is_raw:
+    elif is_raw and content_types:
         accept_expr = repr(content_types[0])
     else:
         accept_expr = "None"
@@ -638,6 +689,8 @@ def _render_method(op: _Operation, *, is_async: bool, is_raw: bool) -> str:
             summary = summary.rstrip(".") + ". Returns the response unread"
             if accept_expr == "accept":
                 summary += ", in the requested content type"
+            elif accept_expr == "None":
+                summary += ", since its headers are the result"
             summary += ". The caller must close the response."
         if body_arg == "files":
             summary = summary.rstrip(".") + ". *files* is sent as httpx ``files``."

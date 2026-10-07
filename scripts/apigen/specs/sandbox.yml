@@ -12,6 +12,8 @@ paths:
 
         The sandbox is quiesced first: the process list is saved (unless saveProcesses is false), every process is stopped, and the API then refuses the calls that would write to the filesystem. The freeze is not lifted afterwards, since an exported sandbox is meant to be restored elsewhere; call POST /archive/resume to lift it.
 
+        A sandbox still frozen by an earlier export is exported as it is, with the process list that export saved.
+
         Use dryRun to get the archive's content and exact size without stopping anything and without uploading.
 
         Set async to start the export and answer immediately, which is what archiving a large filesystem needs: the export then reports itself through GET /archive/status.
@@ -42,7 +44,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
-          description: An export is already in progress
+          description: An export is already in progress, or the sandbox is frozen for a restore
           content:
             application/json:
               schema:
@@ -377,7 +379,7 @@ paths:
         - system
   "/filesystem-content-search/{path}":
     get:
-      description: Searches for text content inside files using ripgrep. Returns matching lines with context.
+      description: Searches for text content inside files. Returns each matching line, with the lines around it when contextLines is set.
       parameters:
         - description: Directory path to search in
           in: path
@@ -411,6 +413,11 @@ paths:
           name: excludeDirs
           schema:
             type: string
+        - description: "Lines to include before and after each match in its context field (default: 0, max: 20; invalid values count as 0)"
+          in: query
+          name: contextLines
+          schema:
+            type: integer
       responses:
         "200":
           description: Content search results
@@ -606,7 +613,7 @@ paths:
         - filesystem
   "/filesystem-multipart/{uploadId}/part":
     put:
-      description: Upload a single part of a multipart upload
+      description: Upload a single part of a multipart upload. Re-uploading a part number replaces that part. Wait for the previous request for that part to finish before retrying.
       parameters:
         - description: Upload ID
           in: path
@@ -739,7 +746,10 @@ paths:
         - filesystem
   "/filesystem-search/{path}":
     get:
-      description: Performs fuzzy search on filesystem paths using fuzzy matching algorithm. Optimized alternative to find and grep commands.
+      description: >-
+        Ranks the files and directories under a path by how well their relative path fuzzy-matches `query` (fzf algorithm: the query's characters must appear in order, not necessarily next to each other), best match first.
+
+        Fuzzy search is for "jump to file" lookups from a partial name. The `patterns` parameter is currently ignored by this endpoint; use find for exact glob filtering.
       parameters:
         - description: Path to search in (e.g., /home/user/projects)
           in: path
@@ -747,12 +757,17 @@ paths:
           required: true
           schema:
             type: string
+        - description: Fuzzy pattern matched against each relative path (e.g., mngo for src/main.go). When omitted, the search path itself is used as the pattern.
+          in: query
+          name: query
+          schema:
+            type: string
         - description: "Maximum number of results to return (default: 20)"
           in: query
           name: maxResults
           schema:
             type: integer
-        - description: Comma-separated file patterns to include (e.g., *.go,*.js)
+        - description: Accepted for compatibility but currently ignored; use filesystem-find for glob filtering
           in: query
           name: patterns
           schema:
@@ -841,7 +856,7 @@ paths:
     get:
       description: Get content of a file or listing of a directory. Use Accept header to control response format for files.
       parameters:
-        - description: File or directory path
+        - description: "File or directory path. Relative paths are resolved against the filesystem working directory. For example, with a working directory of /app, GET /filesystem/workspace resolves to /app/workspace. To access the absolute path /workspace over HTTP, encode its leading slash as %2F: GET /filesystem/%2Fworkspace. The double-slash form GET /filesystem//workspace also addresses /workspace."
           in: path
           name: path
           required: true
@@ -859,17 +874,17 @@ paths:
             application/json:
               schema:
                 oneOf:
-                    - $ref: "#/components/schemas/Directory"
-                    - $ref: "#/components/schemas/FileWithContent"
-                    - type: string
-                      format: binary
+                  - $ref: '#/components/schemas/Directory'
+                  - $ref: '#/components/schemas/FileWithContent'
+                  - type: string
+                    format: binary
             application/octet-stream:
               schema:
                 oneOf:
-                    - $ref: "#/components/schemas/Directory"
-                    - $ref: "#/components/schemas/FileWithContent"
-                    - type: string
-                      format: binary
+                  - $ref: '#/components/schemas/Directory'
+                  - $ref: '#/components/schemas/FileWithContent'
+                  - type: string
+                    format: binary
         "404":
           description: File or directory not found
           content:
@@ -900,8 +915,47 @@ paths:
       summary: Get file or directory information
       tags:
         - filesystem
+    head:
+      description: Returns the metadata of a file or directory as headers, with no body. This checks stat availability, not permission to read file contents or list a directory. When the path does not exist or its metadata cannot be accessed, the response is an empty 200 without the X-File-Type header.
+      parameters:
+        - description: File or directory path
+          in: path
+          name: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Path metadata (X-File-Type is set only when stat succeeds)
+          headers:
+            Content-Length:
+              description: File size in bytes (files only)
+              schema:
+                type: integer
+            Last-Modified:
+              description: Modification time (HTTP date)
+              schema:
+                type: string
+            X-File-Mode:
+              description: Permission bits including sticky, setgid and setuid in octal (e.g., 644 or 1777)
+              schema:
+                type: string
+            X-File-Type:
+              description: file or directory
+              schema:
+                type: string
+      summary: Stat a file or directory
+      tags:
+        - filesystem
     put:
-      description: Create or update a file or directory
+      description: >-
+        Create or update a file or directory.
+
+
+        Idempotent: an existing file is overwritten (truncated, not appended to) and an existing directory is kept, so retrying the same request is safe.
+
+
+        Send either a JSON body (FileRequest) or `multipart/form-data` for binary files. Multipart fields, in any order: `file` (required, the file content), `permissions` (optional octal mode such as `0755`, applied when the file is created, default `0644`; an existing file keeps its mode), `path` (optional, ignored: the target is always the URL path).
       parameters:
         - description: File or directory path
           in: path
@@ -914,6 +968,23 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/FileRequest"
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File content
+                permissions:
+                  type: string
+                  example: "0755"
+                  description: Octal mode applied when the file is created (default 0644); an existing file keeps its mode
+                path:
+                  type: string
+                  description: 'Ignored: the target is always the URL path'
         description: File or directory details
         required: true
       responses:
@@ -1002,11 +1073,7 @@ paths:
           content:
             application/json:
               schema:
-                oneOf:
-                    - $ref: "#/components/schemas/Directory"
-                    - $ref: "#/components/schemas/FileWithContent"
-                    - type: string
-                      format: binary
+                $ref: "#/components/schemas/Directory"
         "400":
           description: Bad request
           content:
@@ -1029,7 +1096,7 @@ paths:
       tags:
         - filesystem
     put:
-      description: Create or update multiple files within a directory tree structure
+      description: "Create or update multiple files within a directory tree structure. Idempotent: existing files are overwritten, so retrying the same request is safe."
       parameters:
         - description: Root directory path
           in: path
@@ -1050,11 +1117,7 @@ paths:
           content:
             application/json:
               schema:
-                oneOf:
-                    - $ref: "#/components/schemas/Directory"
-                    - $ref: "#/components/schemas/FileWithContent"
-                    - type: string
-                      format: binary
+                $ref: "#/components/schemas/Directory"
         "400":
           description: Bad request
           content:
@@ -1294,7 +1357,13 @@ paths:
       tags:
         - process
     post:
-      description: Execute a command and return process information. If Accept header is text/event-stream, streams logs in SSE format and returns the process response as a final event.
+      description: >-
+        Execute a command and return process information.
+
+
+        Streaming: with `Accept: application/x-ndjson` (or `Accept: text/event-stream`, kept for compatibility) the response is NDJSON (`Content-Type: application/x-ndjson`), not SSE: one JSON object per line, `{"type": "...", "data": "..."}`.
+
+        `type` is `stdout` or `stderr` (`data` is a raw output chunk, sent as soon as the process writes it, newlines included; if the process finished before any chunk was streamed, its output is sent instead as one event per line, without the newline), `keepalive` (every 5 seconds, no data), `error` (`data` is the message, ends the stream) or `result` (last event, `data` is the ProcessResponse as a JSON string).
       requestBody:
         content:
           application/json:
@@ -1309,16 +1378,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProcessResponse"
-            text/event-stream:
+            application/x-ndjson:
               schema:
-                $ref: "#/components/schemas/ProcessResponse"
+                type: string
+                description: Newline-delimited JSON event objects. Each record has type (stdout, stderr, result, error, or keepalive) and optional string data. Result data is a JSON-encoded ProcessResponse; output data preserves raw chunks.
         "400":
           description: Invalid request
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-            text/event-stream:
+            application/x-ndjson:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "422":
@@ -1327,7 +1397,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-            text/event-stream:
+            application/x-ndjson:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
@@ -1336,7 +1406,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-            text/event-stream:
+            application/x-ndjson:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
       summary: Execute a command
@@ -1344,7 +1414,7 @@ paths:
         - process
   "/process/{identifier}":
     delete:
-      description: Gracefully stop a running process
+      description: Request graceful termination. Poll GET /process/{identifier} until terminal status confirms the managed process has exited.
       parameters:
         - description: Process identifier (PID or name)
           in: path
@@ -1354,7 +1424,7 @@ paths:
             type: string
       responses:
         "200":
-          description: Process stopped
+          description: Process stop requested
           content:
             application/json:
               schema:
@@ -1407,7 +1477,7 @@ paths:
         - process
   "/process/{identifier}/kill":
     delete:
-      description: Forcefully kill a running process
+      description: Request forceful termination. Poll GET /process/{identifier} until terminal status confirms the managed process has exited.
       parameters:
         - description: Process identifier (PID or name)
           in: path
@@ -1417,7 +1487,7 @@ paths:
             type: string
       responses:
         "200":
-          description: Process killed
+          description: Process kill requested
           content:
             application/json:
               schema:
@@ -1483,7 +1553,16 @@ paths:
         - process
   "/process/{identifier}/logs/stream":
     get:
-      description: Streams the stdout and stderr output of a process in real time, one line per log, prefixed with 'stdout:' or 'stderr:'. Closes when the process exits or the client disconnects.
+      description: >-
+        Streams the stdout and stderr output of a process in real time: the output so far, then live output as the process writes it. Closes when the process exits or the client disconnects.
+
+        By default, output is plain text with `stdout:` or `stderr:` prefixes at the start of each source stream's lines. Partial lines (e.g. prompts) are sent without waiting for a newline; their continuations have no new prefix. The other stream is not held back while a line is incomplete, and chronological order across stdout and stderr is not guaranteed.
+
+        This format does not provide unambiguous framing: output from the other stream, or a `[keepalive]` marker sent every 30 seconds, can appear inside an unfinished line. A later continuation can therefore lack a prefix identifying its source. Do not rely on this text stream to reconstruct stdout and stderr separately; request NDJSON for source-preserving streaming, or use GET /process/{identifier}/logs for separate output snapshots.
+
+        With `Accept: application/x-ndjson`, each line is a JSON object with `type` (`stdout`, `stderr`, `keepalive`, `restart`, `truncated`, or `error`) and optional `data`. Output records retain source identity and original bytes, including partial lines and newlines, for both retained history and live output. For `encoding: "base64"`, decode `data` before concatenating bytes per source; this occurs for binary data or a UTF-8 character split across chunks. Chunk boundaries are arbitrary and ordering is collection order, not a strict chronology across streams.
+
+        `keepalive` has no output data. A quiet active stream sends an initial keepalive after attachment so clients can receive the response before sending stdin; subsequent keepalives are sent every 30 seconds. `restart` carries a supervisor restart notice, not process output. `truncated` reports a retention or slow-reader gap and must not be appended to stdout/stderr. `error` reports a streaming failure. The connection ends after the final process exit, including automatic restarts; there is no `result` record. Older processes without structured history return HTTP 409 for NDJSON; their text stream remains available.
       parameters:
         - description: Process identifier (PID or name)
           in: path
@@ -1491,31 +1570,46 @@ paths:
           required: true
           schema:
             type: string
+        - description: Explicit application/x-ndjson opts into structured records; absent or wildcard Accept retains text/plain. Supported explicit media types honor q weights, preferring NDJSON on a tie.
+          in: header
+          name: Accept
+          schema:
+            type: string
       responses:
         "200":
-          description: Stream of process logs, one line per log (prefixed with stdout:/stderr:)
+          description: Process output as prefixed text or NDJSON records
           content:
             text/plain:
               schema:
                 type: string
+            application/x-ndjson:
+              schema:
+                type: string
+                description: Newline-delimited JSON records with type (stdout, stderr, keepalive, restart, truncated, error), optional data, and optional encoding=base64 for non-UTF-8 chunks. Decode each output record before concatenating bytes by source. No result record.
+        "400":
+          description: Invalid process identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         "404":
           description: Process not found
           content:
-            text/plain:
+            application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "422":
-          description: Unprocessable entity
+                $ref: '#/components/schemas/ErrorResponse'
+        "409":
+          description: Structured history unavailable for this older process
           content:
-            text/plain:
+            application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
         "500":
           description: Internal server error
           content:
-            text/plain:
+            application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
       summary: Stream process logs in real time
       tags:
         - process
@@ -1643,14 +1737,20 @@ paths:
         - system
   "/watch/filesystem/{path}":
     get:
-      description: Streams the path of modified files (one per line) in the given directory. Closes when the client disconnects.
+      description: >-
+        Streams change events for a directory until the client disconnects.
+
+
+        The body is JSON lines (sent with `Content-Type: text/plain`): one event object per line, e.g. `{"op":"WRITE","name":"main.go","path":"/app/src","error":null}`. `op` is the fsnotify operation (CREATE, WRITE, REMOVE, RENAME or CHMOD, several can be joined with `|`), `name` the base name of the changed entry, `path` the directory containing it, and `error` is always null. A `[keepalive]` line (not JSON) is sent every 30 seconds.
+
+        Only the directory's direct entries are watched. To also watch every subdirectory, including ones created later, end the path with `/**`. The stream reports subsequent changes without an initial snapshot. When a new directory is detected, synthetic CREATE events are emitted for entries already present inside it to cover changes before its watch was registered.
       parameters:
-        - description: Ignore patterns (comma-separated)
+        - description: Comma-separated substrings; events whose full path contains one are skipped
           in: query
           name: ignore
           schema:
             type: string
-        - description: Directory path to watch
+        - description: Directory path to watch (append /** to watch subdirectories)
           in: path
           name: path
           required: true
@@ -1658,7 +1758,7 @@ paths:
             type: string
       responses:
         "200":
-          description: Stream of modified file paths, one per line
+          description: JSON lines stream of change events
           content:
             text/plain:
               schema:
@@ -1797,6 +1897,7 @@ components:
           example: 10
           type: integer
         context:
+          description: The matching line with up to contextLines lines before and after it, newline-separated; omitted when contextLines is 0
           example: |-
             previous line
             current line
@@ -2200,6 +2301,7 @@ components:
           example: amd64
           type: string
         buildTime:
+          description: Build time in RFC 3339 (UTC), or "unknown" for builds without it
           example: 2026-01-29T17:36:52Z
           type: string
         gitCommit:
@@ -2214,6 +2316,7 @@ components:
           example: linux
           type: string
         startedAt:
+          description: API start time in RFC 3339
           example: 2026-01-29T18:45:49Z
           type: string
         status:
@@ -2341,6 +2444,7 @@ components:
     ProcessLogs:
       properties:
         logs:
+          description: Concatenation of the returned stdout followed by the returned stderr. Output from the two streams is not interleaved.
           example: logs output
           type: string
         stderr:
@@ -2409,6 +2513,7 @@ components:
           example: ls -la
           type: string
         completedAt:
+          description: Completion time, same format as startedAt. Empty string while the process runs
           example: Wed, 01 Jan 2023 12:01:00 GMT
           type: string
         exitCode:
@@ -2437,6 +2542,7 @@ components:
           example: true
           type: boolean
         startedAt:
+          description: Start time as an HTTP date (RFC 1123, e.g. Wed, 01 Jan 2023 12:00:00 GMT)
           example: Wed, 01 Jan 2023 12:00:00 GMT
           type: string
         status:

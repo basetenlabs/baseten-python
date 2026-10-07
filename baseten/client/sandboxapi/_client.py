@@ -18,6 +18,7 @@ from ._models import (
     DeleteFilesystemParams,
     DeleteFilesystemTreeParams,
     DeleteNetworkProcessMonitorResponse,
+    Directory,
     DriveListResponse,
     DriveMountRequest,
     DriveMountResponse,
@@ -35,7 +36,6 @@ from ._models import (
     GetFilesystemParams,
     GetFilesystemResponse,
     GetFilesystemSearchParams,
-    GetFilesystemTreeResponse,
     GetNetworkProcessPortsResponse,
     GetProcessResponse,
     GetWatchFilesystemParams,
@@ -53,7 +53,6 @@ from ._models import (
     ProcessRequest,
     ProcessResponse,
     PutFilesystemMultipartPartParams,
-    PutFilesystemTreeResponse,
     QuiesceStatus,
     RerankingResponse,
     SuccessResponse,
@@ -109,9 +108,33 @@ class ApiClient:
     They may change without notice between versions.
     """
 
-    def __init__(self, http_client: httpx.Client) -> None:
-        """Create a new client. The caller is responsible for closing *http_client*."""
+    def __init__(
+        self,
+        http_client: httpx.Client,
+        *,
+        base_url: str | None = None,
+        auth: httpx.Auth | None = None,
+        headers: Mapping[str, str] | None = None,
+        timeout: httpx.Timeout | None = None,
+    ) -> None:
+        """Create a new client. The caller is responsible for closing *http_client*.
+
+        The keyword arguments apply to this client's requests only, so one
+        HTTP client can serve several APIs. Each one left ``None`` falls back
+        to the HTTP client's own setting.
+
+        Args:
+            http_client: HTTP client to send requests with.
+            base_url: Base URL that request paths are appended to.
+            auth: Authentication for each request.
+            headers: Headers for each request, added to the HTTP client's own.
+            timeout: Timeouts for each request.
+        """
         self._http_client = http_client
+        self._base_url = base_url
+        self._auth = auth
+        self._headers = headers
+        self._timeout = timeout
 
     def delete_drives_mount(self, *, mount_path: str) -> DriveUnmountResponse:
         """Detach a drive from a local path"""
@@ -474,10 +497,10 @@ class ApiClient:
             ),
         )
 
-    def get_filesystem_tree(self, *, path: str) -> GetFilesystemTreeResponse:
+    def get_filesystem_tree(self, *, path: str) -> Directory:
         """Get directory tree"""
         return self._do_json(
-            GetFilesystemTreeResponse,
+            Directory,
             _ApiRequest(
                 method="GET",
                 path_fmt="/filesystem/tree/{}",
@@ -576,8 +599,10 @@ class ApiClient:
             ),
         )
 
-    def get_process_logs_stream(self, *, identifier: str) -> httpx.Response:
-        """Stream process logs in real time. Returns the response unread. The caller must close the response."""
+    def get_process_logs_stream(
+        self, *, identifier: str, accept: Literal["application/x-ndjson", "text/plain"]
+    ) -> httpx.Response:
+        """Stream process logs in real time. Returns the response unread, in the requested content type. The caller must close the response."""
         return self._do_raw(
             _ApiRequest(
                 method="GET",
@@ -586,8 +611,13 @@ class ApiClient:
                 body=None,
                 query=None,
                 success_codes=[200],
-                error_codes=None,
-                accept="text/plain",
+                error_codes={
+                    400: "ErrorResponse",
+                    404: "ErrorResponse",
+                    409: "ErrorResponse",
+                    500: "ErrorResponse",
+                },
+                accept=accept,
             )
         )
 
@@ -605,6 +635,20 @@ class ApiClient:
                 success_codes=[200],
                 error_codes=None,
                 accept="text/plain",
+            )
+        )
+
+    def head_filesystem(self, *, path: str) -> httpx.Response:
+        """Stat a file or directory. Returns the response unread, since its headers are the result. The caller must close the response."""
+        return self._do_raw(
+            _ApiRequest(
+                method="HEAD",
+                path_fmt="/filesystem/{}",
+                path_args=[path],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
             )
         )
 
@@ -761,7 +805,7 @@ class ApiClient:
         self,
         *,
         request: ProcessRequest,
-        accept: Literal["application/json", "text/event-stream"],
+        accept: Literal["application/json", "application/x-ndjson"],
     ) -> httpx.Response:
         """Execute a command. Returns the response unread, in the requested content type. The caller must close the response."""
         return self._do_raw(
@@ -882,12 +926,10 @@ class ApiClient:
             ),
         )
 
-    def put_filesystem_tree(
-        self, *, path: str, request: TreeRequest
-    ) -> PutFilesystemTreeResponse:
+    def put_filesystem_tree(self, *, path: str, request: TreeRequest) -> Directory:
         """Create or update directory tree"""
         return self._do_json(
-            PutFilesystemTreeResponse,
+            Directory,
             _ApiRequest(
                 method="PUT",
                 path_fmt="/filesystem/tree/{}",
@@ -931,7 +973,7 @@ class ApiClient:
         json_body = None
         content_body = None
         files_body = None
-        headers: dict[str, str] = {}
+        headers: dict[str, str] = {**(self._headers or {})}
         if request.accept is not None:
             headers["Accept"] = request.accept
         if request.body is not None:
@@ -965,16 +1007,22 @@ class ApiClient:
                 params = request.query
         return self._http_client.build_request(
             request.method,
-            path,
+            path if self._base_url is None else self._base_url.rstrip("/") + path,
             json=json_body,
             content=content_body,
             files=files_body,
             params=params,
             headers=headers,
+            timeout=httpx.USE_CLIENT_DEFAULT
+            if self._timeout is None
+            else self._timeout,
         )
 
     def _do(self, request: _ApiRequest) -> httpx.Response:
-        response = self._http_client.send(self._build_request(request))
+        response = self._http_client.send(
+            self._build_request(request),
+            auth=httpx.USE_CLIENT_DEFAULT if self._auth is None else self._auth,
+        )
         if response.status_code not in request.success_codes:
             if request.error_codes and response.status_code in request.error_codes:
                 error_name = request.error_codes[response.status_code]
@@ -994,7 +1042,11 @@ class ApiClient:
         return response
 
     def _do_raw(self, request: _ApiRequest) -> httpx.Response:
-        response = self._http_client.send(self._build_request(request), stream=True)
+        response = self._http_client.send(
+            self._build_request(request),
+            auth=httpx.USE_CLIENT_DEFAULT if self._auth is None else self._auth,
+            stream=True,
+        )
         if response.status_code not in request.success_codes:
             response.read()
             if request.error_codes and response.status_code in request.error_codes:
@@ -1049,9 +1101,33 @@ class AsyncApiClient:
     They may change without notice between versions.
     """
 
-    def __init__(self, http_client: httpx.AsyncClient) -> None:
-        """Create a new client. The caller is responsible for closing *http_client*."""
+    def __init__(
+        self,
+        http_client: httpx.AsyncClient,
+        *,
+        base_url: str | None = None,
+        auth: httpx.Auth | None = None,
+        headers: Mapping[str, str] | None = None,
+        timeout: httpx.Timeout | None = None,
+    ) -> None:
+        """Create a new client. The caller is responsible for closing *http_client*.
+
+        The keyword arguments apply to this client's requests only, so one
+        HTTP client can serve several APIs. Each one left ``None`` falls back
+        to the HTTP client's own setting.
+
+        Args:
+            http_client: HTTP client to send requests with.
+            base_url: Base URL that request paths are appended to.
+            auth: Authentication for each request.
+            headers: Headers for each request, added to the HTTP client's own.
+            timeout: Timeouts for each request.
+        """
         self._http_client = http_client
+        self._base_url = base_url
+        self._auth = auth
+        self._headers = headers
+        self._timeout = timeout
 
     async def delete_drives_mount(self, *, mount_path: str) -> DriveUnmountResponse:
         """Detach a drive from a local path"""
@@ -1416,10 +1492,10 @@ class AsyncApiClient:
             ),
         )
 
-    async def get_filesystem_tree(self, *, path: str) -> GetFilesystemTreeResponse:
+    async def get_filesystem_tree(self, *, path: str) -> Directory:
         """Get directory tree"""
         return await self._do_json(
-            GetFilesystemTreeResponse,
+            Directory,
             _ApiRequest(
                 method="GET",
                 path_fmt="/filesystem/tree/{}",
@@ -1520,8 +1596,10 @@ class AsyncApiClient:
             ),
         )
 
-    async def get_process_logs_stream(self, *, identifier: str) -> httpx.Response:
-        """Stream process logs in real time. Returns the response unread. The caller must close the response."""
+    async def get_process_logs_stream(
+        self, *, identifier: str, accept: Literal["application/x-ndjson", "text/plain"]
+    ) -> httpx.Response:
+        """Stream process logs in real time. Returns the response unread, in the requested content type. The caller must close the response."""
         return await self._do_raw(
             _ApiRequest(
                 method="GET",
@@ -1530,8 +1608,13 @@ class AsyncApiClient:
                 body=None,
                 query=None,
                 success_codes=[200],
-                error_codes=None,
-                accept="text/plain",
+                error_codes={
+                    400: "ErrorResponse",
+                    404: "ErrorResponse",
+                    409: "ErrorResponse",
+                    500: "ErrorResponse",
+                },
+                accept=accept,
             )
         )
 
@@ -1549,6 +1632,20 @@ class AsyncApiClient:
                 success_codes=[200],
                 error_codes=None,
                 accept="text/plain",
+            )
+        )
+
+    async def head_filesystem(self, *, path: str) -> httpx.Response:
+        """Stat a file or directory. Returns the response unread, since its headers are the result. The caller must close the response."""
+        return await self._do_raw(
+            _ApiRequest(
+                method="HEAD",
+                path_fmt="/filesystem/{}",
+                path_args=[path],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
             )
         )
 
@@ -1707,7 +1804,7 @@ class AsyncApiClient:
         self,
         *,
         request: ProcessRequest,
-        accept: Literal["application/json", "text/event-stream"],
+        accept: Literal["application/json", "application/x-ndjson"],
     ) -> httpx.Response:
         """Execute a command. Returns the response unread, in the requested content type. The caller must close the response."""
         return await self._do_raw(
@@ -1832,10 +1929,10 @@ class AsyncApiClient:
 
     async def put_filesystem_tree(
         self, *, path: str, request: TreeRequest
-    ) -> PutFilesystemTreeResponse:
+    ) -> Directory:
         """Create or update directory tree"""
         return await self._do_json(
-            PutFilesystemTreeResponse,
+            Directory,
             _ApiRequest(
                 method="PUT",
                 path_fmt="/filesystem/tree/{}",
@@ -1879,7 +1976,7 @@ class AsyncApiClient:
         json_body = None
         content_body = None
         files_body = None
-        headers: dict[str, str] = {}
+        headers: dict[str, str] = {**(self._headers or {})}
         if request.accept is not None:
             headers["Accept"] = request.accept
         if request.body is not None:
@@ -1913,16 +2010,22 @@ class AsyncApiClient:
                 params = request.query
         return self._http_client.build_request(
             request.method,
-            path,
+            path if self._base_url is None else self._base_url.rstrip("/") + path,
             json=json_body,
             content=content_body,
             files=files_body,
             params=params,
             headers=headers,
+            timeout=httpx.USE_CLIENT_DEFAULT
+            if self._timeout is None
+            else self._timeout,
         )
 
     async def _do(self, request: _ApiRequest) -> httpx.Response:
-        response = await self._http_client.send(self._build_request(request))
+        response = await self._http_client.send(
+            self._build_request(request),
+            auth=httpx.USE_CLIENT_DEFAULT if self._auth is None else self._auth,
+        )
         if response.status_code not in request.success_codes:
             if request.error_codes and response.status_code in request.error_codes:
                 error_name = request.error_codes[response.status_code]
@@ -1943,7 +2046,9 @@ class AsyncApiClient:
 
     async def _do_raw(self, request: _ApiRequest) -> httpx.Response:
         response = await self._http_client.send(
-            self._build_request(request), stream=True
+            self._build_request(request),
+            auth=httpx.USE_CLIENT_DEFAULT if self._auth is None else self._auth,
+            stream=True,
         )
         if response.status_code not in request.success_codes:
             await response.aread()

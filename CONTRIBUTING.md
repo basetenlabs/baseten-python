@@ -18,7 +18,7 @@ All tasks are run via `uv run poe <task>`:
 
 ## End-to-End Tests
 
-E2e tests in `tests/test_e2e.py` run against a live Baseten environment. They are skipped automatically when `BASETEN_E2E_TEST_API_KEY` is not set.
+E2e tests in `tests/client/test_e2e.py` and `tests/sandbox/test_e2e.py` run against a live Baseten environment. They are skipped automatically when `BASETEN_E2E_TEST_API_KEY` is not set. The sandbox tests need no model, and print every request and response with `BASETEN_E2E_TEST_DEBUG=1`.
 
 ### Bootstrap
 
