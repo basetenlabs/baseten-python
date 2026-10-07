@@ -8,6 +8,8 @@ on:
 jobs:
   check:
     strategy:
+      # One OS or Python version failing should not hide the others' results.
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.14"]

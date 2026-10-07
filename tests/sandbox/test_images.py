@@ -173,6 +173,24 @@ class TestImageClientPush:
         assert str(upload.url) == _UPLOAD_URL
         assert _zip_names(upload) == {"Dockerfile": b"FROM scratch", "a.txt": b"a"}
 
+    def test_uploads_without_the_http_clients_own_headers_or_cookies(self) -> None:
+        api = _Api()
+        _pushing(api, "BUILT")
+        client = SandboxClient(
+            api_key="key",
+            base_url_override="https://api.test",
+            http_client_override=httpx.Client(
+                transport=httpx.MockTransport(api.handle),
+                headers={"Authorization": "Bearer other", "X-Other": "1"},
+                cookies={"session": "secret"},
+            ),
+        )
+        client.images.push(name="img", files={"Dockerfile": "x"})
+        upload = api.upload()
+        assert "Authorization" not in upload.headers
+        assert "X-Other" not in upload.headers
+        assert "Cookie" not in upload.headers
+
     def test_takes_built_at_the_first_poll(self) -> None:
         api = _Api()
         _pushing(api, "BUILT")

@@ -350,10 +350,15 @@ def _http2_server(action: Literal["reset", "goaway", "drop"]) -> Iterator[str]:
                                 event.stream_id, h2.errors.ErrorCodes.INTERNAL_ERROR
                             )
                         else:
-                            # Nothing is read after GOAWAY, since the
-                            # connection accepts no more frames.
                             conn.close_connection()
                             sock.sendall(conn.data_to_send())
+                            # Drained until the client closes, without
+                            # handing it to the connection, which accepts no
+                            # more frames. Closing with the client's frames
+                            # unread would reset the connection, which on
+                            # Windows can reach the client before the GOAWAY.
+                            while sock.recv(65536):
+                                pass
                             return
                     sock.sendall(conn.data_to_send())
 

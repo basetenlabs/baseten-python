@@ -59,9 +59,12 @@ from baseten.sandbox._sandbox import AsyncSandbox, Sandbox
 
 # Timeouts of the HTTP client a sandbox client creates. No read timeout: a
 # process run that waits for completion sends response headers only when the
-# process exits. Connecting gets longer than httpx's 5s default, while writes
-# and pool waits keep it.
-_DEFAULT_TIMEOUT = httpx.Timeout(5.0, connect=10.0, read=None)
+# process exits. No write timeout either: httpcore's sync HTTP/2 sets each
+# timeout on the shared socket before every read and write, so a write
+# timeout set by one thread turns another thread's blocking read non-blocking,
+# failing it and the connection. Connecting gets longer than httpx's 5s
+# default, while pool waits keep it.
+_DEFAULT_TIMEOUT = httpx.Timeout(5.0, connect=10.0, read=None, write=None)
 
 
 @dataclass(frozen=True)
@@ -177,8 +180,10 @@ class SandboxClient:
                 request through, such as another sandbox client's
                 :attr:`http_client` to share its connections. Requests carry
                 absolute URLs and their own authentication and headers, so it
-                needs none of its own. Its timeouts apply, and a read timeout
-                cuts off long process runs and streams.
+                needs none of its own. Its timeouts apply: a read timeout
+                cuts off long process runs and streams, and with HTTP/2, read
+                and write timeouts that differ break requests made from
+                several threads at once, such as a large file's upload parts.
             close_http_client_on_close: Whether :meth:`close` should close
                 the underlying HTTP client. Defaults to ``True`` when the
                 client is created internally, ``False`` when

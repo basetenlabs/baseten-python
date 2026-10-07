@@ -692,11 +692,12 @@ class ImageClient:
 
     def _upload(self, name: str, url: str, archive: _Archive) -> None:
         """Put a build context to the signed storage URL a push returned."""
-        # The URL is signed for storage, so none of the API's headers or
-        # credentials go with it. Storage rejects an upload without a length.
-        http_client = self._context.http_client
-        response = http_client.send(
-            http_client.build_request(
+        # The URL is signed for storage, so none of the API's or the HTTP
+        # client's headers, cookies, or credentials go with it: the request is
+        # built apart from the client. Storage rejects an upload without a
+        # length.
+        response = self._context.http_client.send(
+            httpx.Request(
                 "PUT", url, content=archive.file, headers=_upload_headers(archive)
             ),
             auth=None,
@@ -1039,7 +1040,8 @@ class AsyncImageClient:
                 _zip_archive, entries, _builder_to_file(entries, temp_file)
             )
         if zip is not None:
-            check_zip_dockerfile(zip)
+            # Reading a large zip's entries would block the loop.
+            await asyncio.to_thread(check_zip_dockerfile, zip)
             return _Archive(file=io.BytesIO(zip), size=len(zip))
         if directory is not None:
             await asyncio.to_thread(check_directory_dockerfile, directory)
@@ -1059,7 +1061,11 @@ class AsyncImageClient:
                 _zip_archive, entries, temp_file is not False
             )
         if files is not None:
-            return _zip_archive(files_zip_entries(files), False)
+            # Encoding and compressing a large build context would block the
+            # loop.
+            return await asyncio.to_thread(
+                lambda source: _zip_archive(files_zip_entries(source), False), files
+            )
         return None
 
     async def _upload(self, name: str, url: str, archive: _Archive) -> None:
@@ -1072,9 +1078,9 @@ class AsyncImageClient:
             ):
                 yield chunk
 
-        http_client = self._context.http_client
-        response = await http_client.send(
-            http_client.build_request(
+        # Built apart from the HTTP client, as in ImageClient._upload.
+        response = await self._context.http_client.send(
+            httpx.Request(
                 "PUT", url, content=chunks(), headers=_upload_headers(archive)
             ),
             auth=None,
