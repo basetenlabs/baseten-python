@@ -9411,6 +9411,24 @@ class PushSandboxImageRequest(BaseModel):
             ],
         ),
     ] = None
+    build_memory: Annotated[
+        int | None,
+        Field(
+            description="Memory in megabytes of the temporary environment that builds the source archive or imports the registry image. Omit it to use the default size. Does not change the memory of sandboxes created from the image.",
+            examples=[16384],
+            ge=1,
+            le=32768,
+        ),
+    ] = None
+    build_volume: Annotated[
+        int | None,
+        Field(
+            description="Scratch disk in megabytes attached to the temporary build environment for intermediate layers. Set it for large images that run out of space while building or importing. 0 builds in memory, which is the default. Teams with HIPAA compliance enabled accept only 0.",
+            examples=[32768],
+            ge=0,
+            le=131072,
+        ),
+    ] = None
 
 
 class PushSandboxImageResponse(BaseModel):
@@ -9431,6 +9449,12 @@ class PushSandboxImageResponse(BaseModel):
             examples=[
                 "https://uploads.b10.run/images/base-image/20260916212658/source.zip?expires=2026-09-16T22%3A26%3A58Z&signature=demo-not-a-valid-upload-signature"
             ],
+        ),
+    ] = None
+    upload_headers: Annotated[
+        dict[str, str] | None,
+        Field(
+            description="Headers the source archive upload must send, in addition to Content-Type, with exactly these names and values. Present only with upload_url, when build_memory or build_volume was set. upload_url is signed for these headers, so storage rejects an upload that omits or changes them. Treat names and values as opaque."
         ),
     ] = None
     image: Annotated[
