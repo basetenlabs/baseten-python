@@ -36,6 +36,9 @@ from baseten.sandbox import (
 
 _UPLOAD_URL = "https://storage.test/upload?signature=abc"
 
+# Opaque headers a push returns for the upload URL it signed for them.
+_SIGNED_HEADERS = {"X-Signed-Memory": "2048", "x-signed-volume": "8192 MB"}
+
 _NO_WAIT = timedelta(0)
 
 _Reply = httpx.Response | Exception | dict[str, Any]
@@ -124,12 +127,18 @@ def _image(status: str = "BUILT", **fields: Any) -> dict[str, Any]:
     }
 
 
-def _pushing(api: _Api, *statuses: str) -> None:
+def _pushing(api: _Api, *statuses: str, **response: Any) -> None:
     api.route(
         "POST",
         "/v1/sandboxes/images",
         httpx.Response(
-            202, json={"name": "img", "status": "UPLOADING", "upload_url": _UPLOAD_URL}
+            202,
+            json={
+                "name": "img",
+                "status": "UPLOADING",
+                "upload_url": _UPLOAD_URL,
+                **response,
+            },
         ),
     )
     api.route("PUT", "/upload", httpx.Response(200))
@@ -141,6 +150,11 @@ def _pushing(api: _Api, *statuses: str) -> None:
 def _zip_names(request: httpx.Request) -> dict[str, bytes]:
     with zipfile.ZipFile(io.BytesIO(request.content)) as archive:
         return {name: archive.read(name) for name in archive.namelist()}
+
+
+def _upload_header_names(request: httpx.Request) -> set[str]:
+    # Host is set by httpx for every request.
+    return set(request.headers.keys()) - {"host"}
 
 
 def _error(status: int) -> httpx.Response:
@@ -339,6 +353,67 @@ class TestImageClientPush:
             "Dockerfile": builder.dockerfile().encode(),
             "hello.txt": b"hello",
         }
+
+    def test_sends_build_sizes_and_uploads_with_the_returned_upload_headers(
+        self,
+    ) -> None:
+        api = _Api()
+        _pushing(api, "BUILT", upload_headers=_SIGNED_HEADERS)
+        api.client().images.push(
+            name="img",
+            builder=ImageBuilder.from_registry("debian:bookworm-slim"),
+            build_memory=2048,
+            build_volume=8192,
+        )
+        assert json.loads(api.requests[0].content) == {
+            "name": "img",
+            "build_memory": 2048,
+            "build_volume": 8192,
+        }
+        assert _upload_header_names(api.upload()) == {
+            "content-type",
+            "content-length",
+            *(name.lower() for name in _SIGNED_HEADERS),
+        }
+        for name, value in _SIGNED_HEADERS.items():
+            assert api.upload().headers[name] == value
+
+    def test_sends_a_build_volume_of_0_and_uploads_only_its_own_headers(
+        self,
+    ) -> None:
+        api = _Api()
+        _pushing(api, "BUILT")
+        api.client().images.push(name="img", files={"Dockerfile": "x"}, build_volume=0)
+        assert json.loads(api.requests[0].content) == {
+            "name": "img",
+            "build_volume": 0,
+        }
+        assert _upload_header_names(api.upload()) == {
+            "content-type",
+            "content-length",
+        }
+
+    def test_imports_a_registry_image_with_build_sizes(self) -> None:
+        api = _Api()
+        api.route(
+            "POST",
+            "/v1/sandboxes/images",
+            httpx.Response(202, json={"name": "img", "status": "BUILDING"}),
+        )
+        api.route("GET", "/v1/sandboxes/images/img", _image("BUILT"))
+        api.client().images.push(
+            name="img",
+            registry_image="docker.io/library/python:3",
+            build_memory=2048,
+            build_volume=8192,
+        )
+        assert json.loads(api.requests[0].content) == {
+            "name": "img",
+            "image": "docker.io/library/python:3",
+            "build_memory": 2048,
+            "build_volume": 8192,
+        }
+        assert api.paths()[1:] == ["GET /v1/sandboxes/images/img"]
 
 
 class TestImageClientPushDirectory:
@@ -717,6 +792,72 @@ class TestAsyncImageClient:
         assert sorted(_zip_names(upload)) == [".dockerignore", "Dockerfile", "keep.txt"]
         assert upload.headers["Content-Length"] == str(len(upload.content))
         assert "Authorization" not in upload.headers
+
+    @pytest.mark.asyncio
+    async def test_sends_build_sizes_and_uploads_with_the_returned_upload_headers(
+        self,
+    ) -> None:
+        api = _Api()
+        _pushing(api, "BUILT", upload_headers=_SIGNED_HEADERS)
+        await api.async_client().images.push(
+            name="img",
+            files={"Dockerfile": "x"},
+            build_memory=2048,
+            build_volume=8192,
+        )
+        assert json.loads(api.requests[0].content) == {
+            "name": "img",
+            "build_memory": 2048,
+            "build_volume": 8192,
+        }
+        assert _upload_header_names(api.upload()) == {
+            "content-type",
+            "content-length",
+            *(name.lower() for name in _SIGNED_HEADERS),
+        }
+        for name, value in _SIGNED_HEADERS.items():
+            assert api.upload().headers[name] == value
+
+    @pytest.mark.asyncio
+    async def test_sends_a_build_volume_of_0_and_uploads_only_its_own_headers(
+        self,
+    ) -> None:
+        api = _Api()
+        _pushing(api, "BUILT")
+        await api.async_client().images.push(
+            name="img", files={"Dockerfile": "x"}, build_volume=0
+        )
+        assert json.loads(api.requests[0].content) == {
+            "name": "img",
+            "build_volume": 0,
+        }
+        assert _upload_header_names(api.upload()) == {
+            "content-type",
+            "content-length",
+        }
+
+    @pytest.mark.asyncio
+    async def test_imports_a_registry_image_with_build_sizes(self) -> None:
+        api = _Api()
+        api.route(
+            "POST",
+            "/v1/sandboxes/images",
+            httpx.Response(202, json={"name": "img", "status": "BUILDING"}),
+        )
+        api.route("GET", "/v1/sandboxes/images/img", _image("BUILT"))
+        await api.async_client().images.push(
+            name="img",
+            registry_image="docker.io/library/python:3",
+            build_memory=2048,
+            build_volume=8192,
+        )
+        assert json.loads(api.requests[0].content) == {
+            "name": "img",
+            "image": "docker.io/library/python:3",
+            "build_memory": 2048,
+            "build_volume": 8192,
+        }
+        assert api.paths()[1:] == ["GET /v1/sandboxes/images/img"]
 
     @pytest.mark.asyncio
     async def test_times_out_waiting_as_an_image_build_error(self) -> None:

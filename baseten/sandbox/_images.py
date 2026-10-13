@@ -291,6 +291,8 @@ class ImageClient:
         name: str,
         builder: ImageBuilder,
         temp_file: bool | None = ...,
+        build_memory: int | None = ...,
+        build_volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -303,6 +305,8 @@ class ImageClient:
         name: str,
         registry_image: str,
         docker_config: str | None = ...,
+        build_memory: int | None = ...,
+        build_volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -314,6 +318,8 @@ class ImageClient:
         *,
         name: str,
         zip: bytes,
+        build_memory: int | None = ...,
+        build_volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -328,6 +334,8 @@ class ImageClient:
         ignore_file_processor: ImageIgnoreFileProcessor | None = ...,
         default_ignore_file: ImageIgnoreFileFunc | None = ...,
         temp_file: bool | None = ...,
+        build_memory: int | None = ...,
+        build_volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -339,6 +347,8 @@ class ImageClient:
         *,
         name: str,
         files: Mapping[str, str | bytes],
+        build_memory: int | None = ...,
+        build_volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -357,6 +367,8 @@ class ImageClient:
         default_ignore_file: ImageIgnoreFileFunc | None = None,
         files: Mapping[str, str | bytes] | None = None,
         temp_file: bool | None = None,
+        build_memory: int | None = None,
+        build_volume: int | None = None,
         wait: bool = True,
         timeout: timedelta | None = _DEFAULT_WAIT_TIMEOUT,
         poll_interval: timedelta = _DEFAULT_POLL_INTERVAL,
@@ -408,6 +420,15 @@ class ImageClient:
             temp_file: Whether to zip a *directory* or a builder with local
                 files into a temporary file, rather than in memory. Defaults to
                 true.
+            build_memory: Memory in megabytes, from 1 to 32768, of the
+                temporary environment that builds the build context or
+                imports *registry_image*. ``None`` uses the default size. Does
+                not change the memory of sandboxes created from the image.
+            build_volume: Scratch disk in megabytes, from 0 to 131072,
+                attached to the build environment for intermediate layers. Set
+                it for a large image that runs out of space while building or
+                importing. 0, the default, builds in memory. Teams with HIPAA
+                compliance enabled accept only 0.
             wait: Whether to return only once the image is ready to use.
             timeout: How long to wait for the image. ``None`` waits with no
                 limit. Processing continues regardless.
@@ -435,10 +456,21 @@ class ImageClient:
                     params=baseten.client.managementapi.PushImageParams(
                         **set_fields(team_id=self._context.team_id)
                     ),
-                    request=_push_request(name, registry_image, docker_config),
+                    request=_push_request(
+                        name,
+                        registry_image=registry_image,
+                        docker_config=docker_config,
+                        build_memory=build_memory,
+                        build_volume=build_volume,
+                    ),
                 )
             if archive is not None:
-                self._upload(name, _upload_url(name, response), archive)
+                self._upload(
+                    name,
+                    _upload_url(name, response),
+                    response.upload_headers,
+                    archive,
+                )
         finally:
             if archive is not None:
                 archive.file.close()
@@ -690,7 +722,13 @@ class ImageClient:
             return _zip_archive(files_zip_entries(files), False)
         return None
 
-    def _upload(self, name: str, url: str, archive: _Archive) -> None:
+    def _upload(
+        self,
+        name: str,
+        url: str,
+        signed_headers: Mapping[str, str] | None,
+        archive: _Archive,
+    ) -> None:
         """Put a build context to the signed storage URL a push returned."""
         # The URL is signed for storage, so none of the API's or the HTTP
         # client's headers, cookies, or credentials go with it: the request is
@@ -698,7 +736,10 @@ class ImageClient:
         # length.
         response = self._context.http_client.send(
             httpx.Request(
-                "PUT", url, content=archive.file, headers=_upload_headers(archive)
+                "PUT",
+                url,
+                content=archive.file,
+                headers=_upload_headers(archive, signed_headers),
             ),
             auth=None,
         )
@@ -767,6 +808,8 @@ class AsyncImageClient:
         name: str,
         builder: ImageBuilder,
         temp_file: bool | None = ...,
+        build_memory: int | None = ...,
+        build_volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -779,6 +822,8 @@ class AsyncImageClient:
         name: str,
         registry_image: str,
         docker_config: str | None = ...,
+        build_memory: int | None = ...,
+        build_volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -790,6 +835,8 @@ class AsyncImageClient:
         *,
         name: str,
         zip: bytes,
+        build_memory: int | None = ...,
+        build_volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -804,6 +851,8 @@ class AsyncImageClient:
         ignore_file_processor: AsyncImageIgnoreFileProcessor | None = ...,
         default_ignore_file: AsyncImageIgnoreFileFunc | None = ...,
         temp_file: bool | None = ...,
+        build_memory: int | None = ...,
+        build_volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -815,6 +864,8 @@ class AsyncImageClient:
         *,
         name: str,
         files: Mapping[str, str | bytes],
+        build_memory: int | None = ...,
+        build_volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -833,6 +884,8 @@ class AsyncImageClient:
         default_ignore_file: AsyncImageIgnoreFileFunc | None = None,
         files: Mapping[str, str | bytes] | None = None,
         temp_file: bool | None = None,
+        build_memory: int | None = None,
+        build_volume: int | None = None,
         wait: bool = True,
         timeout: timedelta | None = _DEFAULT_WAIT_TIMEOUT,
         poll_interval: timedelta = _DEFAULT_POLL_INTERVAL,
@@ -859,10 +912,21 @@ class AsyncImageClient:
                     params=baseten.client.managementapi.PushImageParams(
                         **set_fields(team_id=self._context.team_id)
                     ),
-                    request=_push_request(name, registry_image, docker_config),
+                    request=_push_request(
+                        name,
+                        registry_image=registry_image,
+                        docker_config=docker_config,
+                        build_memory=build_memory,
+                        build_volume=build_volume,
+                    ),
                 )
             if archive is not None:
-                await self._upload(name, _upload_url(name, response), archive)
+                await self._upload(
+                    name,
+                    _upload_url(name, response),
+                    response.upload_headers,
+                    archive,
+                )
         finally:
             if archive is not None:
                 archive.file.close()
@@ -1068,7 +1132,13 @@ class AsyncImageClient:
             )
         return None
 
-    async def _upload(self, name: str, url: str, archive: _Archive) -> None:
+    async def _upload(
+        self,
+        name: str,
+        url: str,
+        signed_headers: Mapping[str, str] | None,
+        archive: _Archive,
+    ) -> None:
         """Put a build context to the signed storage URL a push returned."""
 
         # Read on a worker thread, since the archive may be a file on disk.
@@ -1081,7 +1151,10 @@ class AsyncImageClient:
         # Built apart from the HTTP client, as in ImageClient._upload.
         response = await self._context.http_client.send(
             httpx.Request(
-                "PUT", url, content=chunks(), headers=_upload_headers(archive)
+                "PUT",
+                url,
+                content=chunks(),
+                headers=_upload_headers(archive, signed_headers),
             ),
             auth=None,
         )
@@ -1198,12 +1271,23 @@ def _zip_archive(entries: list[ZipEntry], to_file: bool) -> _Archive:
 
 
 def _push_request(
-    name: str, registry_image: str | None, docker_config: str | None
+    name: str,
+    *,
+    registry_image: str | None,
+    docker_config: str | None,
+    build_memory: int | None,
+    build_volume: int | None,
 ) -> baseten.client.managementapi.PushSandboxImageRequest:
     """Build the request that pushes an image."""
+    # A build_volume of 0 is sent, since only None is left out.
     return baseten.client.managementapi.PushSandboxImageRequest(
         name=name,
-        **set_fields(image=registry_image, docker_config=docker_config),
+        **set_fields(
+            image=registry_image,
+            docker_config=docker_config,
+            build_memory=build_memory,
+            build_volume=build_volume,
+        ),
     )
 
 
@@ -1216,9 +1300,20 @@ def _upload_url(
     return str(response.upload_url)
 
 
-def _upload_headers(archive: _Archive) -> dict[str, str]:
-    """Give the headers of a build context upload."""
-    return {"Content-Type": "application/zip", "Content-Length": str(archive.size)}
+def _upload_headers(
+    archive: _Archive, signed_headers: Mapping[str, str] | None
+) -> dict[str, str]:
+    """Give the headers of a build context upload.
+
+    ``signed_headers`` are the ones a push returned with its upload URL, which
+    is signed for them, so storage rejects an upload that leaves one out or
+    changes it. They go as given, and are opaque.
+    """
+    return {
+        "Content-Type": "application/zip",
+        "Content-Length": str(archive.size),
+        **(signed_headers or {}),
+    }
 
 
 def _pushed_info(
