@@ -9411,7 +9411,7 @@ class PushSandboxImageRequest(BaseModel):
             ],
         ),
     ] = None
-    build_memory: Annotated[
+    memory_mb: Annotated[
         int | None,
         Field(
             description="Memory in megabytes of the temporary environment that builds the source archive or imports the registry image. Omit it to use the default size. Does not change the memory of sandboxes created from the image.",
@@ -9420,7 +9420,7 @@ class PushSandboxImageRequest(BaseModel):
             le=32768,
         ),
     ] = None
-    build_volume: Annotated[
+    volume_mb: Annotated[
         int | None,
         Field(
             description="Scratch disk in megabytes attached to the temporary build environment for intermediate layers. Set it for large images that run out of space while building or importing. 0 builds in memory, which is the default. Teams with HIPAA compliance enabled accept only 0.",
@@ -9454,7 +9454,7 @@ class PushSandboxImageResponse(BaseModel):
     upload_headers: Annotated[
         dict[str, str] | None,
         Field(
-            description="Headers the source archive upload must send, in addition to Content-Type, with exactly these names and values. Present only with upload_url, when build_memory or build_volume was set. upload_url is signed for these headers, so storage rejects an upload that omits or changes them. Treat names and values as opaque."
+            description="Headers the source archive upload must send, in addition to Content-Type, with exactly these names and values. Present only with upload_url, when memory_mb or volume_mb was set. upload_url is signed for these headers, so storage rejects an upload that omits or changes them. Treat names and values as opaque."
         ),
     ] = None
     image: Annotated[
