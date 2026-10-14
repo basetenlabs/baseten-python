@@ -291,8 +291,8 @@ class ImageClient:
         name: str,
         builder: ImageBuilder,
         temp_file: bool | None = ...,
-        memory_mb: int | None = ...,
-        volume_mb: int | None = ...,
+        memory: int | None = ...,
+        volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -305,8 +305,8 @@ class ImageClient:
         name: str,
         registry_image: str,
         docker_config: str | None = ...,
-        memory_mb: int | None = ...,
-        volume_mb: int | None = ...,
+        memory: int | None = ...,
+        volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -318,8 +318,8 @@ class ImageClient:
         *,
         name: str,
         zip: bytes,
-        memory_mb: int | None = ...,
-        volume_mb: int | None = ...,
+        memory: int | None = ...,
+        volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -334,8 +334,8 @@ class ImageClient:
         ignore_file_processor: ImageIgnoreFileProcessor | None = ...,
         default_ignore_file: ImageIgnoreFileFunc | None = ...,
         temp_file: bool | None = ...,
-        memory_mb: int | None = ...,
-        volume_mb: int | None = ...,
+        memory: int | None = ...,
+        volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -347,8 +347,8 @@ class ImageClient:
         *,
         name: str,
         files: Mapping[str, str | bytes],
-        memory_mb: int | None = ...,
-        volume_mb: int | None = ...,
+        memory: int | None = ...,
+        volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -367,8 +367,8 @@ class ImageClient:
         default_ignore_file: ImageIgnoreFileFunc | None = None,
         files: Mapping[str, str | bytes] | None = None,
         temp_file: bool | None = None,
-        memory_mb: int | None = None,
-        volume_mb: int | None = None,
+        memory: int | None = None,
+        volume: int | None = None,
         wait: bool = True,
         timeout: timedelta | None = _DEFAULT_WAIT_TIMEOUT,
         poll_interval: timedelta = _DEFAULT_POLL_INTERVAL,
@@ -420,11 +420,11 @@ class ImageClient:
             temp_file: Whether to zip a *directory* or a builder with local
                 files into a temporary file, rather than in memory. Defaults to
                 true.
-            memory_mb: Memory in megabytes, from 1 to 32768, of the
+            memory: Memory in megabytes, from 1 to 32768, of the
                 temporary environment that builds the build context or
                 imports *registry_image*. ``None`` uses the default size. Does
                 not change the memory of sandboxes created from the image.
-            volume_mb: Scratch disk in megabytes, from 0 to 131072,
+            volume: Scratch disk in megabytes, from 0 to 131072,
                 attached to the build environment for intermediate layers. Set
                 it for a large image that runs out of space while building or
                 importing. 0, the default, builds in memory. Teams with HIPAA
@@ -460,8 +460,8 @@ class ImageClient:
                         name,
                         registry_image=registry_image,
                         docker_config=docker_config,
-                        memory_mb=memory_mb,
-                        volume_mb=volume_mb,
+                        memory=memory,
+                        volume=volume,
                     ),
                 )
             if archive is not None:
@@ -808,8 +808,8 @@ class AsyncImageClient:
         name: str,
         builder: ImageBuilder,
         temp_file: bool | None = ...,
-        memory_mb: int | None = ...,
-        volume_mb: int | None = ...,
+        memory: int | None = ...,
+        volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -822,8 +822,8 @@ class AsyncImageClient:
         name: str,
         registry_image: str,
         docker_config: str | None = ...,
-        memory_mb: int | None = ...,
-        volume_mb: int | None = ...,
+        memory: int | None = ...,
+        volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -835,8 +835,8 @@ class AsyncImageClient:
         *,
         name: str,
         zip: bytes,
-        memory_mb: int | None = ...,
-        volume_mb: int | None = ...,
+        memory: int | None = ...,
+        volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -851,8 +851,8 @@ class AsyncImageClient:
         ignore_file_processor: AsyncImageIgnoreFileProcessor | None = ...,
         default_ignore_file: AsyncImageIgnoreFileFunc | None = ...,
         temp_file: bool | None = ...,
-        memory_mb: int | None = ...,
-        volume_mb: int | None = ...,
+        memory: int | None = ...,
+        volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -864,8 +864,8 @@ class AsyncImageClient:
         *,
         name: str,
         files: Mapping[str, str | bytes],
-        memory_mb: int | None = ...,
-        volume_mb: int | None = ...,
+        memory: int | None = ...,
+        volume: int | None = ...,
         wait: bool = ...,
         timeout: timedelta | None = ...,
         poll_interval: timedelta = ...,
@@ -884,8 +884,8 @@ class AsyncImageClient:
         default_ignore_file: AsyncImageIgnoreFileFunc | None = None,
         files: Mapping[str, str | bytes] | None = None,
         temp_file: bool | None = None,
-        memory_mb: int | None = None,
-        volume_mb: int | None = None,
+        memory: int | None = None,
+        volume: int | None = None,
         wait: bool = True,
         timeout: timedelta | None = _DEFAULT_WAIT_TIMEOUT,
         poll_interval: timedelta = _DEFAULT_POLL_INTERVAL,
@@ -916,8 +916,8 @@ class AsyncImageClient:
                         name,
                         registry_image=registry_image,
                         docker_config=docker_config,
-                        memory_mb=memory_mb,
-                        volume_mb=volume_mb,
+                        memory=memory,
+                        volume=volume,
                     ),
                 )
             if archive is not None:
@@ -1275,18 +1275,18 @@ def _push_request(
     *,
     registry_image: str | None,
     docker_config: str | None,
-    memory_mb: int | None,
-    volume_mb: int | None,
+    memory: int | None,
+    volume: int | None,
 ) -> baseten.client.managementapi.PushSandboxImageRequest:
     """Build the request that pushes an image."""
-    # A volume_mb of 0 is sent, since only None is left out.
+    # A volume of 0 is sent, since only None is left out.
     return baseten.client.managementapi.PushSandboxImageRequest(
         name=name,
         **set_fields(
             image=registry_image,
             docker_config=docker_config,
-            memory_mb=memory_mb,
-            volume_mb=volume_mb,
+            memory=memory,
+            volume=volume,
         ),
     )
 

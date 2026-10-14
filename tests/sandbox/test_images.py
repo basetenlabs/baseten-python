@@ -362,13 +362,13 @@ class TestImageClientPush:
         api.client().images.push(
             name="img",
             builder=ImageBuilder.from_registry("debian:bookworm-slim"),
-            memory_mb=2048,
-            volume_mb=8192,
+            memory=2048,
+            volume=8192,
         )
         assert json.loads(api.requests[0].content) == {
             "name": "img",
-            "memory_mb": 2048,
-            "volume_mb": 8192,
+            "memory": 2048,
+            "volume": 8192,
         }
         assert _upload_header_names(api.upload()) == {
             "content-type",
@@ -378,15 +378,15 @@ class TestImageClientPush:
         for name, value in _SIGNED_HEADERS.items():
             assert api.upload().headers[name] == value
 
-    def test_sends_a_volume_mb_of_0_and_uploads_only_its_own_headers(
+    def test_sends_a_volume_of_0_and_uploads_only_its_own_headers(
         self,
     ) -> None:
         api = _Api()
         _pushing(api, "BUILT")
-        api.client().images.push(name="img", files={"Dockerfile": "x"}, volume_mb=0)
+        api.client().images.push(name="img", files={"Dockerfile": "x"}, volume=0)
         assert json.loads(api.requests[0].content) == {
             "name": "img",
-            "volume_mb": 0,
+            "volume": 0,
         }
         assert _upload_header_names(api.upload()) == {
             "content-type",
@@ -404,14 +404,14 @@ class TestImageClientPush:
         api.client().images.push(
             name="img",
             registry_image="docker.io/library/python:3",
-            memory_mb=2048,
-            volume_mb=8192,
+            memory=2048,
+            volume=8192,
         )
         assert json.loads(api.requests[0].content) == {
             "name": "img",
             "image": "docker.io/library/python:3",
-            "memory_mb": 2048,
-            "volume_mb": 8192,
+            "memory": 2048,
+            "volume": 8192,
         }
         assert api.paths()[1:] == ["GET /v1/sandboxes/images/img"]
 
@@ -802,13 +802,13 @@ class TestAsyncImageClient:
         await api.async_client().images.push(
             name="img",
             files={"Dockerfile": "x"},
-            memory_mb=2048,
-            volume_mb=8192,
+            memory=2048,
+            volume=8192,
         )
         assert json.loads(api.requests[0].content) == {
             "name": "img",
-            "memory_mb": 2048,
-            "volume_mb": 8192,
+            "memory": 2048,
+            "volume": 8192,
         }
         assert _upload_header_names(api.upload()) == {
             "content-type",
@@ -819,17 +819,17 @@ class TestAsyncImageClient:
             assert api.upload().headers[name] == value
 
     @pytest.mark.asyncio
-    async def test_sends_a_volume_mb_of_0_and_uploads_only_its_own_headers(
+    async def test_sends_a_volume_of_0_and_uploads_only_its_own_headers(
         self,
     ) -> None:
         api = _Api()
         _pushing(api, "BUILT")
         await api.async_client().images.push(
-            name="img", files={"Dockerfile": "x"}, volume_mb=0
+            name="img", files={"Dockerfile": "x"}, volume=0
         )
         assert json.loads(api.requests[0].content) == {
             "name": "img",
-            "volume_mb": 0,
+            "volume": 0,
         }
         assert _upload_header_names(api.upload()) == {
             "content-type",
@@ -848,14 +848,14 @@ class TestAsyncImageClient:
         await api.async_client().images.push(
             name="img",
             registry_image="docker.io/library/python:3",
-            memory_mb=2048,
-            volume_mb=8192,
+            memory=2048,
+            volume=8192,
         )
         assert json.loads(api.requests[0].content) == {
             "name": "img",
             "image": "docker.io/library/python:3",
-            "memory_mb": 2048,
-            "volume_mb": 8192,
+            "memory": 2048,
+            "volume": 8192,
         }
         assert api.paths()[1:] == ["GET /v1/sandboxes/images/img"]
 
