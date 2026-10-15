@@ -55,6 +55,20 @@ class BDNVolumeMount(BaseModel):
             title="Path",
         ),
     ]
+    include: Annotated[
+        list[str] | None,
+        Field(
+            description="Relative glob patterns selecting files to mount; empty includes all files.",
+            title="Include",
+        ),
+    ] = None
+    exclude: Annotated[
+        list[str] | None,
+        Field(
+            description="Relative glob patterns excluding files from the mount; exclusions win.",
+            title="Exclude",
+        ),
+    ] = None
 
 
 class DockerServer(BaseModel):

@@ -427,8 +427,9 @@ class ImageClient:
             volume: Scratch disk in megabytes, from 0 to 131072,
                 attached to the build environment for intermediate layers. Set
                 it for a large image that runs out of space while building or
-                importing. 0, the default, builds in memory. Teams with HIPAA
-                compliance enabled accept only 0.
+                importing. ``None`` or 0 builds in memory, which is the
+                default. Teams with HIPAA compliance enabled accept only
+                ``None`` or 0.
             wait: Whether to return only once the image is ready to use.
             timeout: How long to wait for the image. ``None`` waits with no
                 limit. Processing continues regardless.
@@ -1302,18 +1303,19 @@ def _upload_url(
 
 def _upload_headers(
     archive: _Archive, signed_headers: Mapping[str, str] | None
-) -> dict[str, str]:
+) -> httpx.Headers:
     """Give the headers of a build context upload.
 
     ``signed_headers`` are the ones a push returned with its upload URL, which
     is signed for them, so storage rejects an upload that leaves one out or
     changes it. They go as given, and are opaque.
     """
-    return {
-        "Content-Type": "application/zip",
-        "Content-Length": str(archive.size),
-        **(signed_headers or {}),
-    }
+    headers = httpx.Headers(
+        {"Content-Type": "application/zip", "Content-Length": str(archive.size)}
+    )
+    # Replaces ours case-insensitively, so a signed header is never sent twice.
+    headers.update(signed_headers or {})
+    return headers
 
 
 def _pushed_info(
@@ -1381,11 +1383,8 @@ def _add_log_page(
     )
 
 
-def _image_info(
-    image: baseten.client.managementapi.SandboxImage
-    | baseten.client.managementapi.SandboxImageSummary,
-) -> ImageInfo:
-    """Convert an image record, from a listing or not."""
+def _image_info(image: baseten.client.managementapi.SandboxImage) -> ImageInfo:
+    """Convert an image record."""
     return ImageInfo(
         name=image.name,
         status=image.status,

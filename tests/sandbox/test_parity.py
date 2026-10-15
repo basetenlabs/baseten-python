@@ -243,12 +243,6 @@ _PARITY = {
         ours=_dataclass_fields(ImageInfo),
         generated=baseten.client.managementapi.SandboxImage,
         renamed={"size": "size_bytes"},
-        generated_only={"tags": "always empty; list_tags lists them"},
-    ),
-    "ImageInfo/Summary": _Parity(
-        ours=_dataclass_fields(ImageInfo),
-        generated=baseten.client.managementapi.SandboxImageSummary,
-        renamed={"size": "size_bytes"},
     ),
     "ImageTagInfo": _Parity(
         ours=_dataclass_fields(ImageTagInfo),

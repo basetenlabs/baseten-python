@@ -66,6 +66,8 @@ from ._models import (
     DeleteSandboxParams,
     DeleteVolumeRequest,
     DeleteVolumeResponse,
+    DeleteVolumeTagRequest,
+    DeleteVolumeTagResponse,
     DeleteVolumeVersionRequest,
     DeleteVolumeVersionResponse,
     DeployLoopsCheckpointRequest,
@@ -128,8 +130,12 @@ from ._models import (
     GetModelsDeploymentsLogsParams,
     GetModelsDeploymentsMetricsParams,
     GetModelsDeploymentsParams,
+    GetModelsDeploymentsStartupsParams,
+    GetModelsDeploymentsStartupsSummaryParams,
     GetModelsEnvironmentsLogsParams,
     GetModelsEnvironmentsMetricsParams,
+    GetModelsEnvironmentsStartupsParams,
+    GetModelsEnvironmentsStartupsSummaryParams,
     GetModelsParams,
     GetRoutesConnectionsParams,
     GetRoutesParams,
@@ -205,6 +211,8 @@ from ._models import (
     PatchLoopsUserConfigResponse,
     PatchTeamTrainingGpuCapacityRequest,
     PatchTeamTrainingGpuCapacityResponse,
+    PatchVolumeRequest,
+    PatchVolumeResponse,
     PrepareModelUploadRequest,
     PrepareModelUploadResponse,
     PromoteRequest,
@@ -228,8 +236,10 @@ from ._models import (
     RoutesResponse,
     RoutesUsageResponse,
     RouteTeamSettings,
+    RouteTeamUserSettings,
+    RouteTeamUserSettingsList,
     RouteTombstone,
-    RouteUserSettings,
+    RouteUserTeamSettingsList,
     Sandbox,
     SandboxImage,
     SandboxImageBuildLogsResponse,
@@ -240,9 +250,13 @@ from ._models import (
     Secret,
     Secrets,
     SecretTombstone,
+    SetVolumeTagRequest,
+    SetVolumeTagResponse,
     SignalPromotionResponse,
     SignSSHCertificateRequest,
     SignSSHCertificateResponse,
+    StartupAttempts,
+    StartupSummary,
     StopTrainingJobRequest,
     StopTrainingJobResponse,
     SyncDeploymentPatchesRequest,
@@ -716,6 +730,28 @@ class ApiClient:
                 method="DELETE",
                 path_fmt="/v1/volumes/{}/{}",
                 path_args=[volume_namespace, volume_name],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def delete_volumes_tags(
+        self,
+        *,
+        volume_namespace: str,
+        volume_name: str,
+        volume_tag: str,
+        request: DeleteVolumeTagRequest,
+    ) -> DeleteVolumeTagResponse:
+        """Deletes a volume tag"""
+        return self._do_json(
+            DeleteVolumeTagResponse,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/volumes/{}/{}/tags/{}",
+                path_args=[volume_namespace, volume_name, volume_tag],
                 body=request,
                 query=None,
                 success_codes=[200],
@@ -1757,6 +1793,48 @@ class ApiClient:
             ),
         )
 
+    def get_models_deployments_startups(
+        self,
+        *,
+        model_id: str,
+        deployment_id: str,
+        params: GetModelsDeploymentsStartupsParams,
+    ) -> StartupAttempts:
+        """Lists the startups of a model deployment"""
+        return self._do_json(
+            StartupAttempts,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/models/{}/deployments/{}/startups",
+                path_args=[model_id, deployment_id],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_models_deployments_startups_summary(
+        self,
+        *,
+        model_id: str,
+        deployment_id: str,
+        params: GetModelsDeploymentsStartupsSummaryParams,
+    ) -> StartupSummary:
+        """Gets the startup summary for a model deployment"""
+        return self._do_json(
+            StartupSummary,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/models/{}/deployments/{}/startups/summary",
+                path_args=[model_id, deployment_id],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     def get_models_environments(self, *, model_id: str) -> Environments:
         """Gets all environments"""
         return self._do_json(
@@ -1823,6 +1901,48 @@ class ApiClient:
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/models/{}/environments/{}/metrics",
+                path_args=[model_id, env_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_models_environments_startups(
+        self,
+        *,
+        model_id: str,
+        env_name: str,
+        params: GetModelsEnvironmentsStartupsParams,
+    ) -> StartupAttempts:
+        """Lists the startups of a model environment"""
+        return self._do_json(
+            StartupAttempts,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/models/{}/environments/{}/startups",
+                path_args=[model_id, env_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_models_environments_startups_summary(
+        self,
+        *,
+        model_id: str,
+        env_name: str,
+        params: GetModelsEnvironmentsStartupsSummaryParams,
+    ) -> StartupSummary:
+        """Gets the startup summary for a model environment"""
+        return self._do_json(
+            StartupSummary,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/models/{}/environments/{}/startups/summary",
                 path_args=[model_id, env_name],
                 body=None,
                 query=params,
@@ -1938,13 +2058,49 @@ class ApiClient:
             ),
         )
 
-    def get_routes_settings_users(self, *, user_id: str) -> RouteUserSettings:
-        """Gets a user's route settings"""
+    def get_routes_settings_teams_users(
+        self, *, team_id: str
+    ) -> RouteTeamUserSettingsList:
+        """Lists users' route settings in a team"""
         return self._do_json(
-            RouteUserSettings,
+            RouteTeamUserSettingsList,
             _ApiRequest(
                 method="GET",
-                path_fmt="/v1/routes/settings/users/{}",
+                path_fmt="/v1/routes/settings/teams/{}/users",
+                path_args=[team_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_routes_settings_teams_users_user_id(
+        self, *, team_id: str, user_id: str
+    ) -> RouteTeamUserSettings:
+        """Gets a user's route settings in a team"""
+        return self._do_json(
+            RouteTeamUserSettings,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/routes/settings/teams/{}/users/{}",
+                path_args=[team_id, user_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_routes_settings_users_teams(
+        self, *, user_id: str
+    ) -> RouteUserTeamSettingsList:
+        """Lists a user's route settings in each of their teams"""
+        return self._do_json(
+            RouteUserTeamSettingsList,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/routes/settings/users/{}/teams",
                 path_args=[user_id],
                 body=None,
                 query=None,
@@ -2020,7 +2176,7 @@ class ApiClient:
         )
 
     def get_sandbox_metrics(
-        self, *, sandbox_name: str, params: GetSandboxMetricsParams
+        self, *, sandbox_name: str, params: GetSandboxMetricsParams | None = None
     ) -> SandboxMetrics:
         """Get sandbox metrics"""
         return self._do_json(
@@ -2967,16 +3123,16 @@ class ApiClient:
             ),
         )
 
-    def patch_routes_settings_users(
-        self, *, user_id: str, request: UpdateRouteUserSettingsRequest
-    ) -> RouteUserSettings:
-        """Updates a user's route settings"""
+    def patch_routes_settings_teams_users(
+        self, *, team_id: str, user_id: str, request: UpdateRouteUserSettingsRequest
+    ) -> RouteTeamUserSettings:
+        """Updates a user's route settings in a team"""
         return self._do_json(
-            RouteUserSettings,
+            RouteTeamUserSettings,
             _ApiRequest(
                 method="PATCH",
-                path_fmt="/v1/routes/settings/users/{}",
-                path_args=[user_id],
+                path_fmt="/v1/routes/settings/teams/{}/users/{}",
+                path_args=[team_id, user_id],
                 body=request,
                 query=None,
                 success_codes=[200],
@@ -3054,6 +3210,23 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/training_projects/{}/jobs/{}/interactive_sessions/{}",
                 path_args=[training_project_id, training_job_id, session_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def patch_volumes(
+        self, *, volume_namespace: str, volume_name: str, request: PatchVolumeRequest
+    ) -> PatchVolumeResponse:
+        """Updates a volume"""
+        return self._do_json(
+            PatchVolumeResponse,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/volumes/{}/{}",
+                path_args=[volume_namespace, volume_name],
                 body=request,
                 query=None,
                 success_codes=[200],
@@ -4307,6 +4480,23 @@ class ApiClient:
             ),
         )
 
+    def post_volumes_tags(
+        self, *, volume_namespace: str, volume_name: str, request: SetVolumeTagRequest
+    ) -> SetVolumeTagResponse:
+        """Sets a volume tag"""
+        return self._do_json(
+            SetVolumeTagResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/volumes/{}/{}/tags",
+                path_args=[volume_namespace, volume_name],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     def post_volumes_token(
         self, *, request: CreateVolumeTokenRequest
     ) -> CreateVolumeTokenResponse:
@@ -4853,6 +5043,28 @@ class AsyncApiClient:
                 method="DELETE",
                 path_fmt="/v1/volumes/{}/{}",
                 path_args=[volume_namespace, volume_name],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def delete_volumes_tags(
+        self,
+        *,
+        volume_namespace: str,
+        volume_name: str,
+        volume_tag: str,
+        request: DeleteVolumeTagRequest,
+    ) -> DeleteVolumeTagResponse:
+        """Deletes a volume tag"""
+        return await self._do_json(
+            DeleteVolumeTagResponse,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/volumes/{}/{}/tags/{}",
+                path_args=[volume_namespace, volume_name, volume_tag],
                 body=request,
                 query=None,
                 success_codes=[200],
@@ -5898,6 +6110,48 @@ class AsyncApiClient:
             ),
         )
 
+    async def get_models_deployments_startups(
+        self,
+        *,
+        model_id: str,
+        deployment_id: str,
+        params: GetModelsDeploymentsStartupsParams,
+    ) -> StartupAttempts:
+        """Lists the startups of a model deployment"""
+        return await self._do_json(
+            StartupAttempts,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/models/{}/deployments/{}/startups",
+                path_args=[model_id, deployment_id],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_models_deployments_startups_summary(
+        self,
+        *,
+        model_id: str,
+        deployment_id: str,
+        params: GetModelsDeploymentsStartupsSummaryParams,
+    ) -> StartupSummary:
+        """Gets the startup summary for a model deployment"""
+        return await self._do_json(
+            StartupSummary,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/models/{}/deployments/{}/startups/summary",
+                path_args=[model_id, deployment_id],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     async def get_models_environments(self, *, model_id: str) -> Environments:
         """Gets all environments"""
         return await self._do_json(
@@ -5964,6 +6218,48 @@ class AsyncApiClient:
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/models/{}/environments/{}/metrics",
+                path_args=[model_id, env_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_models_environments_startups(
+        self,
+        *,
+        model_id: str,
+        env_name: str,
+        params: GetModelsEnvironmentsStartupsParams,
+    ) -> StartupAttempts:
+        """Lists the startups of a model environment"""
+        return await self._do_json(
+            StartupAttempts,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/models/{}/environments/{}/startups",
+                path_args=[model_id, env_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_models_environments_startups_summary(
+        self,
+        *,
+        model_id: str,
+        env_name: str,
+        params: GetModelsEnvironmentsStartupsSummaryParams,
+    ) -> StartupSummary:
+        """Gets the startup summary for a model environment"""
+        return await self._do_json(
+            StartupSummary,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/models/{}/environments/{}/startups/summary",
                 path_args=[model_id, env_name],
                 body=None,
                 query=params,
@@ -6081,13 +6377,49 @@ class AsyncApiClient:
             ),
         )
 
-    async def get_routes_settings_users(self, *, user_id: str) -> RouteUserSettings:
-        """Gets a user's route settings"""
+    async def get_routes_settings_teams_users(
+        self, *, team_id: str
+    ) -> RouteTeamUserSettingsList:
+        """Lists users' route settings in a team"""
         return await self._do_json(
-            RouteUserSettings,
+            RouteTeamUserSettingsList,
             _ApiRequest(
                 method="GET",
-                path_fmt="/v1/routes/settings/users/{}",
+                path_fmt="/v1/routes/settings/teams/{}/users",
+                path_args=[team_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_routes_settings_teams_users_user_id(
+        self, *, team_id: str, user_id: str
+    ) -> RouteTeamUserSettings:
+        """Gets a user's route settings in a team"""
+        return await self._do_json(
+            RouteTeamUserSettings,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/routes/settings/teams/{}/users/{}",
+                path_args=[team_id, user_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_routes_settings_users_teams(
+        self, *, user_id: str
+    ) -> RouteUserTeamSettingsList:
+        """Lists a user's route settings in each of their teams"""
+        return await self._do_json(
+            RouteUserTeamSettingsList,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/routes/settings/users/{}/teams",
                 path_args=[user_id],
                 body=None,
                 query=None,
@@ -6163,7 +6495,7 @@ class AsyncApiClient:
         )
 
     async def get_sandbox_metrics(
-        self, *, sandbox_name: str, params: GetSandboxMetricsParams
+        self, *, sandbox_name: str, params: GetSandboxMetricsParams | None = None
     ) -> SandboxMetrics:
         """Get sandbox metrics"""
         return await self._do_json(
@@ -7116,16 +7448,16 @@ class AsyncApiClient:
             ),
         )
 
-    async def patch_routes_settings_users(
-        self, *, user_id: str, request: UpdateRouteUserSettingsRequest
-    ) -> RouteUserSettings:
-        """Updates a user's route settings"""
+    async def patch_routes_settings_teams_users(
+        self, *, team_id: str, user_id: str, request: UpdateRouteUserSettingsRequest
+    ) -> RouteTeamUserSettings:
+        """Updates a user's route settings in a team"""
         return await self._do_json(
-            RouteUserSettings,
+            RouteTeamUserSettings,
             _ApiRequest(
                 method="PATCH",
-                path_fmt="/v1/routes/settings/users/{}",
-                path_args=[user_id],
+                path_fmt="/v1/routes/settings/teams/{}/users/{}",
+                path_args=[team_id, user_id],
                 body=request,
                 query=None,
                 success_codes=[200],
@@ -7203,6 +7535,23 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/training_projects/{}/jobs/{}/interactive_sessions/{}",
                 path_args=[training_project_id, training_job_id, session_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def patch_volumes(
+        self, *, volume_namespace: str, volume_name: str, request: PatchVolumeRequest
+    ) -> PatchVolumeResponse:
+        """Updates a volume"""
+        return await self._do_json(
+            PatchVolumeResponse,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/volumes/{}/{}",
+                path_args=[volume_namespace, volume_name],
                 body=request,
                 query=None,
                 success_codes=[200],
@@ -8462,6 +8811,23 @@ class AsyncApiClient:
                 path_fmt="/v1/volumes/syncs/{}/cancel",
                 path_args=[volume_sync_id],
                 body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def post_volumes_tags(
+        self, *, volume_namespace: str, volume_name: str, request: SetVolumeTagRequest
+    ) -> SetVolumeTagResponse:
+        """Sets a volume tag"""
+        return await self._do_json(
+            SetVolumeTagResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/volumes/{}/{}/tags",
+                path_args=[volume_namespace, volume_name],
+                body=request,
                 query=None,
                 success_codes=[200],
                 error_codes=None,

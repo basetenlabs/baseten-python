@@ -122,7 +122,6 @@ def _image(status: str = "BUILT", **fields: Any) -> dict[str, Any]:
         "created_at": "2026-10-07T12:00:00Z",
         "size": 1024,
         "tag_count": 2,
-        "tags": [],
         **fields,
     }
 

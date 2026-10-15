@@ -381,6 +381,65 @@ class SearchPattern(RootModel[str]):
     ] = None
 
 
+class MinDurationMs(RootModel[int]):
+    root: Annotated[
+        int | None,
+        Field(
+            description="Only include startups that lasted at least this many milliseconds.",
+            ge=0,
+            title="Min Duration Ms",
+        ),
+    ] = None
+
+
+class GetModelsDeploymentsStartupsSummaryParams(BaseModel):
+    start_epoch_millis: Annotated[
+        int,
+        Field(
+            description="Start of the query window, in epoch milliseconds.",
+            title="Start Epoch Millis",
+        ),
+    ]
+    end_epoch_millis: Annotated[
+        int,
+        Field(
+            description="End of the query window, in epoch milliseconds. Must be after the start.",
+            title="End Epoch Millis",
+        ),
+    ]
+    min_duration_ms: Annotated[
+        MinDurationMs | None,
+        Field(
+            description="Only include startups that lasted at least this many milliseconds.",
+            title="Min Duration Ms",
+        ),
+    ] = None
+
+
+class GetModelsEnvironmentsStartupsSummaryParams(BaseModel):
+    start_epoch_millis: Annotated[
+        int,
+        Field(
+            description="Start of the query window, in epoch milliseconds.",
+            title="Start Epoch Millis",
+        ),
+    ]
+    end_epoch_millis: Annotated[
+        int,
+        Field(
+            description="End of the query window, in epoch milliseconds. Must be after the start.",
+            title="End Epoch Millis",
+        ),
+    ]
+    min_duration_ms: Annotated[
+        MinDurationMs | None,
+        Field(
+            description="Only include startups that lasted at least this many milliseconds.",
+            title="Min Duration Ms",
+        ),
+    ] = None
+
+
 class GetTrainingProjectsJobsMetricsParams(BaseModel):
     end_epoch_millis: Annotated[
         int | None,
@@ -825,19 +884,6 @@ class GetRoutesConnectionsParams(BaseModel):
             title="Team Id",
         ),
     ] = None
-
-
-class GetSandboxMetricsParams(BaseModel):
-    team_id: Annotated[
-        str | None,
-        Field(
-            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
-            min_length=1,
-        ),
-    ] = None
-    start_time: AwareDatetime
-    end_time: AwareDatetime
-    interval_seconds: Literal[10, 30, 60, 300, 900, 3600] | str
 
 
 class GetSandboxLogsParams(BaseModel):
@@ -1699,9 +1745,23 @@ class CreateVolumeSyncRequest(BaseModel):
     ]
 
 
-class DeleteVolumeRequest(BaseModel):
-    expected_sequence: Annotated[
+class ExpectedSequence(RootModel[int]):
+    root: Annotated[
         int | None,
+        Field(
+            description="Revision the volume is expected to be at. When set, the delete fails with a conflict if the volume has changed since, so it cannot act on a volume someone else has pushed to. Take the value from a volume's sequence, or from volume_sequence.",
+            ge=0,
+            title="Expected Sequence",
+        ),
+    ] = None
+
+
+class DeleteVolumeRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    expected_sequence: Annotated[
+        ExpectedSequence | None,
         Field(
             description="Revision the volume is expected to be at. When set, the delete fails with a conflict if the volume has changed since, so it cannot act on a volume someone else has pushed to. Take the value from a volume's sequence, or from volume_sequence.",
             title="Expected Sequence",
@@ -1731,6 +1791,65 @@ class DeleteVolumeResponse(BaseModel):
         int,
         Field(
             description="Revision of the volume after the delete.",
+            title="Volume Sequence",
+        ),
+    ]
+
+
+class ExpectedSequence1(RootModel[int]):
+    root: Annotated[
+        int | None,
+        Field(
+            description="Revision the volume is expected to be at. When set, the update fails with a conflict if the volume has changed since. Take the value from a volume's sequence, or from volume_sequence.",
+            ge=0,
+            title="Expected Sequence",
+        ),
+    ] = None
+
+
+class PatchVolumeRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    expires_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Time at which the volume expires, in ISO 8601 format, with a UTC offset. It must be in the future and at most ten years ahead. Set it to null to clear the expiration time. A body that sets no field is rejected. When the volume expires, all live versions are deleted, all tags are removed, and the volume disappears from listings. Clearing the expiration time afterward does not restore deleted versions. Each deleted version can be restored until its delete_after time. Setting or clearing the expiration time requires the same permission as deleting the volume.",
+            examples=["2030-01-01T00:00:00Z"],
+            title="Expires At",
+        ),
+    ] = None
+    expected_sequence: Annotated[
+        ExpectedSequence1 | None,
+        Field(
+            description="Revision the volume is expected to be at. When set, the update fails with a conflict if the volume has changed since. Take the value from a volume's sequence, or from volume_sequence.",
+            title="Expected Sequence",
+        ),
+    ] = None
+
+
+class PatchVolumeResponse(BaseModel):
+    namespace: Annotated[
+        str,
+        Field(
+            description="Namespace the volume belongs to, in lowercase.",
+            title="Namespace",
+        ),
+    ]
+    volume: Annotated[
+        str, Field(description="Name of the volume, in lowercase.", title="Volume")
+    ]
+    expires_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Volume expiration time in ISO 8601 format. Null when no expiration time is set.",
+            title="Expires At",
+        ),
+    ]
+    volume_sequence: Annotated[
+        int,
+        Field(
+            description="Revision of the volume after the update.",
             title="Volume Sequence",
         ),
     ]
@@ -1839,9 +1958,23 @@ class ListVolumeVersionsResponse(BaseModel):
     ]
 
 
-class DeleteVolumeVersionRequest(BaseModel):
-    expected_sequence: Annotated[
+class ExpectedSequence2(RootModel[int]):
+    root: Annotated[
         int | None,
+        Field(
+            description="Revision the volume is expected to be at. When set, the delete fails with a conflict if the volume has changed since, so a read followed by a delete cannot act on a version a tag has since been moved off. Take the value from volume_sequence.",
+            ge=0,
+            title="Expected Sequence",
+        ),
+    ] = None
+
+
+class DeleteVolumeVersionRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    expected_sequence: Annotated[
+        ExpectedSequence2 | None,
         Field(
             description="Revision the volume is expected to be at. When set, the delete fails with a conflict if the volume has changed since, so a read followed by a delete cannot act on a version a tag has since been moved off. Take the value from volume_sequence.",
             title="Expected Sequence",
@@ -2000,9 +2133,23 @@ class VolumeVersionDetail(BaseModel):
     ]
 
 
-class RestoreVolumeVersionRequest(BaseModel):
-    expected_sequence: Annotated[
+class ExpectedSequence3(RootModel[int]):
+    root: Annotated[
         int | None,
+        Field(
+            description="Revision the volume is expected to be at. When set, the restore fails with a conflict if the volume has changed since. Take the value from volume_sequence.",
+            ge=0,
+            title="Expected Sequence",
+        ),
+    ] = None
+
+
+class RestoreVolumeVersionRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    expected_sequence: Annotated[
+        ExpectedSequence3 | None,
         Field(
             description="Revision the volume is expected to be at. When set, the restore fails with a conflict if the volume has changed since. Take the value from volume_sequence.",
             title="Expected Sequence",
@@ -2046,6 +2193,160 @@ class RestoreVolumeVersionResponse(BaseModel):
         int,
         Field(
             description="Revision of the volume after the restore.",
+            title="Volume Sequence",
+        ),
+    ]
+
+
+class ExpectedSequence4(RootModel[int]):
+    root: Annotated[
+        int | None,
+        Field(
+            description="Revision the volume is expected to be at. When set, the request fails with a conflict if the volume has changed since. Take the value from volume_sequence.",
+            ge=0,
+            title="Expected Sequence",
+        ),
+    ] = None
+
+
+class SetVolumeTagRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    tag: Annotated[
+        str,
+        Field(
+            description="Name of the tag to set. Tags are case-sensitive. Setting a tag that already exists overwrites it, and the version it pointed at before stays reachable by digest.",
+            examples=["nightly"],
+            pattern="^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$",
+            title="Tag",
+        ),
+    ]
+    version: Annotated[
+        str,
+        Field(
+            description="Version to set the tag on. Address it with `:<tag>` for a tag, `@<digest>` for a full content digest or a prefix of at least 12 hexadecimal characters, or `head` for the version a reference with no tag or digest resolves to.",
+            examples=["head"],
+            title="Version",
+        ),
+    ]
+    expires_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Time at which the tag expires, in ISO 8601 format, with a UTC offset. It must be in the future and at most ten years ahead. Omit it for a tag with no expiration time of its own. Omitting it also clears the expiration time of an existing tag. Version or volume expiration still deletes the tag. Do not specify it when setting `head`.",
+            title="Expires At",
+        ),
+    ] = None
+    expected_sequence: Annotated[
+        ExpectedSequence4 | None,
+        Field(
+            description="Revision the volume is expected to be at. When set, the request fails with a conflict if the volume has changed since. Take the value from volume_sequence.",
+            title="Expected Sequence",
+        ),
+    ] = None
+
+
+class SetVolumeTagResponse(BaseModel):
+    namespace: Annotated[
+        str,
+        Field(
+            description="Namespace the volume belongs to, in lowercase.",
+            title="Namespace",
+        ),
+    ]
+    volume: Annotated[
+        str, Field(description="Name of the volume, in lowercase.", title="Volume")
+    ]
+    tag: Annotated[
+        str,
+        Field(
+            description="Name of the tag that was set, with its original capitalization.",
+            title="Tag",
+        ),
+    ]
+    digest: Annotated[
+        str,
+        Field(
+            description="Content digest of the version the tag points at, as `b3:<hex>`.",
+            title="Digest",
+        ),
+    ]
+    version_ref: Annotated[
+        str,
+        Field(
+            description="Full address of the tagged version, as `bdn:<namespace>/<volume>@<digest>`. Paste it into a config.yaml to pin this version, even if the tag is later set on another version.",
+            title="Version Ref",
+        ),
+    ]
+    volume_sequence: Annotated[
+        int,
+        Field(
+            description="Revision of the volume after the tag was set.",
+            title="Volume Sequence",
+        ),
+    ]
+    expires_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Tag expiration time in ISO 8601 format. Null when the tag has no expiration time of its own.",
+            title="Expires At",
+        ),
+    ]
+
+
+class ExpectedSequence5(RootModel[int]):
+    root: Annotated[
+        int | None,
+        Field(
+            description="Revision the volume is expected to be at. When set, the delete fails with a conflict if the volume has changed since, so it cannot delete a tag someone else has just set on another version. Take the value from volume_sequence.",
+            ge=0,
+            title="Expected Sequence",
+        ),
+    ] = None
+
+
+class DeleteVolumeTagRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    expected_sequence: Annotated[
+        ExpectedSequence5 | None,
+        Field(
+            description="Revision the volume is expected to be at. When set, the delete fails with a conflict if the volume has changed since, so it cannot delete a tag someone else has just set on another version. Take the value from volume_sequence.",
+            title="Expected Sequence",
+        ),
+    ] = None
+
+
+class DeleteVolumeTagResponse(BaseModel):
+    namespace: Annotated[
+        str,
+        Field(
+            description="Namespace the volume belongs to, in lowercase.",
+            title="Namespace",
+        ),
+    ]
+    volume: Annotated[
+        str, Field(description="Name of the volume, in lowercase.", title="Volume")
+    ]
+    tag: Annotated[
+        str,
+        Field(
+            description="Tag name from the request, with its original capitalization.",
+            title="Tag",
+        ),
+    ]
+    deleted: Annotated[
+        bool,
+        Field(
+            description="Whether the tag existed and was deleted. False when the volume had no tag by that name, which is not an error.",
+            title="Deleted",
+        ),
+    ]
+    volume_sequence: Annotated[
+        int,
+        Field(
+            description="Revision of the volume after the delete.",
             title="Volume Sequence",
         ),
     ]
@@ -3072,6 +3373,39 @@ class AuditLogEventVolumeDeleted(BaseModel):
     versions_deleted: Annotated[int, Field(title="Versions Deleted")]
 
 
+class AuditLogEventVolumeTagDeleted(BaseModel):
+    event_type: Annotated[Literal["VOLUME_TAG_DELETED"], Field(title="Event Type")]
+    volume_ref: Annotated[str, Field(title="Volume Ref")]
+    tag: Annotated[str, Field(title="Tag")]
+    deleted: Annotated[bool, Field(title="Deleted")]
+
+
+class AuditLogEventVolumeTagSet(BaseModel):
+    event_type: Annotated[Literal["VOLUME_TAG_SET"], Field(title="Event Type")]
+    volume_ref: Annotated[str, Field(title="Volume Ref")]
+    tag: Annotated[str, Field(title="Tag")]
+    digest: Annotated[str, Field(title="Digest")]
+
+
+class AuditLogEventVolumeUpdated(BaseModel):
+    event_type: Annotated[Literal["VOLUME_UPDATED"], Field(title="Event Type")]
+    volume_ref: Annotated[str, Field(title="Volume Ref")]
+    expires_at: Annotated[
+        str | None,
+        Field(
+            description="The volume's expiration time after the update, as an ISO 8601 string. Null when the update cleared it.",
+            title="Expires At",
+        ),
+    ]
+    previous_expires_at: Annotated[
+        str | None,
+        Field(
+            description="The expiration time the update replaced, as an ISO 8601 string. Null when the volume had none.",
+            title="Previous Expires At",
+        ),
+    ]
+
+
 class AuditLogEventVolumeVersionDeleted(BaseModel):
     event_type: Annotated[Literal["VOLUME_VERSION_DELETED"], Field(title="Event Type")]
     volume_ref: Annotated[str, Field(title="Volume Ref")]
@@ -3979,6 +4313,77 @@ class ModelMetricValueSet(BaseModel):
         Field(
             description="Metric values aligned to the ``metric_descriptors`` index. Each entry is a list aligned to that descriptor's ``label_sets`` (a single-element list for a plain metric). A series with no data in this step is null.",
             title="Values",
+        ),
+    ]
+
+
+class StartupPercentiles(BaseModel):
+    sample_count: Annotated[
+        int,
+        Field(
+            description="Number of startups in the distribution, including those that took 0 ms. A phase that finishes within a second can record 0 ms.",
+            title="Sample Count",
+        ),
+    ]
+    mean_ms: Annotated[
+        int | None,
+        Field(description="Mean duration, in milliseconds.", title="Mean Ms"),
+    ]
+    p50_ms: Annotated[
+        int | None,
+        Field(description="50th percentile duration, in milliseconds.", title="P50 Ms"),
+    ]
+    p90_ms: Annotated[
+        int | None,
+        Field(description="90th percentile duration, in milliseconds.", title="P90 Ms"),
+    ]
+    p95_ms: Annotated[
+        int | None,
+        Field(description="95th percentile duration, in milliseconds.", title="P95 Ms"),
+    ]
+    p99_ms: Annotated[
+        int | None,
+        Field(description="99th percentile duration, in milliseconds.", title="P99 Ms"),
+    ]
+
+
+class StartupPhasePercentiles(BaseModel):
+    phase: Annotated[
+        Literal[
+            "SCHEDULING",
+            "IMAGE_PULL",
+            "WEIGHT_DOWNLOAD",
+            "CONTAINER_CREATE",
+            "CONTAINER_START",
+            "READINESS",
+        ]
+        | str,
+        Field(description="The phase.", title="StartupPhaseV1"),
+    ]
+    duration_ms: Annotated[
+        StartupPercentiles, Field(description="Durations of the phase.")
+    ]
+
+
+class StartupSummary(BaseModel):
+    start_epoch_millis: Annotated[
+        int,
+        Field(description="Start of the returned window.", title="Start Epoch Millis"),
+    ]
+    end_epoch_millis: Annotated[
+        int, Field(description="End of the returned window.", title="End Epoch Millis")
+    ]
+    total_duration_ms: Annotated[
+        StartupPercentiles,
+        Field(
+            description="Durations of whole startups, sampled from the 1,000 most recent in the window."
+        ),
+    ]
+    phase_duration_ms: Annotated[
+        list[StartupPhasePercentiles],
+        Field(
+            description="Durations of each phase that was recorded in the window.",
+            title="Phase Duration Ms",
         ),
     ]
 
@@ -5573,16 +5978,19 @@ class LoopsSampler(BaseModel):
         ),
     ]
     model_id: Annotated[
-        str,
-        Field(description="Hashid of the underlying Baseten model.", title="Model Id"),
-    ]
-    deployment_id: Annotated[
-        str,
+        str | None,
         Field(
-            description="Hashid of the specific model deployment (version).",
+            description="Hashid of the underlying Baseten model. Null for a serverless sampler.",
+            title="Model Id",
+        ),
+    ] = None
+    deployment_id: Annotated[
+        str | None,
+        Field(
+            description="Hashid of the specific model deployment (version). Null for a serverless sampler.",
             title="Deployment Id",
         ),
-    ]
+    ] = None
     status: Annotated[
         LoopsSamplerStatus, Field(description="The sampler's current status.")
     ]
@@ -5898,64 +6306,27 @@ class GetLoopsSamplerResponse(BaseModel):
     sampler: Annotated[LoopsSampler, Field(description="The Loops sampler.")]
 
 
-class LoopsCheckpoint(BaseModel):
-    checkpoint_id: Annotated[
-        str, Field(description="The ID of the checkpoint.", title="Checkpoint Id")
-    ]
-    created_at: Annotated[
-        AwareDatetime,
-        Field(
-            description="The timestamp of the checkpoint in ISO 8601 format.",
-            title="Created At",
-        ),
-    ]
-    checkpoint_type: Annotated[
-        str, Field(description="The type of checkpoint.", title="Checkpoint Type")
-    ]
-    base_model: Annotated[
-        str | None,
-        Field(description="The base model of the checkpoint.", title="Base Model"),
-    ]
-    lora_adapter_config: Annotated[
-        dict[str, Any] | None,
-        Field(
-            description="The adapter config of the checkpoint.",
-            title="Lora Adapter Config",
-        ),
-    ]
-    size_bytes: Annotated[
-        int,
-        Field(description="The size of the checkpoint in bytes.", title="Size Bytes"),
-    ]
-    sync_status: Annotated[
-        str | None,
-        Field(
-            description="Sync state of the checkpoint: SYNCING or COMPLETE.",
-            title="Sync Status",
-        ),
-    ] = None
-    id: Annotated[str, Field(description="The checkpoint ID.", title="Id")]
-    run_id: Annotated[
+class LoopsLoRAConfig(BaseModel):
+    config_version: Annotated[
         str,
         Field(
-            description="The ID of the run that produced the checkpoint.",
-            title="Run Id",
+            description="The config version, unique per base model.",
+            title="Config Version",
         ),
     ]
-    target: Annotated[
-        Literal["sampler", "trainer"] | str,
+    targets: Annotated[
+        list[str],
         Field(
-            description="Whether this checkpoint is loadable by the sampler or by the run.",
-            title="TrainerCheckpointTarget",
+            description="The module names the LoRA adapter targets.", title="Targets"
         ),
     ]
-
-
-class ListLoopsCheckpointsResponse(BaseModel):
-    checkpoints: Annotated[
-        list[LoopsCheckpoint],
-        Field(description="Matching checkpoints.", title="Checkpoints"),
-    ]
+    expert_layout: Annotated[
+        Literal["per_expert", "shared_outer", "shared_adapter"] | str | None,
+        Field(
+            description="How routed-expert LoRA weights are laid out. Null when no experts are targeted.",
+            title="Expert Layout",
+        ),
+    ] = None
 
 
 class ValidateLoopsCheckpointRequest(BaseModel):
@@ -5967,6 +6338,14 @@ class ValidateLoopsCheckpointRequest(BaseModel):
             title="Checkpoint Path",
         ),
     ]
+    run_id: Annotated[
+        str | None,
+        Field(
+            description="Loops run whose sampler will load the checkpoint. The checkpoint must use the run's LoRA config.",
+            examples=["k4q95w5"],
+            title="Run Id",
+        ),
+    ] = None
 
 
 class ValidateLoopsCheckpointResponse(BaseModel):
@@ -6782,6 +7161,13 @@ class ModelApisUsageResult(BaseModel):
             title="Model",
         ),
     ] = None
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Team the usage is attributed to. Null when not grouping by team or when team attribution is unavailable.",
+            title="Team Id",
+        ),
+    ] = None
     input_tokens: Annotated[
         int,
         Field(
@@ -6809,6 +7195,25 @@ class ModelApisUsageResult(BaseModel):
     request_count: Annotated[
         int, Field(description="Total number of requests.", title="Request Count")
     ]
+
+
+class EgressRestrictions(BaseModel):
+    fqdn_allow_list: Annotated[
+        list[str] | None,
+        Field(
+            description="Allowed outbound FQDNs; '*' wildcards are supported.",
+            examples=[["*.example.com"]],
+            title="Fqdn Allow List",
+        ),
+    ] = None
+    ip_allow_list: Annotated[
+        list[str] | None,
+        Field(
+            description="Allowed outbound IPv4 addresses or CIDR ranges.",
+            examples=[["1.1.1.1/32"]],
+            title="Ip Allow List",
+        ),
+    ] = None
 
 
 class CreateLLMModelRequest(BaseModel):
@@ -6891,6 +7296,12 @@ class CreateLLMModelRequest(BaseModel):
                 ]
             ],
             title="Weights",
+        ),
+    ] = None
+    egress_restrictions: Annotated[
+        EgressRestrictions | None,
+        Field(
+            description="Restricts this deployment's egress to the specified FQDNs and IP addresses; an empty block allows none. Requires the organization to have egress restrictions enabled."
         ),
     ] = None
     name: Annotated[str, Field(description="Name of the model", title="Name")]
@@ -6998,6 +7409,12 @@ class CreateLLMModelVersionRequest(BaseModel):
             title="Weights",
         ),
     ] = None
+    egress_restrictions: Annotated[
+        EgressRestrictions | None,
+        Field(
+            description="Restricts this deployment's egress to the specified FQDNs and IP addresses; an empty block allows none. Requires the organization to have egress restrictions enabled."
+        ),
+    ] = None
 
 
 class LibraryListingMetadata(BaseModel):
@@ -7036,6 +7453,13 @@ class LibraryListing(BaseModel):
         bool,
         Field(
             description="Whether the listing is publicly accessible", title="Is Public"
+        ),
+    ]
+    is_listed: Annotated[
+        bool,
+        Field(
+            description="Whether the listing appears in catalogs; unlisted listings still deploy from a direct link",
+            title="Is Listed",
         ),
     ]
     trending: Annotated[
@@ -7090,6 +7514,13 @@ class CreateLibraryListingRequest(BaseModel):
             description="Whether the listing is publicly accessible", title="Is Public"
         ),
     ] = False
+    is_listed: Annotated[
+        bool,
+        Field(
+            description="Whether the listing appears in catalogs; unlisted listings still deploy from a direct link",
+            title="Is Listed",
+        ),
+    ] = True
     closed_source: Annotated[
         bool,
         Field(
@@ -7129,6 +7560,13 @@ class UpdateLibraryListingRequest(BaseModel):
     trending: Annotated[
         bool | None,
         Field(description="Whether the listing is trending", title="Trending"),
+    ] = None
+    is_listed: Annotated[
+        bool | None,
+        Field(
+            description="Whether the listing appears in catalogs; unlisted listings still deploy from a direct link",
+            title="Is Listed",
+        ),
     ] = None
     metadata: Annotated[
         LibraryListingMetadata | None,
@@ -7220,6 +7658,20 @@ class CreateLibraryListingVersionRequest(BaseModel):
         str,
         Field(description="Human-readable tag for this version", title="Version Tag"),
     ]
+    is_listed: Annotated[
+        bool,
+        Field(
+            description="Whether the listing appears in catalogs; unlisted listings still deploy from a direct link. Only used when creating a new listing.",
+            title="Is Listed",
+        ),
+    ] = True
+    replace_model: Annotated[
+        bool,
+        Field(
+            description="Allow publishing from a different model than the listing's current one. The listing then points at the new model; earlier versions and existing deployments are unaffected. Fails if the new model already backs another listing.",
+            title="Replace Model",
+        ),
+    ] = False
 
 
 class LibraryListingVersionTombstone(BaseModel):
@@ -7794,27 +8246,6 @@ class RouteRef(BaseModel):
     ]
 
 
-class RouteTargetAnthropic(BaseModel):
-    type: Annotated[
-        Literal["ANTHROPIC"],
-        Field(description="Target kind for Anthropic.", title="Type"),
-    ]
-    model: Annotated[
-        str,
-        Field(
-            description="Model name sent to the provider.", min_length=1, title="Model"
-        ),
-    ]
-    secret_name: Annotated[
-        str,
-        Field(
-            description="Name of a credential secret owned by the route's team.",
-            min_length=1,
-            title="Secret Name",
-        ),
-    ]
-
-
 class RouteTargetBasetenModelAPI(BaseModel):
     type: Annotated[
         Literal["BASETEN_MODEL_API"],
@@ -7861,9 +8292,13 @@ class RouteTargetClassifierModelBased(BaseModel):
     ]
 
 
-class RouteTargetOpenAI(BaseModel):
+class RouteTargetConnection(BaseModel):
     type: Annotated[
-        Literal["OPENAI"], Field(description="Target kind for OpenAI.", title="Type")
+        Literal["CONNECTION"],
+        Field(
+            description="Target kind for a provider reached through a team connection.",
+            title="Type",
+        ),
     ]
     model: Annotated[
         str,
@@ -7871,61 +8306,16 @@ class RouteTargetOpenAI(BaseModel):
             description="Model name sent to the provider.", min_length=1, title="Model"
         ),
     ]
-    secret_name: Annotated[
+    connection_id: Annotated[
         str,
         Field(
-            description="Name of a credential secret owned by the route's team.",
-            min_length=1,
-            title="Secret Name",
+            description="Identifier of the team connection authenticating with the provider.",
+            title="Connection Id",
         ),
     ]
 
 
-class RouteTargetXAI(BaseModel):
-    type: Annotated[
-        Literal["XAI"], Field(description="Target kind for xAI.", title="Type")
-    ]
-    model: Annotated[
-        str,
-        Field(
-            description="Model name sent to the provider.", min_length=1, title="Model"
-        ),
-    ]
-    secret_name: Annotated[
-        str,
-        Field(
-            description="Name of a credential secret owned by the route's team.",
-            min_length=1,
-            title="Secret Name",
-        ),
-    ]
-
-
-class RouteTargetConfigAnthropic(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    type: Annotated[
-        Literal["ANTHROPIC"],
-        Field(description="Target kind for Anthropic.", title="Type"),
-    ]
-    model: Annotated[
-        str,
-        Field(
-            description="Model name sent to the provider.", min_length=1, title="Model"
-        ),
-    ]
-    secret_name: Annotated[
-        str,
-        Field(
-            description="Name of a credential secret owned by the route's team.",
-            min_length=1,
-            title="Secret Name",
-        ),
-    ]
-
-
-class RouteTargetConfigBasetenModelAPI(BaseModel):
+class UpsertRouteTargetBasetenModelAPI(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -7951,7 +8341,7 @@ class ClassifierEnvironmentName(RootModel[str]):
     ] = None
 
 
-class RouteTargetConfigClassifierModelBased(BaseModel):
+class UpsertRouteTargetClassifierModelBased(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -7997,12 +8387,16 @@ class RouteTargetConfigClassifierModelBased(BaseModel):
     ]
 
 
-class RouteTargetConfigOpenAI(BaseModel):
+class UpsertRouteTargetConnection(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     type: Annotated[
-        Literal["OPENAI"], Field(description="Target kind for OpenAI.", title="Type")
+        Literal["CONNECTION"],
+        Field(
+            description="Target kind for a provider reached through a team connection.",
+            title="Type",
+        ),
     ]
     model: Annotated[
         str,
@@ -8010,35 +8404,13 @@ class RouteTargetConfigOpenAI(BaseModel):
             description="Model name sent to the provider.", min_length=1, title="Model"
         ),
     ]
-    secret_name: Annotated[
+    connection_id: Annotated[
         str,
         Field(
-            description="Name of a credential secret owned by the route's team.",
+            description="Identifier of a connection owned by the route's team. Its provider serves the route.",
+            examples=["abc1234"],
             min_length=1,
-            title="Secret Name",
-        ),
-    ]
-
-
-class RouteTargetConfigXAI(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    type: Annotated[
-        Literal["XAI"], Field(description="Target kind for xAI.", title="Type")
-    ]
-    model: Annotated[
-        str,
-        Field(
-            description="Model name sent to the provider.", min_length=1, title="Model"
-        ),
-    ]
-    secret_name: Annotated[
-        str,
-        Field(
-            description="Name of a credential secret owned by the route's team.",
-            min_length=1,
-            title="Secret Name",
+            title="Connection Id",
         ),
     ]
 
@@ -8102,13 +8474,11 @@ class CreateRouteRequest(BaseModel):
     ] = None
     target: Annotated[
         Annotated[
-            RouteTargetConfigBasetenModelAPI
-            | RouteTargetConfigAnthropic
-            | RouteTargetConfigOpenAI
-            | RouteTargetConfigXAI
-            | RouteTargetConfigClassifierModelBased,
+            UpsertRouteTargetBasetenModelAPI
+            | UpsertRouteTargetConnection
+            | UpsertRouteTargetClassifierModelBased,
             Field(
-                description="Upstream target for the route.",
+                description="Upstream target for the route. CONNECTION targets use the provider and credentials of a connection owned by the route's team.",
                 discriminator="type",
                 examples=[{"model": "zai-org/GLM-5.3", "type": "BASETEN_MODEL_API"}],
                 title="Target",
@@ -8135,6 +8505,13 @@ class RoutesUsageResult(BaseModel):
             title="User Id",
         ),
     ] = None
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="ID of the team the usage was metered in. Null when not grouping by TEAM, and for usage metered before it was attributed to teams.",
+            title="Team Id",
+        ),
+    ] = None
     model: Annotated[
         str | None,
         Field(
@@ -8155,6 +8532,13 @@ class RoutesUsageResult(BaseModel):
         | None,
         Field(
             description="Provider that served the requests. Null when not grouping by PROVIDER."
+        ),
+    ] = None
+    router_id: Annotated[
+        str | None,
+        Field(
+            description="Slug of the intelligent router, matching its name in `GET /v1/routes`. Null when not grouping by ROUTER.",
+            title="Router Id",
         ),
     ] = None
     cost_usd: Annotated[
@@ -8189,13 +8573,20 @@ class RoutesUsageResult(BaseModel):
     output_tokens: Annotated[
         int, Field(description="Output tokens.", title="Output Tokens")
     ]
+    requests: Annotated[
+        int,
+        Field(
+            description="Number of requests; with ROUTER, the requests sent through that router. Usage recorded before requests were counted adds zero.",
+            title="Requests",
+        ),
+    ]
 
 
 class RouteSpendLimitTeamDefault(BaseModel):
     team_id: Annotated[
         str,
         Field(
-            description="ID of the team the user's active Code key belongs to.",
+            description="ID of the team whose per-member limit this is.",
             examples=["abc1234"],
             title="Team Id",
         ),
@@ -8210,39 +8601,21 @@ class RouteSpendLimitTeamDefault(BaseModel):
     ]
 
 
-class UpdateRouteSpendLimitSetting(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    user_monthly_limit_usd: Annotated[
-        str | None,
-        Field(
-            description="Standing spend limit in USD for each UTC calendar month. Send null to remove the limit; omit to leave it unchanged.",
-            examples=["200"],
-            title="User Monthly Limit Usd",
-        ),
-    ] = None
-
-
-class UpdateRouteUserSettingsRequest(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    spend_limit: Annotated[
-        UpdateRouteSpendLimitSetting | None,
-        Field(
-            description="Spend limit fields to change. Pass null to remove the user's limit; omit to leave it unchanged."
-        ),
-    ] = None
-
-
 class RouteTeamSpendLimitSetting(BaseModel):
     per_member_monthly_limit_usd: Annotated[
         str | None,
         Field(
-            description="Spend limit in USD for each UTC calendar month that applies to each member whose active Code key belongs to this team, unless the member has a limit of their own. Returned as an exact decimal string. Null when the team has no per-member limit.",
+            description="Spend limit in USD for each UTC calendar month that applies to each member's Code spend in this team, unless the member has a limit of their own. Returned as an exact decimal string. Null when the team has no per-member limit.",
             examples=["200"],
             title="Per Member Monthly Limit Usd",
+        ),
+    ]
+    team_wide_monthly_limit_usd: Annotated[
+        str | None,
+        Field(
+            description="Spend limit in USD for each UTC calendar month on the Code spend of all members in this team together. Once it is reached, every member's requests in the team are rejected. Returned as an exact decimal string. Null when the team has no team-wide limit.",
+            examples=["5000"],
+            title="Team Wide Monthly Limit Usd",
         ),
     ]
 
@@ -8344,9 +8717,17 @@ class UpdateRouteTeamSpendLimitSetting(BaseModel):
     per_member_monthly_limit_usd: Annotated[
         str | None,
         Field(
-            description="Spend limit in USD for each UTC calendar month that applies to each member whose active Code key belongs to this team, unless the member has a limit of their own. Send null to remove it; omit to leave it unchanged.",
+            description="Spend limit in USD for each UTC calendar month that applies to each member's Code spend in this team, unless the member has a limit of their own. Send null to remove it; omit to leave it unchanged.",
             examples=["200"],
             title="Per Member Monthly Limit Usd",
+        ),
+    ] = None
+    team_wide_monthly_limit_usd: Annotated[
+        str | None,
+        Field(
+            description="Spend limit in USD for each UTC calendar month on the Code spend of all members in this team together. Send null to remove it; omit to leave it unchanged.",
+            examples=["5000"],
+            title="Team Wide Monthly Limit Usd",
         ),
     ] = None
 
@@ -8364,12 +8745,46 @@ class UpdateRouteTeamSettingsRequest(BaseModel):
     spend_limit: Annotated[
         UpdateRouteTeamSpendLimitSetting | None,
         Field(
-            description="Spend limit fields to change. Pass null to remove the team's per-member limit; omit to leave it unchanged."
+            description="Spend limit fields to change. Pass null to remove the team's limits; omit to leave them unchanged."
         ),
     ] = None
 
 
-class RouteConnectionAnthropic(BaseModel):
+class UpdateRouteSpendLimitSetting(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    user_monthly_limit_usd: Annotated[
+        str | None,
+        Field(
+            description="Standing spend limit in USD for each UTC calendar month. Send null to remove the limit; omit to leave it unchanged.",
+            examples=["200"],
+            title="User Monthly Limit Usd",
+        ),
+    ] = None
+    month_override_usd: Annotated[
+        str | None,
+        Field(
+            description="Spend limit in USD for the current UTC calendar month, which supersedes the standing limit. Send null to remove it; omit to leave it unchanged.",
+            examples=["300"],
+            title="Month Override Usd",
+        ),
+    ] = None
+
+
+class UpdateRouteUserSettingsRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    spend_limit: Annotated[
+        UpdateRouteSpendLimitSetting | None,
+        Field(
+            description="Spend limit fields to change. Pass null to remove the user's limit; omit to leave it unchanged."
+        ),
+    ] = None
+
+
+class RouteConnectionConfigAnthropic(BaseModel):
     provider: Annotated[
         Literal["ANTHROPIC"],
         Field(description="Provider kind for Anthropic.", title="Provider"),
@@ -8390,7 +8805,7 @@ class RouteConnectionAnthropic(BaseModel):
     ]
 
 
-class RouteConnectionOpenAI(BaseModel):
+class RouteConnectionConfigOpenAI(BaseModel):
     provider: Annotated[
         Literal["OPENAI"],
         Field(description="Provider kind for OpenAI.", title="Provider"),
@@ -8411,7 +8826,7 @@ class RouteConnectionOpenAI(BaseModel):
     ]
 
 
-class RouteConnectionXAI(BaseModel):
+class RouteConnectionConfigXAI(BaseModel):
     provider: Annotated[
         Literal["XAI"], Field(description="Provider kind for xAI.", title="Provider")
     ]
@@ -8431,7 +8846,48 @@ class RouteConnectionXAI(BaseModel):
     ]
 
 
-class RouteConnectionConfigAnthropic(BaseModel):
+class RouteConnection(BaseModel):
+    id: Annotated[str, Field(description="Stable connection identifier.", title="Id")]
+    team_id: Annotated[
+        str,
+        Field(
+            description="Identifier of the team that owns the connection.",
+            title="Team Id",
+        ),
+    ]
+    config: Annotated[
+        Annotated[
+            RouteConnectionConfigAnthropic
+            | RouteConnectionConfigOpenAI
+            | RouteConnectionConfigXAI,
+            Field(
+                description="Provider the connection authenticates with, and the team secret holding its API key.",
+                discriminator="provider",
+                title="Config",
+            ),
+        ]
+        | dict[str, Any],
+        Field(union_mode="left_to_right"),
+    ]
+    created_at: Annotated[
+        AwareDatetime, Field(description="Creation time, ISO 8601.", title="Created At")
+    ]
+    updated_at: Annotated[
+        AwareDatetime,
+        Field(description="Last update time, ISO 8601.", title="Updated At"),
+    ]
+
+
+class RouteConnectionsResponse(BaseModel):
+    items: Annotated[
+        list[RouteConnection], Field(description="Items in this page.", title="Items")
+    ]
+    pagination: Annotated[
+        PaginationResponse, Field(description="Pagination metadata for the page.")
+    ]
+
+
+class UpsertRouteConnectionConfigAnthropic(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -8449,7 +8905,7 @@ class RouteConnectionConfigAnthropic(BaseModel):
     ]
 
 
-class RouteConnectionConfigOpenAI(BaseModel):
+class UpsertRouteConnectionConfigOpenAI(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -8467,7 +8923,7 @@ class RouteConnectionConfigOpenAI(BaseModel):
     ]
 
 
-class RouteConnectionConfigXAI(BaseModel):
+class UpsertRouteConnectionConfigXAI(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -8510,9 +8966,9 @@ class CreateRouteConnectionRequest(BaseModel):
     ] = None
     config: Annotated[
         Annotated[
-            RouteConnectionConfigAnthropic
-            | RouteConnectionConfigOpenAI
-            | RouteConnectionConfigXAI,
+            UpsertRouteConnectionConfigAnthropic
+            | UpsertRouteConnectionConfigOpenAI
+            | UpsertRouteConnectionConfigXAI,
             Field(
                 description="Provider the connection authenticates with, and the team secret holding its API key.",
                 discriminator="provider",
@@ -8532,78 +8988,17 @@ class RouteConnectionTombstone(BaseModel):
     ]
 
 
-class SecretId(RootModel[str]):
-    root: Annotated[
-        str | None,
-        Field(
-            description="Identifier of the new secret, owned by the connection's team, that holds the provider API key. Omit to keep the current secret.",
-            min_length=1,
-            title="Secret Id",
-        ),
-    ] = None
-
-
-class UpdateRouteConnectionConfigAnthropic(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    provider: Annotated[
-        Literal["ANTHROPIC"],
-        Field(description="Provider kind for Anthropic.", title="Provider"),
-    ]
-    secret_id: Annotated[
-        SecretId | None,
-        Field(
-            description="Identifier of the new secret, owned by the connection's team, that holds the provider API key. Omit to keep the current secret.",
-            title="Secret Id",
-        ),
-    ] = None
-
-
-class UpdateRouteConnectionConfigOpenAI(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    provider: Annotated[
-        Literal["OPENAI"],
-        Field(description="Provider kind for OpenAI.", title="Provider"),
-    ]
-    secret_id: Annotated[
-        SecretId | None,
-        Field(
-            description="Identifier of the new secret, owned by the connection's team, that holds the provider API key. Omit to keep the current secret.",
-            title="Secret Id",
-        ),
-    ] = None
-
-
-class UpdateRouteConnectionConfigXAI(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    provider: Annotated[
-        Literal["XAI"], Field(description="Provider kind for xAI.", title="Provider")
-    ]
-    secret_id: Annotated[
-        SecretId | None,
-        Field(
-            description="Identifier of the new secret, owned by the connection's team, that holds the provider API key. Omit to keep the current secret.",
-            title="Secret Id",
-        ),
-    ] = None
-
-
 class UpdateRouteConnectionRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     config: Annotated[
         Annotated[
-            UpdateRouteConnectionConfigAnthropic
-            | UpdateRouteConnectionConfigOpenAI
-            | UpdateRouteConnectionConfigXAI,
+            UpsertRouteConnectionConfigAnthropic
+            | UpsertRouteConnectionConfigOpenAI
+            | UpsertRouteConnectionConfigXAI,
             Field(
-                description="Connection fields to change. The provider must match the connection and is immutable.",
+                description="Complete new connection configuration, replacing the current one. The provider must match the connection and is immutable.",
                 discriminator="provider",
                 examples=[{"provider": "ANTHROPIC", "secret_id": "abc1234"}],
                 title="Config",
@@ -8667,11 +9062,9 @@ class UpdateRouteRequest(BaseModel):
         ),
     ] = None
     target: Annotated[
-        RouteTargetConfigBasetenModelAPI
-        | RouteTargetConfigAnthropic
-        | RouteTargetConfigOpenAI
-        | RouteTargetConfigXAI
-        | RouteTargetConfigClassifierModelBased
+        UpsertRouteTargetBasetenModelAPI
+        | UpsertRouteTargetConnection
+        | UpsertRouteTargetClassifierModelBased
         | None,
         Field(
             description="Complete new target configuration. Omit to keep the current configuration; null is not accepted. Only the CLASSIFIER_MODEL_BASED configuration of a router route is mutable.",
@@ -9099,6 +9492,68 @@ class RegisterAPIKeyResponse(BaseModel):
     ]
 
 
+class SandboxLogEntry(BaseModel):
+    timestamp: AwareDatetime
+    message: str
+    severity: Annotated[int, Field(description="Numeric log severity.")]
+    trace_id: Annotated[
+        str,
+        Field(
+            description="Associated trace identifier, or an empty string when unavailable."
+        ),
+    ]
+    action: Annotated[
+        str | None,
+        Field(description="Action or command when present on the log entry."),
+    ] = None
+
+
+class SandboxMetricDescriptor(BaseModel):
+    name: (
+        Literal[
+            "baseten_sandbox_requests_total",
+            "baseten_sandbox_cpu_usage_cores",
+            "baseten_sandbox_memory_bytes",
+        ]
+        | str
+    )
+    unit_hint: Annotated[
+        Literal["COUNT", "CORES", "BYTES"] | str,
+        Field(
+            description="Requests use COUNT, CPU uses CORES (1 means one fully used core), and memory uses BYTES."
+        ),
+    ]
+    kind: Literal["GAUGE", "COUNTER"] | str
+    label_sets: Annotated[
+        list[dict[str, str]],
+        Field(
+            description="Requests use status=2xx,4xx,5xx; CPU and memory use stat=avg,max.\n",
+            max_length=3,
+        ),
+    ]
+
+
+class Value(RootModel[list[float | None]]):
+    root: Annotated[list[float | None], Field(max_length=3)]
+
+
+class SandboxMetricValueSet(BaseModel):
+    start_epoch_millis: Annotated[
+        int,
+        Field(
+            description="Start of the SERIES interval or SUMMARY window; snapshot timestamp in CURRENT."
+        ),
+    ]
+    values: Annotated[
+        list[Value],
+        Field(
+            description="Values indexed first by metric_descriptors, then by that descriptor's label_sets. Null means no sample.",
+            max_length=3,
+            min_length=1,
+        ),
+    ]
+
+
 class SandboxRegion(BaseModel):
     name: Annotated[
         str,
@@ -9116,61 +9571,6 @@ class SandboxRegion(BaseModel):
         Literal["CARBON"] | str,
         Field(
             description="Runtime generation supported by this region, using the public name CARBON. Actual runtime selection depends on the team and sandbox configuration."
-        ),
-    ]
-
-
-class SandboxLogEntry(BaseModel):
-    timestamp: AwareDatetime
-    message: str
-    severity: Annotated[int, Field(description="Numeric log severity.")]
-    trace_id: Annotated[
-        str,
-        Field(
-            description="Associated trace identifier, or an empty string when unavailable."
-        ),
-    ]
-    action: Annotated[
-        str | None,
-        Field(description="Action or command when present on the log entry."),
-    ] = None
-
-
-class ErrorRate(RootModel[float]):
-    root: Annotated[
-        float,
-        Field(
-            description="Fraction of requests returning 4xx or 5xx. Null when there are no requests.",
-            ge=0.0,
-            le=1.0,
-        ),
-    ]
-
-
-class SandboxMetricsPoint(BaseModel):
-    timestamp: Annotated[AwareDatetime, Field(description="Start of this interval.")]
-    requests: Annotated[
-        float | None,
-        Field(
-            description="Request count. Zero without traffic; null for intervals entirely before creation."
-        ),
-    ]
-    cpu_percent: Annotated[
-        float | None,
-        Field(
-            description="Peak CPU usage in this interval, where 100 is one full CPU core. Null without a sample."
-        ),
-    ]
-    memory_bytes: Annotated[
-        float | None,
-        Field(
-            description="Memory usage in bytes, averaged per series then maximum across series. Null without a sample."
-        ),
-    ]
-    error_rate: Annotated[
-        ErrorRate | None,
-        Field(
-            description="Fraction of requests returning 4xx or 5xx. Null when there are no requests."
         ),
     ]
 
@@ -9257,7 +9657,10 @@ class SandboxProxyTarget(BaseModel):
 class SandboxEnv(BaseModel):
     name: Annotated[
         str | None,
-        Field(description="Name of the environment variable", examples=["NODE_ENV"]),
+        Field(
+            description="Name of the environment variable. Must start with a letter or underscore and contain only letters, digits and underscores (^[A-Za-z_][A-Za-z0-9_]*$); create and update reject other names.",
+            examples=["NODE_ENV"],
+        ),
     ] = None
     secret: Annotated[
         bool,
@@ -9325,7 +9728,7 @@ class SandboxImageTag(BaseModel):
     ] = None
 
 
-class SandboxImageSummary(BaseModel):
+class SandboxImage(BaseModel):
     name: Annotated[
         str,
         Field(
@@ -9372,16 +9775,6 @@ class SandboxImageSummary(BaseModel):
             description="Number of image versions in the repository.",
             examples=[2],
             ge=0,
-        ),
-    ] = None
-
-
-class SandboxImage(SandboxImageSummary):
-    tags: Annotated[
-        list[SandboxImageTag] | None,
-        Field(
-            description="Empty for get summary responses. Use GET /sandboxes/images/{image_name}/tags to retrieve paginated image versions.",
-            examples=[[]],
         ),
     ] = None
 
@@ -9460,7 +9853,7 @@ class PushSandboxImageResponse(BaseModel):
     image: Annotated[
         str | None,
         Field(
-            description="Registered image reference including its tag, when available. Tags are assigned by the service; GET /sandboxes/images/{image_name} returns the available tags once processing completes.",
+            description="Registered image reference including its tag, when available. Tags are assigned by the service; GET /sandboxes/images/{image_name}/tags returns the available tags once processing completes.",
             examples=["b10/base-image:latest"],
         ),
     ] = None
@@ -9884,6 +10277,83 @@ class GetModelsDeploymentsMetricsParams(BaseModel):
     ] = None
 
 
+class GetModelsDeploymentsStartupsParams(BaseModel):
+    start_epoch_millis: Annotated[
+        int,
+        Field(
+            description="Start of the query window, in epoch milliseconds.",
+            title="Start Epoch Millis",
+        ),
+    ]
+    end_epoch_millis: Annotated[
+        int,
+        Field(
+            description="End of the query window, in epoch milliseconds. Must be after the start.",
+            title="End Epoch Millis",
+        ),
+    ]
+    min_duration_ms: Annotated[
+        MinDurationMs | None,
+        Field(
+            description="Only include startups that lasted at least this many milliseconds.",
+            title="Min Duration Ms",
+        ),
+    ] = None
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor returned by a previous page. Omit to fetch the first page. Pass the same filters and sort as the request that returned it.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of attempts to return.",
+            ge=1,
+            le=100,
+            title="Limit",
+        ),
+    ] = 50
+    outcomes: Annotated[
+        list[Literal["SUCCESS", "FAILED", "STALLED"] | str] | None,
+        Field(
+            description="Only include attempts with one of these outcomes. Repeat to pass several.",
+            title="Outcomes",
+        ),
+    ] = None
+    phase: Annotated[
+        Literal[
+            "SCHEDULING",
+            "IMAGE_PULL",
+            "WEIGHT_DOWNLOAD",
+            "CONTAINER_CREATE",
+            "CONTAINER_START",
+            "READINESS",
+        ]
+        | str
+        | None,
+        Field(
+            description="Only include attempts that spent longer than 0 ms in this phase."
+        ),
+    ] = None
+    search: Annotated[
+        str | None,
+        Field(
+            description="Only include attempts whose replica ID matches exactly, or whose deployment name contains this text (case-insensitive).",
+            title="Search",
+        ),
+    ] = None
+    sort_by: Annotated[
+        Literal["OUTCOME", "STARTED_AT", "READY_AT", "DURATION"] | str | None,
+        Field(description="Field to sort attempts by. Defaults to `STARTED_AT`."),
+    ] = None
+    direction: Annotated[
+        Literal["asc", "desc"] | str | None,
+        Field(description="Sort direction. Defaults to `desc`."),
+    ] = None
+
+
 class GetModelsEnvironmentsLogsParams(BaseModel):
     start_epoch_millis: Annotated[
         int | None,
@@ -9987,6 +10457,83 @@ class GetModelsEnvironmentsMetricsParams(BaseModel):
             description="Names of the metrics to return; see https://docs.baseten.co/observability/export-metrics/supported-metrics for the available names. When omitted, a default set is returned: baseten_replicas_active, baseten_inference_requests_total, and baseten_end_to_end_response_time_seconds. Unknown names are rejected; valid names that do not apply are omitted from the response.",
             title="Metrics",
         ),
+    ] = None
+
+
+class GetModelsEnvironmentsStartupsParams(BaseModel):
+    start_epoch_millis: Annotated[
+        int,
+        Field(
+            description="Start of the query window, in epoch milliseconds.",
+            title="Start Epoch Millis",
+        ),
+    ]
+    end_epoch_millis: Annotated[
+        int,
+        Field(
+            description="End of the query window, in epoch milliseconds. Must be after the start.",
+            title="End Epoch Millis",
+        ),
+    ]
+    min_duration_ms: Annotated[
+        MinDurationMs | None,
+        Field(
+            description="Only include startups that lasted at least this many milliseconds.",
+            title="Min Duration Ms",
+        ),
+    ] = None
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor returned by a previous page. Omit to fetch the first page. Pass the same filters and sort as the request that returned it.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of attempts to return.",
+            ge=1,
+            le=100,
+            title="Limit",
+        ),
+    ] = 50
+    outcomes: Annotated[
+        list[Literal["SUCCESS", "FAILED", "STALLED"] | str] | None,
+        Field(
+            description="Only include attempts with one of these outcomes. Repeat to pass several.",
+            title="Outcomes",
+        ),
+    ] = None
+    phase: Annotated[
+        Literal[
+            "SCHEDULING",
+            "IMAGE_PULL",
+            "WEIGHT_DOWNLOAD",
+            "CONTAINER_CREATE",
+            "CONTAINER_START",
+            "READINESS",
+        ]
+        | str
+        | None,
+        Field(
+            description="Only include attempts that spent longer than 0 ms in this phase."
+        ),
+    ] = None
+    search: Annotated[
+        str | None,
+        Field(
+            description="Only include attempts whose replica ID matches exactly, or whose deployment name contains this text (case-insensitive).",
+            title="Search",
+        ),
+    ] = None
+    sort_by: Annotated[
+        Literal["OUTCOME", "STARTED_AT", "READY_AT", "DURATION"] | str | None,
+        Field(description="Field to sort attempts by. Defaults to `STARTED_AT`."),
+    ] = None
+    direction: Annotated[
+        Literal["asc", "desc"] | str | None,
+        Field(description="Sort direction. Defaults to `desc`."),
     ] = None
 
 
@@ -10295,9 +10842,9 @@ class GetModelApisUsageParams(BaseModel):
         ),
     ] = "1d"
     group_by: Annotated[
-        list[Literal["api_key", "user", "model"] | str] | None,
+        list[Literal["api_key", "user", "model", "team"] | str] | None,
         Field(
-            description="Dimensions to break usage down by, repeated once per dimension: api_key, user, model. Defaults to model.",
+            description="Dimensions to break usage down by, repeated once per dimension: api_key, user, model, or team. Defaults to model.",
             title="Group By",
         ),
     ] = None
@@ -10320,6 +10867,13 @@ class GetModelApisUsageParams(BaseModel):
         Field(
             description="Return only usage for these models, repeated once per model.",
             title="Models",
+        ),
+    ] = None
+    team_ids: Annotated[
+        list[str] | None,
+        Field(
+            description="Return only usage for these teams, repeated once per team. Defaults to all teams you can manage.",
+            title="Team Ids",
         ),
     ] = None
     limit: Annotated[
@@ -10423,6 +10977,13 @@ class GetRoutesUsageParams(BaseModel):
             title="Limit",
         ),
     ] = 7
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Limit usage to a team you can access. Organization admins can view all usage in the team, team admins can view usage in teams they manage, and other members can view only their own usage. Without a team, organization admins see all organization usage, team admins see their managed teams, and other members see their own usage.",
+            title="Team Id",
+        ),
+    ] = None
     start_date: Annotated[
         date_aliased | None,
         Field(
@@ -10438,9 +10999,9 @@ class GetRoutesUsageParams(BaseModel):
         ),
     ] = None
     group_by: Annotated[
-        list[Literal["USER", "MODEL", "PROVIDER"] | str] | None,
+        list[Literal["USER", "TEAM", "MODEL", "PROVIDER", "ROUTER"] | str] | None,
         Field(
-            description="Dimensions to break usage down by, repeated once per dimension: USER, MODEL, or PROVIDER. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. Defaults to MODEL.",
+            description="Dimensions to break usage down by, repeated once per dimension: USER, TEAM, MODEL, PROVIDER, or ROUTER. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. ROUTER returns only usage sent through an intelligent router, one row per router, or per router and model with MODEL. Router rows repeat usage already counted in other groupings, so don't add them to model totals. Defaults to MODEL.",
             title="Group By",
         ),
     ] = None
@@ -10474,6 +11035,52 @@ class GetRoutesUsageParams(BaseModel):
         Field(
             description="Return only usage for these providers, repeated once per provider.",
             title="Providers",
+        ),
+    ] = None
+
+
+class GetSandboxMetricsParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+    mode: Annotated[
+        Literal["CURRENT", "SUMMARY", "SERIES"] | str | None,
+        Field(
+            description="Defaults to CURRENT, which rejects start_epoch_millis and end_epoch_millis. SERIES uses a server-selected step of 30 seconds up to 2 hours, 60 seconds up to 1 day, 600 seconds up to 3 days, and 3600 seconds beyond 3 days."
+        ),
+    ] = None
+    start_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Unix milliseconds. Defaults to one hour before end; SERIES snaps outward.",
+            ge=0,
+        ),
+    ] = None
+    end_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Exclusive end in Unix milliseconds, default now. Maximum aligned window is 7 days.",
+            ge=0,
+        ),
+    ] = None
+    metrics: Annotated[
+        list[
+            Literal[
+                "baseten_sandbox_requests_total",
+                "baseten_sandbox_cpu_usage_cores",
+                "baseten_sandbox_memory_bytes",
+            ]
+            | str
+        ]
+        | None,
+        Field(
+            description="Metric names in response order. Omit to request all three signals.",
+            max_length=3,
+            min_length=1,
         ),
     ] = None
 
@@ -10941,6 +11548,39 @@ class GetModelMetricsResponse(BaseModel):
         Field(
             description="Metric values per time step covering the window. In summary mode this always contains exactly one value set spanning the whole window.",
             title="Metric Values",
+        ),
+    ]
+
+
+class StartupPhaseSummary(BaseModel):
+    phase: Annotated[
+        Literal[
+            "SCHEDULING",
+            "IMAGE_PULL",
+            "WEIGHT_DOWNLOAD",
+            "CONTAINER_CREATE",
+            "CONTAINER_START",
+            "READINESS",
+        ]
+        | str,
+        Field(description="The phase.", title="StartupPhaseV1"),
+    ]
+    status: Annotated[
+        Literal["COMPLETED", "FAILED"] | str,
+        Field(description="Outcome of the phase.", title="StartupPhaseStatusV1"),
+    ]
+    offset_ms: Annotated[
+        int,
+        Field(
+            description="Time from the start of the attempt to the start of the phase, in milliseconds.",
+            title="Offset Ms",
+        ),
+    ]
+    duration_ms: Annotated[
+        int | None,
+        Field(
+            description="Duration of the phase, in milliseconds. Can be 0 for a phase that finished within a second. Null if the phase did not finish.",
+            title="Duration Ms",
         ),
     ]
 
@@ -11894,6 +12534,13 @@ class LoopsRun(BaseModel):
             title="Base Model",
         ),
     ]
+    lora_config_version: Annotated[
+        str | None,
+        Field(
+            description="The run's immutable LoRA config version.",
+            title="Lora Config Version",
+        ),
+    ] = None
     base_url: Annotated[str, Field(description="The run's base URL.", title="Base Url")]
     created_at: Annotated[
         AwareDatetime,
@@ -11923,6 +12570,72 @@ class CreateLoopsRunResponse(BaseModel):
 class GetLoopsRunResponse(BaseModel):
     run: Annotated[
         LoopsRun, Field(description="The Loops run with its associated sampler.")
+    ]
+
+
+class LoopsCheckpoint(BaseModel):
+    checkpoint_id: Annotated[
+        str, Field(description="The ID of the checkpoint.", title="Checkpoint Id")
+    ]
+    created_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="The timestamp of the checkpoint in ISO 8601 format.",
+            title="Created At",
+        ),
+    ]
+    checkpoint_type: Annotated[
+        str, Field(description="The type of checkpoint.", title="Checkpoint Type")
+    ]
+    base_model: Annotated[
+        str | None,
+        Field(description="The base model of the checkpoint.", title="Base Model"),
+    ]
+    lora_adapter_config: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="The adapter config of the checkpoint.",
+            title="Lora Adapter Config",
+        ),
+    ]
+    size_bytes: Annotated[
+        int,
+        Field(description="The size of the checkpoint in bytes.", title="Size Bytes"),
+    ]
+    sync_status: Annotated[
+        str | None,
+        Field(
+            description="Sync state of the checkpoint: SYNCING or COMPLETE.",
+            title="Sync Status",
+        ),
+    ] = None
+    id: Annotated[str, Field(description="The checkpoint ID.", title="Id")]
+    lora_config: Annotated[
+        LoopsLoRAConfig | None,
+        Field(
+            description="The immutable LoRA config used to save this checkpoint. Null means the checkpoint is unsupported and cannot be loaded."
+        ),
+    ]
+    run_id: Annotated[
+        str,
+        Field(
+            description="The ID of the run that produced the checkpoint.",
+            title="Run Id",
+        ),
+    ]
+    target: Annotated[
+        Literal["sampler", "trainer"] | str,
+        Field(
+            description="Whether this checkpoint is loadable by the sampler or by the run.",
+            title="TrainerCheckpointTarget",
+        ),
+    ]
+
+
+class ListLoopsCheckpointsResponse(BaseModel):
+    checkpoints: Annotated[
+        list[LoopsCheckpoint],
+        Field(description="Matching checkpoints.", title="Checkpoints"),
     ]
 
 
@@ -12595,9 +13308,7 @@ class Route(BaseModel):
     target: Annotated[
         Annotated[
             RouteTargetBasetenModelAPI
-            | RouteTargetAnthropic
-            | RouteTargetOpenAI
-            | RouteTargetXAI
+            | RouteTargetConnection
             | RouteTargetClassifierModelBased,
             Field(
                 description="Configured upstream target.",
@@ -12682,24 +13393,49 @@ class RouteSpendLimitSetting(BaseModel):
     user_monthly_limit_usd: Annotated[
         str | None,
         Field(
-            description="Standing spend limit in USD for each UTC calendar month set on the user. Null when the user has no limit of their own.",
+            description="Standing spend limit in USD for each UTC calendar month set on the user in the team. Null when the user has no limit of their own there.",
             examples=["200"],
             title="User Monthly Limit Usd",
+        ),
+    ]
+    month_override_usd: Annotated[
+        str | None,
+        Field(
+            description="Spend limit in USD for the current UTC calendar month set on the user in the team, which supersedes their standing limit. Null when there is none.",
+            examples=["300"],
+            title="Month Override Usd",
         ),
     ]
     team_default: Annotated[
         RouteSpendLimitTeamDefault | None,
         Field(
-            description="Per-member limit of the team the user's active Code key belongs to. This limit applies when the user has no limit of their own. Null when there is none."
+            description="Per-member limit of the team. This limit applies when the user has no limit of their own. Null when there is none."
         ),
     ]
     effective: Annotated[
         RouteEffectiveSpendLimit,
         Field(description="The effective limit enforced for the current month."),
     ]
+    team_wide_monthly_limit_usd: Annotated[
+        str | None,
+        Field(
+            description="Team-wide limit of the team in USD for each UTC calendar month. Once all members' spend in the team reaches it, the user's requests in the team are rejected whatever their own limit. Null when there is none.",
+            examples=["5000"],
+            title="Team Wide Monthly Limit Usd",
+        ),
+    ]
 
 
-class RouteUserSettings(BaseModel):
+class RouteTeamUserSettings(BaseModel):
+    team_id: Annotated[
+        str, Field(description="ID of the team.", examples=["abc1234"], title="Team Id")
+    ]
+    team_name: Annotated[
+        str,
+        Field(
+            description="Name of the team.", examples=["Engineering"], title="Team Name"
+        ),
+    ]
     user_id: Annotated[
         str, Field(description="ID of the user.", examples=["abc1234"], title="User Id")
     ]
@@ -12714,7 +13450,38 @@ class RouteUserSettings(BaseModel):
     spend_limit: Annotated[
         RouteSpendLimitSetting,
         Field(
-            description="Spend limit for Baseten Code. Applies to requests with Routes keys the user created; personal API keys are not limited."
+            description="Spend limit for Baseten Code in the team. Applies to requests with Routes keys the user created in the team; personal API keys are not limited."
+        ),
+    ]
+    month_spend_usd: Annotated[
+        str,
+        Field(
+            description="The user's metered Code spend in USD in the team this UTC calendar month, returned as an exact decimal string.",
+            examples=["12.5"],
+            title="Month Spend Usd",
+        ),
+    ]
+    is_blocked: Annotated[
+        bool,
+        Field(
+            description="Whether the user's spend this month reached their limit, or the team's spend reached its team-wide limit, so requests with Routes keys they created in the team are rejected.",
+            title="Is Blocked",
+        ),
+    ]
+    blocked_by: Annotated[
+        Literal["member", "team"] | str | None,
+        Field(
+            description="`member` when the user's spend this month reached their limit, `team` when the team's spend reached its team-wide limit. Null when the user is not blocked."
+        ),
+    ]
+
+
+class RouteUserTeamSettingsList(BaseModel):
+    teams: Annotated[
+        list[RouteTeamUserSettings],
+        Field(
+            description="The user's settings in each team they have a role in and in any team they have Code spend in this month, alphabetical by team name.",
+            title="Teams",
         ),
     ]
 
@@ -12730,42 +13497,13 @@ class RouteHarnessModel(BaseModel):
     route: Annotated[Route, Field(description="Route to use for this role.")]
 
 
-class RouteConnection(BaseModel):
-    id: Annotated[str, Field(description="Stable connection identifier.", title="Id")]
-    team_id: Annotated[
-        str,
+class RouteTeamUserSettingsList(BaseModel):
+    users: Annotated[
+        list[RouteTeamUserSettings],
         Field(
-            description="Identifier of the team that owns the connection.",
-            title="Team Id",
+            description="Settings of each user with a role in the team and of anyone with Code spend in the team this month.",
+            title="Users",
         ),
-    ]
-    config: Annotated[
-        Annotated[
-            RouteConnectionAnthropic | RouteConnectionOpenAI | RouteConnectionXAI,
-            Field(
-                description="Provider the connection authenticates with, and the team secret holding its API key.",
-                discriminator="provider",
-                title="Config",
-            ),
-        ]
-        | dict[str, Any],
-        Field(union_mode="left_to_right"),
-    ]
-    created_at: Annotated[
-        AwareDatetime, Field(description="Creation time, ISO 8601.", title="Created At")
-    ]
-    updated_at: Annotated[
-        AwareDatetime,
-        Field(description="Last update time, ISO 8601.", title="Updated At"),
-    ]
-
-
-class RouteConnectionsResponse(BaseModel):
-    items: Annotated[
-        list[RouteConnection], Field(description="Items in this page.", title="Items")
-    ]
-    pagination: Annotated[
-        PaginationResponse, Field(description="Pagination metadata for the page.")
     ]
 
 
@@ -12949,15 +13687,6 @@ class UpdateGroupRequest(BaseModel):
     ] = None
 
 
-class GetSandboxConfigurationResponse(BaseModel):
-    regions: Annotated[
-        list[SandboxRegion],
-        Field(
-            description="Available Carbon-compatible regions, sorted by name. Empty when none are available."
-        ),
-    ]
-
-
 class SandboxLogs(BaseModel):
     sandbox_name: str
     start_time: AwareDatetime
@@ -12972,11 +13701,36 @@ class SandboxLogs(BaseModel):
 
 
 class SandboxMetrics(BaseModel):
-    sandbox_name: str
-    start_time: AwareDatetime
-    end_time: AwareDatetime
-    interval_seconds: int
-    data: Annotated[list[SandboxMetricsPoint], Field(max_length=10000)]
+    start_epoch_millis: Annotated[
+        int,
+        Field(
+            description="Returned window start, snapped outward in SERIES. Equal to end for CURRENT."
+        ),
+    ]
+    end_epoch_millis: Annotated[
+        int,
+        Field(
+            description="Returned exclusive window end, snapped outward in SERIES. Snapshot timestamp for CURRENT."
+        ),
+    ]
+    mode: Literal["CURRENT", "SUMMARY", "SERIES"] | str
+    step_seconds: Annotated[
+        int | None,
+        Field(description="Seconds per SERIES interval; null in CURRENT and SUMMARY."),
+    ]
+    metric_descriptors: Annotated[
+        list[SandboxMetricDescriptor], Field(max_length=3, min_length=1)
+    ]
+    metric_values: Annotated[list[SandboxMetricValueSet], Field(max_length=10000)]
+
+
+class GetSandboxConfigurationResponse(BaseModel):
+    regions: Annotated[
+        list[SandboxRegion],
+        Field(
+            description="Available Carbon-compatible regions, sorted by name. Empty when none are available."
+        ),
+    ]
 
 
 class SandboxProxyConfig(BaseModel):
@@ -13028,7 +13782,7 @@ class SandboxProxyConfig(BaseModel):
 
 class ListSandboxImagesResponse(BaseModel):
     items: Annotated[
-        list[SandboxImageSummary], Field(description="Image repositories on this page.")
+        list[SandboxImage], Field(description="Image repositories on this page.")
     ]
     pagination: SandboxApiPagination
 
@@ -13177,6 +13931,9 @@ class AuditLogEntry(BaseModel):
             "VOLUME_DELETED",
             "VOLUME_VERSION_DELETED",
             "VOLUME_VERSION_RESTORED",
+            "VOLUME_TAG_SET",
+            "VOLUME_TAG_DELETED",
+            "VOLUME_UPDATED",
         ]
         | str,
         Field(
@@ -13234,7 +13991,10 @@ class AuditLogEntry(BaseModel):
             | AuditLogEventSshCertificateSigned
             | AuditLogEventVolumeDeleted
             | AuditLogEventVolumeVersionDeleted
-            | AuditLogEventVolumeVersionRestored,
+            | AuditLogEventVolumeVersionRestored
+            | AuditLogEventVolumeTagSet
+            | AuditLogEventVolumeTagDeleted
+            | AuditLogEventVolumeUpdated,
             Field(
                 description="Structured details of the action, discriminated by `event_type`.",
                 discriminator="event_type",
@@ -13280,6 +14040,78 @@ class ListAuditLogsResponse(BaseModel):
     ]
     pagination: Annotated[
         PaginationResponse, Field(description="Pagination metadata for the page.")
+    ]
+
+
+class StartupAttempt(BaseModel):
+    model_id: Annotated[
+        str, Field(description="Unique identifier of the model.", title="Model Id")
+    ]
+    deployment_id: Annotated[
+        str | None,
+        Field(
+            description="Unique identifier of the deployment.", title="Deployment Id"
+        ),
+    ]
+    deployment_name: Annotated[
+        str, Field(description="Name of the deployment.", title="Deployment Name")
+    ]
+    environment_name: Annotated[
+        str | None,
+        Field(
+            description="Name of the environment. Null when querying a deployment.",
+            title="Environment Name",
+        ),
+    ]
+    replica_id: Annotated[
+        str | None,
+        Field(
+            description="Identifier of the replica that started.", title="Replica Id"
+        ),
+    ]
+    started_at_epoch_millis: Annotated[
+        int,
+        Field(
+            description="Time the attempt started, in epoch milliseconds.",
+            title="Started At Epoch Millis",
+        ),
+    ]
+    ready_at_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Time the replica became ready, in epoch milliseconds. Null if it never did.",
+            title="Ready At Epoch Millis",
+        ),
+    ]
+    duration_ms: Annotated[
+        int,
+        Field(
+            description="Duration of the attempt, in milliseconds.", title="Duration Ms"
+        ),
+    ]
+    outcome: Annotated[
+        Literal["SUCCESS", "FAILED", "STALLED"] | str,
+        Field(description="Outcome of the attempt.", title="StartupOutcomeV1"),
+    ]
+    phase_summary: Annotated[
+        list[StartupPhaseSummary],
+        Field(description="Phases recorded during the attempt.", title="Phase Summary"),
+    ]
+
+
+class StartupAttempts(BaseModel):
+    items: Annotated[
+        list[StartupAttempt], Field(description="Items in this page.", title="Items")
+    ]
+    pagination: Annotated[
+        PaginationResponse, Field(description="Pagination metadata for the page.")
+    ]
+    total_count: Annotated[
+        int,
+        Field(
+            description="Number of attempts matching the filters, counted within the 1,000 most recent startups in the window.",
+            title="Total Count",
+        ),
     ]
 
 
@@ -13546,7 +14378,7 @@ class RouteTeamSettings(BaseModel):
     spend_limit: Annotated[
         RouteTeamSpendLimitSetting,
         Field(
-            description="Spend limits for Baseten Code for members whose active Code key belongs to this team."
+            description="Spend limits for Baseten Code for members' spend in this team."
         ),
     ]
 
@@ -13756,9 +14588,10 @@ class SandboxConfiguration(BaseModel):
     memory: Annotated[
         int | None,
         Field(
-            description="Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs).",
+            description="Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs). Must be between 1024 and 262144.",
             examples=[4096],
-            ge=1,
+            ge=512,
+            le=262144,
         ),
     ] = None
     ports: Annotated[
@@ -13885,9 +14718,10 @@ class CreateSandboxRequest(BaseModel):
     memory: Annotated[
         int,
         Field(
-            description="Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs). Defaults to 4096.",
+            description="Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs). Defaults to 4096. Must be between 1024 and 262144.",
             examples=[4096],
-            ge=1,
+            ge=512,
+            le=262144,
         ),
     ] = 4096
     ports: Annotated[
