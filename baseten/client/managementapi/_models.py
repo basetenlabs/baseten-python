@@ -8357,6 +8357,25 @@ class ExploreMetadataAPIFormats(BaseModel):
     ] = False
 
 
+class RouteClassifierListingRef(BaseModel):
+    id: Annotated[
+        str,
+        Field(
+            description="Stable classifier identifier.",
+            examples=["general-v1"],
+            title="Id",
+        ),
+    ]
+    name: Annotated[
+        str,
+        Field(
+            description="Display name of the classifier.",
+            examples=["General"],
+            title="Name",
+        ),
+    ]
+
+
 class RouteRef(BaseModel):
     id: Annotated[str, Field(description="Stable route identifier.", title="Id")]
     slug: Annotated[
@@ -8379,27 +8398,15 @@ class RouteTargetBasetenModelAPI(BaseModel):
     ]
 
 
-class RouteTargetClassifierModelBased(BaseModel):
+class RouteTargetClassifier(BaseModel):
     type: Annotated[
-        Literal["CLASSIFIER_MODEL_BASED"],
-        Field(
-            description="Target kind for a classifier-model-based route.", title="Type"
-        ),
+        Literal["CLASSIFIER"],
+        Field(description="Target kind for a classifier-based route.", title="Type"),
     ]
-    classifier_model_id: Annotated[
-        str,
+    classifier: Annotated[
+        RouteClassifierListingRef | None,
         Field(
-            description="ID of the Baseten model that picks a route for each request.",
-            examples=["abcd123"],
-            title="Classifier Model Id",
-        ),
-    ]
-    classifier_environment_name: Annotated[
-        str | None,
-        Field(
-            description="Environment of the classifier model. Null for production.",
-            examples=["production"],
-            title="Classifier Environment Name",
+            description="Classifier that picks a route for each request. Null for routers created before classifiers could be selected."
         ),
     ]
     default_route: Annotated[
@@ -8451,46 +8458,23 @@ class UpsertRouteTargetBasetenModelAPI(BaseModel):
     ]
 
 
-class ClassifierEnvironmentName(RootModel[str]):
-    root: Annotated[
-        str | None,
-        Field(
-            description="Environment of the classifier model. Omit for production, which is returned as null.",
-            examples=["production"],
-            min_length=1,
-            title="Classifier Environment Name",
-        ),
-    ] = None
-
-
-class UpsertRouteTargetClassifierModelBased(BaseModel):
+class UpsertRouteTargetClassifier(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     type: Annotated[
-        Literal["CLASSIFIER_MODEL_BASED"],
-        Field(
-            description="Target kind for a classifier-model-based route. Not intended for general use: classifiers are deployed by Baseten's post-training team.",
-            title="Type",
-        ),
+        Literal["CLASSIFIER"],
+        Field(description="Target kind for a classifier-based route.", title="Type"),
     ]
-    classifier_model_id: Annotated[
+    classifier_id: Annotated[
         str,
         Field(
-            description="ID of the Baseten model that picks a route for each request. Only classifiers deployed by Baseten's post-training team are supported.",
-            examples=["abcd123"],
+            description="ID of the classifier that picks a route for each request.",
+            examples=["general-v1"],
             min_length=1,
-            title="Classifier Model Id",
+            title="Classifier Id",
         ),
     ]
-    classifier_environment_name: Annotated[
-        ClassifierEnvironmentName | None,
-        Field(
-            description="Environment of the classifier model. Omit for production, which is returned as null.",
-            examples=["production"],
-            title="Classifier Environment Name",
-        ),
-    ] = None
     allowed_route_ids: Annotated[
         list[str],
         Field(
@@ -8598,7 +8582,7 @@ class CreateRouteRequest(BaseModel):
         Annotated[
             UpsertRouteTargetBasetenModelAPI
             | UpsertRouteTargetConnection
-            | UpsertRouteTargetClassifierModelBased,
+            | UpsertRouteTargetClassifier,
             Field(
                 description="Upstream target for the route. CONNECTION targets use the provider and credentials of a connection owned by the route's team.",
                 discriminator="type",
@@ -8727,7 +8711,7 @@ class RouteTeamSpendLimitSetting(BaseModel):
     per_member_monthly_limit_usd: Annotated[
         str | None,
         Field(
-            description="Spend limit in USD for each UTC calendar month that applies to each member's Code spend in this team, unless the member has a limit of their own. Returned as an exact decimal string. Null when the team has no per-member limit.",
+            description="Spend limit in USD for each UTC calendar month that applies to each member's Grid spend in this team, unless the member has a limit of their own. Returned as an exact decimal string. Null when the team has no per-member limit.",
             examples=["200"],
             title="Per Member Monthly Limit Usd",
         ),
@@ -8735,7 +8719,7 @@ class RouteTeamSpendLimitSetting(BaseModel):
     team_wide_monthly_limit_usd: Annotated[
         str | None,
         Field(
-            description="Spend limit in USD for each UTC calendar month on the Code spend of all members in this team together. Once it is reached, every member's requests in the team are rejected. Returned as an exact decimal string. Null when the team has no team-wide limit.",
+            description="Spend limit in USD for each UTC calendar month on the Grid spend of all members in this team together. Once it is reached, every member's requests in the team are rejected. Returned as an exact decimal string. Null when the team has no team-wide limit.",
             examples=["5000"],
             title="Team Wide Monthly Limit Usd",
         ),
@@ -8839,7 +8823,7 @@ class UpdateRouteTeamSpendLimitSetting(BaseModel):
     per_member_monthly_limit_usd: Annotated[
         str | None,
         Field(
-            description="Spend limit in USD for each UTC calendar month that applies to each member's Code spend in this team, unless the member has a limit of their own. Send null to remove it; omit to leave it unchanged.",
+            description="Spend limit in USD for each UTC calendar month that applies to each member's Grid spend in this team, unless the member has a limit of their own. Send null to remove it; omit to leave it unchanged.",
             examples=["200"],
             title="Per Member Monthly Limit Usd",
         ),
@@ -8847,7 +8831,7 @@ class UpdateRouteTeamSpendLimitSetting(BaseModel):
     team_wide_monthly_limit_usd: Annotated[
         str | None,
         Field(
-            description="Spend limit in USD for each UTC calendar month on the Code spend of all members in this team together. Send null to remove it; omit to leave it unchanged.",
+            description="Spend limit in USD for each UTC calendar month on the Grid spend of all members in this team together. Send null to remove it; omit to leave it unchanged.",
             examples=["5000"],
             title="Team Wide Monthly Limit Usd",
         ),
@@ -9186,10 +9170,10 @@ class UpdateRouteRequest(BaseModel):
     target: Annotated[
         UpsertRouteTargetBasetenModelAPI
         | UpsertRouteTargetConnection
-        | UpsertRouteTargetClassifierModelBased
+        | UpsertRouteTargetClassifier
         | None,
         Field(
-            description="Complete new target configuration. Omit to keep the current configuration; null is not accepted. Only the CLASSIFIER_MODEL_BASED configuration of a router route is mutable.",
+            description="Complete new target configuration. Omit to keep the current configuration; null is not accepted. Only the CLASSIFIER configuration of a router route is mutable.",
             title="Target",
         ),
     ] = None
@@ -9614,27 +9598,6 @@ class RegisterAPIKeyResponse(BaseModel):
     ]
 
 
-class SandboxRegion(BaseModel):
-    name: Annotated[
-        str,
-        Field(
-            description="Public region identifier to use when creating a sandbox.",
-            examples=["us-was-1"],
-        ),
-    ]
-    country: Annotated[str, Field(description="Country code.", examples=["us"])]
-    continent: Annotated[str, Field(description="Continent code.", examples=["na"])]
-    location: Annotated[
-        str, Field(description="Region location.", examples=["Washington"])
-    ]
-    info_generation: Annotated[
-        Literal["CARBON"] | str,
-        Field(
-            description="Runtime generation supported by this region, using the public name CARBON. Actual runtime selection depends on the team and sandbox configuration."
-        ),
-    ]
-
-
 class SandboxLogEntry(BaseModel):
     timestamp: AwareDatetime
     message: str
@@ -9693,6 +9656,27 @@ class SandboxMetricValueSet(BaseModel):
             description="Values indexed first by metric_descriptors, then by that descriptor's label_sets. Null means no sample.",
             max_length=3,
             min_length=1,
+        ),
+    ]
+
+
+class SandboxRegion(BaseModel):
+    name: Annotated[
+        str,
+        Field(
+            description="Public region identifier to use when creating a sandbox.",
+            examples=["us-was-1"],
+        ),
+    ]
+    country: Annotated[str, Field(description="Country code.", examples=["us"])]
+    continent: Annotated[str, Field(description="Continent code.", examples=["na"])]
+    location: Annotated[
+        str, Field(description="Region location.", examples=["Washington"])
+    ]
+    info_generation: Annotated[
+        Literal["CARBON"] | str,
+        Field(
+            description="Runtime generation supported by this region, using the public name CARBON. Actual runtime selection depends on the team and sandbox configuration."
         ),
     ]
 
@@ -13587,9 +13571,7 @@ class Route(BaseModel):
     ]
     target: Annotated[
         Annotated[
-            RouteTargetBasetenModelAPI
-            | RouteTargetConnection
-            | RouteTargetClassifierModelBased,
+            RouteTargetBasetenModelAPI | RouteTargetConnection | RouteTargetClassifier,
             Field(
                 description="Configured upstream target.",
                 discriminator="type",
@@ -13730,13 +13712,13 @@ class RouteTeamUserSettings(BaseModel):
     spend_limit: Annotated[
         RouteSpendLimitSetting,
         Field(
-            description="Spend limit for Baseten Code in the team. Applies to requests with Routes keys the user created in the team; personal API keys are not limited."
+            description="Spend limit for Baseten Grid in the team. Applies to requests with Routes keys the user created in the team; personal API keys are not limited."
         ),
     ]
     month_spend_usd: Annotated[
         str,
         Field(
-            description="The user's metered Code spend in USD in the team this UTC calendar month, returned as an exact decimal string.",
+            description="The user's metered Grid spend in USD in the team this UTC calendar month, returned as an exact decimal string.",
             examples=["12.5"],
             title="Month Spend Usd",
         ),
@@ -13760,7 +13742,7 @@ class RouteUserTeamSettingsList(BaseModel):
     teams: Annotated[
         list[RouteTeamUserSettings],
         Field(
-            description="The user's settings in each team they have a role in and in any team they have Code spend in this month, alphabetical by team name.",
+            description="The user's settings in each team they have a role in and in any team they have Grid spend in this month, alphabetical by team name.",
             title="Teams",
         ),
     ]
@@ -13781,7 +13763,7 @@ class RouteTeamUserSettingsList(BaseModel):
     users: Annotated[
         list[RouteTeamUserSettings],
         Field(
-            description="Settings of each user with a role in the team and of anyone with Code spend in the team this month.",
+            description="Settings of each user with a role in the team and of anyone with Grid spend in the team this month.",
             title="Users",
         ),
     ]
@@ -13967,15 +13949,6 @@ class UpdateGroupRequest(BaseModel):
     ] = None
 
 
-class GetSandboxConfigurationResponse(BaseModel):
-    regions: Annotated[
-        list[SandboxRegion],
-        Field(
-            description="Available Carbon-compatible regions, sorted by name. Empty when none are available."
-        ),
-    ]
-
-
 class SandboxLogs(BaseModel):
     sandbox_name: str
     start_time: AwareDatetime
@@ -14011,6 +13984,15 @@ class SandboxMetrics(BaseModel):
         list[SandboxMetricDescriptor], Field(max_length=3, min_length=1)
     ]
     metric_values: Annotated[list[SandboxMetricValueSet], Field(max_length=10000)]
+
+
+class GetSandboxConfigurationResponse(BaseModel):
+    regions: Annotated[
+        list[SandboxRegion],
+        Field(
+            description="Available Carbon-compatible regions, sorted by name. Empty when none are available."
+        ),
+    ]
 
 
 class SandboxProxyConfig(BaseModel):
@@ -14658,7 +14640,7 @@ class RouteTeamSettings(BaseModel):
     spend_limit: Annotated[
         RouteTeamSpendLimitSetting,
         Field(
-            description="Spend limits for Baseten Code for members' spend in this team."
+            description="Spend limits for Baseten Grid for members' spend in this team."
         ),
     ]
 

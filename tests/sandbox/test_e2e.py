@@ -1304,8 +1304,7 @@ async def test_previews(sandbox: Sandbox | AsyncSandbox) -> None:
 
         # The preview adds its response header, and the app sees the request
         # header the preview adds.
-        # TODO: Use ?preview_token= once the server accepts it.
-        with_token = f"{created.url}?bl_preview_token={token.token}"
+        with_token = f"{created.url}?preview_token={token.token}"
         response = await _fetch_preview(
             with_token,
             "served with the token and the request header",
