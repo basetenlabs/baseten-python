@@ -1007,6 +1007,128 @@ class DeleteSandboxParams(BaseModel):
     ] = None
 
 
+class ListSandboxPreviewsParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor from the previous page; omit for the first page.",
+            examples=[
+                "eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ"
+            ],
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of items to return.",
+            examples=[20],
+            ge=1,
+            le=100,
+        ),
+    ] = 20
+
+
+class CreateSandboxPreviewParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
+class GetSandboxPreviewParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+    show_secrets: Annotated[
+        bool,
+        Field(
+            description="Reveal request header values for workspace administrators, for example to change one header and send the full set back in a PATCH. Defaults to false. Callers without the admin role receive masked values even when true."
+        ),
+    ] = False
+
+
+class UpdateSandboxPreviewParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
+class DeleteSandboxPreviewParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
+class ListSandboxPreviewTokensParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor from the previous page; omit for the first page.",
+            examples=[
+                "eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ"
+            ],
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of items to return.",
+            examples=[20],
+            ge=1,
+            le=100,
+        ),
+    ] = 20
+
+
+class CreateSandboxPreviewTokenParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
+class DeleteSandboxPreviewTokenParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
 class ListImagesParams(BaseModel):
     team_id: Annotated[
         str | None,
@@ -9492,6 +9614,27 @@ class RegisterAPIKeyResponse(BaseModel):
     ]
 
 
+class SandboxRegion(BaseModel):
+    name: Annotated[
+        str,
+        Field(
+            description="Public region identifier to use when creating a sandbox.",
+            examples=["us-was-1"],
+        ),
+    ]
+    country: Annotated[str, Field(description="Country code.", examples=["us"])]
+    continent: Annotated[str, Field(description="Continent code.", examples=["na"])]
+    location: Annotated[
+        str, Field(description="Region location.", examples=["Washington"])
+    ]
+    info_generation: Annotated[
+        Literal["CARBON"] | str,
+        Field(
+            description="Runtime generation supported by this region, using the public name CARBON. Actual runtime selection depends on the team and sandbox configuration."
+        ),
+    ]
+
+
 class SandboxLogEntry(BaseModel):
     timestamp: AwareDatetime
     message: str
@@ -9550,27 +9693,6 @@ class SandboxMetricValueSet(BaseModel):
             description="Values indexed first by metric_descriptors, then by that descriptor's label_sets. Null means no sample.",
             max_length=3,
             min_length=1,
-        ),
-    ]
-
-
-class SandboxRegion(BaseModel):
-    name: Annotated[
-        str,
-        Field(
-            description="Public region identifier to use when creating a sandbox.",
-            examples=["us-was-1"],
-        ),
-    ]
-    country: Annotated[str, Field(description="Country code.", examples=["us"])]
-    continent: Annotated[str, Field(description="Continent code.", examples=["na"])]
-    location: Annotated[
-        str, Field(description="Region location.", examples=["Washington"])
-    ]
-    info_generation: Annotated[
-        Literal["CARBON"] | str,
-        Field(
-            description="Runtime generation supported by this region, using the public name CARBON. Actual runtime selection depends on the team and sandbox configuration."
         ),
     ]
 
@@ -9915,6 +10037,164 @@ class CleanupSandboxImagesResponse(BaseModel):
             ],
         ),
     ]
+
+
+class SandboxPreviewConfiguration(BaseModel):
+    public: Annotated[
+        bool,
+        Field(
+            description="Whether the URL is reachable without a preview token. Defaults to false.",
+            examples=[True],
+        ),
+    ] = False
+    response_headers: Annotated[
+        dict[str, str] | None,
+        Field(
+            description="Headers added to every response served by the preview, for example CORS headers."
+        ),
+    ] = None
+    request_headers: Annotated[
+        dict[str, str] | None,
+        Field(
+            description='Headers added to every request forwarded to the sandbox, for example an Authorization header expected by the application. Responses return each name with the value "****", except a GET with show_secrets=true by a workspace administrator. Sending "****" back as a value returns 400. A PATCH replaces the whole set.',
+            examples=[{"Authorization": "Bearer app-internal-token"}],
+        ),
+    ] = None
+    ttl: Annotated[
+        str | None,
+        Field(
+            description="Lifetime counted from the request, using seconds, minutes, hours or composite durations such as 1h30m. Whole days are also supported, for example 7d; days cannot be combined with other units. The preview is deleted when it elapses.",
+            examples=["24h"],
+            pattern="^([0-9]+d|(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+)$",
+        ),
+    ] = None
+    expires_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Time at which the preview is deleted. Must be in the future.",
+            examples=["2026-10-19T12:00:00Z"],
+        ),
+    ] = None
+
+
+class CreateSandboxPreviewRequest(SandboxPreviewConfiguration):
+    create_if_not_exists: Annotated[
+        bool | None,
+        Field(
+            description="When true, return the existing preview with this name instead of failing with a conflict. Without name, the name is public-<port> or private-<port>, so the same port and visibility return the same preview. Existing configuration is preserved. Defaults to false when omitted."
+        ),
+    ] = None
+    name: Annotated[
+        str | None,
+        Field(
+            description="Preview name, unique within the sandbox. When omitted, generated from the sandbox name and port, or public-<port> or private-<port> when create_if_not_exists is true.",
+            examples=["web"],
+            max_length=49,
+            min_length=1,
+            pattern="^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+        ),
+    ] = None
+    port: Annotated[
+        int,
+        Field(description="Sandbox port to expose.", examples=[3000], ge=1, le=65535),
+    ]
+
+
+class UpdateSandboxPreviewRequest(SandboxPreviewConfiguration):
+    pass
+
+
+class SandboxPreview(SandboxPreviewConfiguration):
+    name: Annotated[
+        str,
+        Field(
+            description="Preview name, used in preview_name path parameters.",
+            examples=["web"],
+        ),
+    ]
+    port: Annotated[int, Field(description="Exposed sandbox port.", examples=[3000])]
+    url: Annotated[
+        AnyUrl,
+        Field(
+            description="HTTPS URL serving the port, including the region label. Use this exact URL. Requests to a private preview need a token.",
+            examples=["https://a1b2c3d4e5f6g7h8.us-pdx-1.preview.b10.co"],
+        ),
+    ]
+    status: Annotated[
+        Literal["DEPLOYING", "DEPLOYED", "FAILED", "DELETING", "TERMINATED"] | str,
+        Field(description="Preview status, always uppercase.", examples=["DEPLOYED"]),
+    ]
+    region: Annotated[
+        str | None,
+        Field(
+            description="Region serving the preview, the sandbox's region.",
+            examples=["us-pdx-1"],
+        ),
+    ] = None
+    created_at: Annotated[
+        AwareDatetime | None, Field(examples=["2026-10-12T12:00:00Z"])
+    ] = None
+    updated_at: Annotated[
+        AwareDatetime | None, Field(examples=["2026-10-12T12:00:00Z"])
+    ] = None
+    created_by: Annotated[str | None, Field(examples=["sandbox-automation"])] = None
+    updated_by: Annotated[str | None, Field(examples=["sandbox-automation"])] = None
+    public: Annotated[
+        bool,
+        Field(
+            description="Whether the URL is reachable without a preview token. Defaults to false.",
+            examples=[True],
+        ),
+    ]
+
+
+class ListSandboxPreviewsResponse(BaseModel):
+    items: Annotated[list[SandboxPreview], Field(description="Resources on this page.")]
+    pagination: SandboxApiPagination
+
+
+class CreateSandboxPreviewTokenRequest(BaseModel):
+    create_if_not_exists: Annotated[
+        bool | None,
+        Field(
+            description="When true, return an existing unexpired token of this preview that stays valid at least until expires_at instead of creating a new one. Defaults to false when omitted."
+        ),
+    ] = None
+    expires_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="Time at which the token stops working. Must be in the future.",
+            examples=["2026-10-13T12:00:00Z"],
+        ),
+    ]
+
+
+class SandboxPreviewToken(BaseModel):
+    name: Annotated[
+        str,
+        Field(
+            description="Token name, used in token_name path parameters.",
+            examples=["7f3k2m9q1x8c4v6b0n5z"],
+        ),
+    ]
+    token: Annotated[
+        str,
+        Field(
+            description="Value to send as the bl_preview_token query parameter.",
+            examples=["7f3k2m9q1x8c4v6b0n5z"],
+        ),
+    ]
+    expires_at: Annotated[AwareDatetime, Field(examples=["2026-10-13T12:00:00Z"])]
+    expired: Annotated[
+        bool, Field(description="Whether expires_at has passed.", examples=[False])
+    ]
+
+
+class ListSandboxPreviewTokensResponse(BaseModel):
+    items: Annotated[
+        list[SandboxPreviewToken], Field(description="Resources on this page.")
+    ]
+    pagination: SandboxApiPagination
 
 
 class LoadCheckpointConfig(BaseModel):
@@ -13687,6 +13967,15 @@ class UpdateGroupRequest(BaseModel):
     ] = None
 
 
+class GetSandboxConfigurationResponse(BaseModel):
+    regions: Annotated[
+        list[SandboxRegion],
+        Field(
+            description="Available Carbon-compatible regions, sorted by name. Empty when none are available."
+        ),
+    ]
+
+
 class SandboxLogs(BaseModel):
     sandbox_name: str
     start_time: AwareDatetime
@@ -13722,15 +14011,6 @@ class SandboxMetrics(BaseModel):
         list[SandboxMetricDescriptor], Field(max_length=3, min_length=1)
     ]
     metric_values: Annotated[list[SandboxMetricValueSet], Field(max_length=10000)]
-
-
-class GetSandboxConfigurationResponse(BaseModel):
-    regions: Annotated[
-        list[SandboxRegion],
-        Field(
-            description="Available Carbon-compatible regions, sorted by name. Empty when none are available."
-        ),
-    ]
 
 
 class SandboxProxyConfig(BaseModel):

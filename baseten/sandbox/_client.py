@@ -522,6 +522,8 @@ class SandboxClient:
                 auth=self._auth,
                 headers=self._request_headers,
             ),
+            management_api=self._raw_api,
+            team_id=self._options.team_id,
             retry=self._retry,
             executor=self._executor,
         )
@@ -837,6 +839,8 @@ class AsyncSandboxClient:
                 auth=self._auth,
                 headers=self._request_headers,
             ),
+            management_api=self._raw_api,
+            team_id=self._options.team_id,
             retry=self._retry,
         )
 

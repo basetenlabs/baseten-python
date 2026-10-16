@@ -50,6 +50,10 @@ from ._models import (
     CreateRouteConnectionRequest,
     CreateRouteRequest,
     CreateSandboxParams,
+    CreateSandboxPreviewParams,
+    CreateSandboxPreviewRequest,
+    CreateSandboxPreviewTokenParams,
+    CreateSandboxPreviewTokenRequest,
     CreateSandboxRequest,
     CreateTokenRequest,
     CreateTrainingJobRequest,
@@ -64,6 +68,8 @@ from ._models import (
     DeleteImageParams,
     DeleteImageTagParams,
     DeleteSandboxParams,
+    DeleteSandboxPreviewParams,
+    DeleteSandboxPreviewTokenParams,
     DeleteVolumeRequest,
     DeleteVolumeResponse,
     DeleteVolumeTagRequest,
@@ -144,6 +150,7 @@ from ._models import (
     GetSandboxLogsParams,
     GetSandboxMetricsParams,
     GetSandboxParams,
+    GetSandboxPreviewParams,
     GetTeamsLoopsRunsParams,
     GetTeamsLoopsSamplersParams,
     GetTeamsModelsParams,
@@ -188,6 +195,10 @@ from ._models import (
     ListSandboxImagesResponse,
     ListSandboxImageTagsResponse,
     ListSandboxLibraryImagesResponse,
+    ListSandboxPreviewsParams,
+    ListSandboxPreviewsResponse,
+    ListSandboxPreviewTokensParams,
+    ListSandboxPreviewTokensResponse,
     ListTrainingJobsResponse,
     ListTrainingProjectsResponse,
     ListVolumeNamespacesResponse,
@@ -245,6 +256,8 @@ from ._models import (
     SandboxImageBuildLogsResponse,
     SandboxLogs,
     SandboxMetrics,
+    SandboxPreview,
+    SandboxPreviewToken,
     SearchTrainingJobsRequest,
     SearchTrainingJobsResponse,
     Secret,
@@ -290,6 +303,8 @@ from ._models import (
     UpdateRouteTeamSettingsRequest,
     UpdateRouteUserSettingsRequest,
     UpdateSandboxParams,
+    UpdateSandboxPreviewParams,
+    UpdateSandboxPreviewRequest,
     UpdateSandboxRequest,
     UpdateTrainingJobRequest,
     UpdateTrainingJobResponse,
@@ -398,6 +413,49 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/sandboxes/instances",
                 path_args=[],
+                body=request,
+                query=params,
+                success_codes=[201],
+                error_codes=None,
+            ),
+        )
+
+    def create_sandbox_preview(
+        self,
+        *,
+        sandbox_name: str,
+        params: CreateSandboxPreviewParams | None = None,
+        request: CreateSandboxPreviewRequest,
+    ) -> SandboxPreview:
+        """Create a sandbox preview"""
+        return self._do_json(
+            SandboxPreview,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/sandboxes/instances/{}/previews",
+                path_args=[sandbox_name],
+                body=request,
+                query=params,
+                success_codes=[201],
+                error_codes=None,
+            ),
+        )
+
+    def create_sandbox_preview_token(
+        self,
+        *,
+        sandbox_name: str,
+        preview_name: str,
+        params: CreateSandboxPreviewTokenParams | None = None,
+        request: CreateSandboxPreviewTokenRequest,
+    ) -> SandboxPreviewToken:
+        """Create a preview token"""
+        return self._do_json(
+            SandboxPreviewToken,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/sandboxes/instances/{}/previews/{}/tokens",
+                path_args=[sandbox_name, preview_name],
                 body=request,
                 query=params,
                 success_codes=[201],
@@ -652,6 +710,48 @@ class ApiClient:
                 success_codes=[202],
                 error_codes=None,
             ),
+        )
+
+    def delete_sandbox_preview(
+        self,
+        *,
+        sandbox_name: str,
+        preview_name: str,
+        params: DeleteSandboxPreviewParams | None = None,
+    ) -> SandboxPreview:
+        """Delete a sandbox preview"""
+        return self._do_json(
+            SandboxPreview,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/sandboxes/instances/{}/previews/{}",
+                path_args=[sandbox_name, preview_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def delete_sandbox_preview_token(
+        self,
+        *,
+        sandbox_name: str,
+        preview_name: str,
+        token_name: str,
+        params: DeleteSandboxPreviewTokenParams | None = None,
+    ) -> None:
+        """Delete a preview token"""
+        self._do_no_response(
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/sandboxes/instances/{}/previews/{}/tokens/{}",
+                path_args=[sandbox_name, preview_name, token_name],
+                body=None,
+                query=params,
+                success_codes=[204],
+                error_codes=None,
+            )
         )
 
     def delete_secrets(self, *, secret_name: str) -> SecretTombstone:
@@ -2192,6 +2292,27 @@ class ApiClient:
             ),
         )
 
+    def get_sandbox_preview(
+        self,
+        *,
+        sandbox_name: str,
+        preview_name: str,
+        params: GetSandboxPreviewParams | None = None,
+    ) -> SandboxPreview:
+        """Get a sandbox preview"""
+        return self._do_json(
+            SandboxPreview,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/instances/{}/previews/{}",
+                path_args=[sandbox_name, preview_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     def get_secrets(self) -> Secrets:
         """Gets all secrets (metadata only, no plain text keys)"""
         return self._do_json(
@@ -2787,6 +2908,44 @@ class ApiClient:
                 path_args=[],
                 body=None,
                 query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def list_sandbox_preview_tokens(
+        self,
+        *,
+        sandbox_name: str,
+        preview_name: str,
+        params: ListSandboxPreviewTokensParams | None = None,
+    ) -> ListSandboxPreviewTokensResponse:
+        """List preview tokens"""
+        return self._do_json(
+            ListSandboxPreviewTokensResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/instances/{}/previews/{}/tokens",
+                path_args=[sandbox_name, preview_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def list_sandbox_previews(
+        self, *, sandbox_name: str, params: ListSandboxPreviewsParams | None = None
+    ) -> ListSandboxPreviewsResponse:
+        """List sandbox previews"""
+        return self._do_json(
+            ListSandboxPreviewsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/instances/{}/previews",
+                path_args=[sandbox_name],
+                body=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -4574,6 +4733,28 @@ class ApiClient:
             ),
         )
 
+    def update_sandbox_preview(
+        self,
+        *,
+        sandbox_name: str,
+        preview_name: str,
+        params: UpdateSandboxPreviewParams | None = None,
+        request: UpdateSandboxPreviewRequest,
+    ) -> SandboxPreview:
+        """Update a sandbox preview"""
+        return self._do_json(
+            SandboxPreview,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/sandboxes/instances/{}/previews/{}",
+                path_args=[sandbox_name, preview_name],
+                body=request,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     def _build_request(self, request: _ApiRequest) -> httpx.Request:
         path = request.path_fmt.format(
             *[urllib.parse.quote(a, safe="") for a in request.path_args]
@@ -4644,6 +4825,9 @@ class ApiClient:
             )
         return response_type.model_validate_json(response.content)
 
+    def _do_no_response(self, request: _ApiRequest) -> None:
+        self._do(request)
+
 
 class AsyncApiClient:
     """Generated HTTP client for the Baseten API.
@@ -4711,6 +4895,49 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/sandboxes/instances",
                 path_args=[],
+                body=request,
+                query=params,
+                success_codes=[201],
+                error_codes=None,
+            ),
+        )
+
+    async def create_sandbox_preview(
+        self,
+        *,
+        sandbox_name: str,
+        params: CreateSandboxPreviewParams | None = None,
+        request: CreateSandboxPreviewRequest,
+    ) -> SandboxPreview:
+        """Create a sandbox preview"""
+        return await self._do_json(
+            SandboxPreview,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/sandboxes/instances/{}/previews",
+                path_args=[sandbox_name],
+                body=request,
+                query=params,
+                success_codes=[201],
+                error_codes=None,
+            ),
+        )
+
+    async def create_sandbox_preview_token(
+        self,
+        *,
+        sandbox_name: str,
+        preview_name: str,
+        params: CreateSandboxPreviewTokenParams | None = None,
+        request: CreateSandboxPreviewTokenRequest,
+    ) -> SandboxPreviewToken:
+        """Create a preview token"""
+        return await self._do_json(
+            SandboxPreviewToken,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/sandboxes/instances/{}/previews/{}/tokens",
+                path_args=[sandbox_name, preview_name],
                 body=request,
                 query=params,
                 success_codes=[201],
@@ -4965,6 +5192,48 @@ class AsyncApiClient:
                 success_codes=[202],
                 error_codes=None,
             ),
+        )
+
+    async def delete_sandbox_preview(
+        self,
+        *,
+        sandbox_name: str,
+        preview_name: str,
+        params: DeleteSandboxPreviewParams | None = None,
+    ) -> SandboxPreview:
+        """Delete a sandbox preview"""
+        return await self._do_json(
+            SandboxPreview,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/sandboxes/instances/{}/previews/{}",
+                path_args=[sandbox_name, preview_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def delete_sandbox_preview_token(
+        self,
+        *,
+        sandbox_name: str,
+        preview_name: str,
+        token_name: str,
+        params: DeleteSandboxPreviewTokenParams | None = None,
+    ) -> None:
+        """Delete a preview token"""
+        await self._do_no_response(
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/sandboxes/instances/{}/previews/{}/tokens/{}",
+                path_args=[sandbox_name, preview_name, token_name],
+                body=None,
+                query=params,
+                success_codes=[204],
+                error_codes=None,
+            )
         )
 
     async def delete_secrets(self, *, secret_name: str) -> SecretTombstone:
@@ -6511,6 +6780,27 @@ class AsyncApiClient:
             ),
         )
 
+    async def get_sandbox_preview(
+        self,
+        *,
+        sandbox_name: str,
+        preview_name: str,
+        params: GetSandboxPreviewParams | None = None,
+    ) -> SandboxPreview:
+        """Get a sandbox preview"""
+        return await self._do_json(
+            SandboxPreview,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/instances/{}/previews/{}",
+                path_args=[sandbox_name, preview_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     async def get_secrets(self) -> Secrets:
         """Gets all secrets (metadata only, no plain text keys)"""
         return await self._do_json(
@@ -7108,6 +7398,44 @@ class AsyncApiClient:
                 path_args=[],
                 body=None,
                 query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def list_sandbox_preview_tokens(
+        self,
+        *,
+        sandbox_name: str,
+        preview_name: str,
+        params: ListSandboxPreviewTokensParams | None = None,
+    ) -> ListSandboxPreviewTokensResponse:
+        """List preview tokens"""
+        return await self._do_json(
+            ListSandboxPreviewTokensResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/instances/{}/previews/{}/tokens",
+                path_args=[sandbox_name, preview_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def list_sandbox_previews(
+        self, *, sandbox_name: str, params: ListSandboxPreviewsParams | None = None
+    ) -> ListSandboxPreviewsResponse:
+        """List sandbox previews"""
+        return await self._do_json(
+            ListSandboxPreviewsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/instances/{}/previews",
+                path_args=[sandbox_name],
+                body=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -8911,6 +9239,28 @@ class AsyncApiClient:
             ),
         )
 
+    async def update_sandbox_preview(
+        self,
+        *,
+        sandbox_name: str,
+        preview_name: str,
+        params: UpdateSandboxPreviewParams | None = None,
+        request: UpdateSandboxPreviewRequest,
+    ) -> SandboxPreview:
+        """Update a sandbox preview"""
+        return await self._do_json(
+            SandboxPreview,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/sandboxes/instances/{}/previews/{}",
+                path_args=[sandbox_name, preview_name],
+                body=request,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     def _build_request(self, request: _ApiRequest) -> httpx.Request:
         path = request.path_fmt.format(
             *[urllib.parse.quote(a, safe="") for a in request.path_args]
@@ -8980,3 +9330,6 @@ class AsyncApiClient:
                 f"unexpected content type {content_type!r}, expected application/json"
             )
         return response_type.model_validate_json(response.content)
+
+    async def _do_no_response(self, request: _ApiRequest) -> None:
+        await self._do(request)

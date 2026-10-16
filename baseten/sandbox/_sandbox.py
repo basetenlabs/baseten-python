@@ -3,6 +3,7 @@ from __future__ import annotations
 import baseten.client.sandboxapi
 from baseten.sandbox._common import AsyncSandboxContext, SandboxContext
 from baseten.sandbox._fs import AsyncSandboxFileSystem, SandboxFileSystem
+from baseten.sandbox._previews import AsyncSandboxPreviews, SandboxPreviews
 from baseten.sandbox._process import AsyncSandboxProcess, SandboxProcess
 
 
@@ -21,6 +22,7 @@ class Sandbox:
         self._context = context
         self._process = SandboxProcess(context)
         self._fs = SandboxFileSystem(context, self._process)
+        self._previews = SandboxPreviews(context)
 
     @property
     def name(self) -> str:
@@ -41,6 +43,15 @@ class Sandbox:
     def process(self) -> SandboxProcess:
         """Processes in the sandbox."""
         return self._process
+
+    @property
+    def previews(self) -> SandboxPreviews:
+        """The sandbox's previews, which expose its ports on HTTPS URLs.
+
+        Every call fails on a sandbox from :meth:`SandboxClient.sandbox_from_url`,
+        which has no name.
+        """
+        return self._previews
 
     @property
     def raw_api(self) -> baseten.client.sandboxapi.ApiClient:
@@ -68,6 +79,7 @@ class AsyncSandbox:
         self._context = context
         self._process = AsyncSandboxProcess(context)
         self._fs = AsyncSandboxFileSystem(context, self._process)
+        self._previews = AsyncSandboxPreviews(context)
 
     @property
     def name(self) -> str:
@@ -88,6 +100,15 @@ class AsyncSandbox:
     def process(self) -> AsyncSandboxProcess:
         """Processes in the sandbox."""
         return self._process
+
+    @property
+    def previews(self) -> AsyncSandboxPreviews:
+        """The sandbox's previews, which expose its ports on HTTPS URLs.
+
+        Every call fails on a sandbox from
+        :meth:`AsyncSandboxClient.sandbox_from_url`, which has no name.
+        """
+        return self._previews
 
     @property
     def raw_api(self) -> baseten.client.sandboxapi.AsyncApiClient:

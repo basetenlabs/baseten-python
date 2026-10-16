@@ -93,6 +93,13 @@ from baseten.sandbox._info import (
     SandboxPortProtocol,
     SandboxStatus,
 )
+from baseten.sandbox._previews import (
+    AsyncSandboxPreviews,
+    SandboxPreviewInfo,
+    SandboxPreviews,
+    SandboxPreviewStatus,
+    SandboxPreviewTokenInfo,
+)
 from baseten.sandbox._process import (
     AsyncSandboxProcess,
     SandboxProcess,
@@ -115,6 +122,7 @@ __all__ = [
     "AsyncSandboxClient",
     "AsyncSandboxCreateResult",
     "AsyncSandboxFileSystem",
+    "AsyncSandboxPreviews",
     "AsyncSandboxProcess",
     "AsyncSandboxStream",
     "AsyncSandboxTokenProvider",
@@ -168,6 +176,10 @@ __all__ = [
     "SandboxNetworkProxyRoute",
     "SandboxPort",
     "SandboxPortProtocol",
+    "SandboxPreviewInfo",
+    "SandboxPreviewStatus",
+    "SandboxPreviewTokenInfo",
+    "SandboxPreviews",
     "SandboxProcess",
     "SandboxProcessExecEvent",
     "SandboxProcessExecEventExit",

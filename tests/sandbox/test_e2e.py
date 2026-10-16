@@ -1191,6 +1191,209 @@ async def test_image_sandbox_has_its_files_and_sandbox_api(
     assert re.match(r"/usr/local/bin/sandbox-api\b", processes[1].stdout)
 
 
+# Answers every GET with "hello " plus the X-E2E-Request header it received, so
+# a test can see the headers a preview adds to requests. Formatted with the
+# port.
+_PREVIEW_SERVER = """import http.server
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        body = ("hello " + self.headers.get("X-E2E-Request", "")).encode()
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+http.server.ThreadingHTTPServer(("0.0.0.0", {port}), Handler).serve_forever()
+"""
+
+
+@pytest.mark.asyncio
+async def test_previews(sandbox: Sandbox | AsyncSandbox) -> None:
+    started = datetime.now(UTC)
+    directory = f"/tmp/e2e-preview/{_unique()}"
+    server, name = _unique(), _unique()
+    # Each client's run has its own port, so one run's server ending never
+    # races the next one's starting.
+    port = 8123 if isinstance(sandbox, Sandbox) else 8124
+    create: dict[str, Any] = {
+        "port": port,
+        "name": name,
+        "response_headers": {"X-E2E-Response": "added"},
+        "request_headers": {"X-E2E-Request": "injected"},
+        "ttl": timedelta(hours=1),
+    }
+    server_options: dict[str, Any] = {
+        "command": "python3 server.py",
+        "working_dir": directory,
+        "name": server,
+        "wait_for_ports": [port],
+    }
+    script = _PREVIEW_SERVER.replace("{port}", str(port))
+    try:
+        if isinstance(sandbox, Sandbox):
+            await asyncio.to_thread(sandbox.fs.mkdir, path=directory)
+            await asyncio.to_thread(
+                sandbox.fs.write, path=f"{directory}/server.py", content=script
+            )
+            await asyncio.to_thread(lambda: sandbox.process.exec(**server_options))
+            created = await asyncio.to_thread(lambda: sandbox.previews.create(**create))
+            info = await asyncio.to_thread(sandbox.previews.get_info, name=name)
+            listed = await asyncio.to_thread(
+                lambda: [preview.name for preview in sandbox.previews.list()]
+            )
+            existing = await asyncio.to_thread(
+                lambda: sandbox.previews.create(
+                    port=port, name=name, create_if_not_exists=True, public=True
+                )
+            )
+        else:
+            await sandbox.fs.mkdir(path=directory)
+            await sandbox.fs.write(path=f"{directory}/server.py", content=script)
+            await sandbox.process.exec(**server_options)
+            created = await sandbox.previews.create(**create)
+            info = await sandbox.previews.get_info(name=name)
+            listed = [preview.name async for preview in sandbox.previews.list()]
+            existing = await sandbox.previews.create(
+                port=port, name=name, create_if_not_exists=True, public=True
+            )
+        assert (created.name, created.port, created.public) == (name, port, False)
+        assert created.url.startswith("https://")
+        assert created.created_at is not None
+        _assert_within_run(started, created.created_at)
+        # The TTL counts from the request, so expires_at is an hour after it.
+        assert created.expires_at is not None
+        _assert_within_run(started, created.expires_at - timedelta(hours=1))
+        assert info.url == created.url
+        assert info.request_headers == {"X-E2E-Request": "****"}
+        assert info.response_headers == {"X-E2E-Response": "added"}
+        assert name in listed
+        assert (existing.url, existing.public) == (created.url, False)
+
+        await _fetch_preview(created.url, "rejected without a token", _rejected)
+
+        expires_at = datetime.now(UTC) + timedelta(hours=1)
+        if isinstance(sandbox, Sandbox):
+            token = await asyncio.to_thread(
+                sandbox.previews.create_token, preview_name=name, expires_at=expires_at
+            )
+            reused = await asyncio.to_thread(
+                sandbox.previews.create_token,
+                preview_name=name,
+                expires_at=expires_at - timedelta(minutes=30),
+                create_if_not_exists=True,
+            )
+            token_names = await asyncio.to_thread(
+                lambda: [
+                    t.name for t in sandbox.previews.list_tokens(preview_name=name)
+                ]
+            )
+        else:
+            token = await sandbox.previews.create_token(
+                preview_name=name, expires_at=expires_at
+            )
+            reused = await sandbox.previews.create_token(
+                preview_name=name,
+                expires_at=expires_at - timedelta(minutes=30),
+                create_if_not_exists=True,
+            )
+            token_names = [
+                t.name async for t in sandbox.previews.list_tokens(preview_name=name)
+            ]
+        assert not token.expired
+        assert reused.name == token.name
+        assert token.name in token_names
+
+        # The preview adds its response header, and the app sees the request
+        # header the preview adds.
+        # TODO: Use ?preview_token= once the server accepts it.
+        with_token = f"{created.url}?bl_preview_token={token.token}"
+        response = await _fetch_preview(
+            with_token,
+            "served with the token and the request header",
+            lambda status, body: status == 200 and body == "hello injected",
+        )
+        assert response.headers["X-E2E-Response"] == "added"
+
+        if isinstance(sandbox, Sandbox):
+            await asyncio.to_thread(
+                sandbox.previews.delete_token, preview_name=name, token_name=token.name
+            )
+        else:
+            await sandbox.previews.delete_token(
+                preview_name=name, token_name=token.name
+            )
+        await _fetch_preview(with_token, "rejected with the revoked token", _rejected)
+
+        if isinstance(sandbox, Sandbox):
+            updated = await asyncio.to_thread(
+                sandbox.previews.update, name=name, public=True, request_headers={}
+            )
+        else:
+            updated = await sandbox.previews.update(
+                name=name, public=True, request_headers={}
+            )
+        assert (updated.public, updated.url) == (True, created.url)
+        assert updated.request_headers == {}
+        assert updated.response_headers == {"X-E2E-Response": "added"}
+        # Served without a token.
+        # TODO: Also require body == "hello " once the server stops adding
+        # request headers cleared with an empty mapping; it still adds them.
+        await _fetch_preview(
+            created.url, "served without a token", lambda status, body: status == 200
+        )
+
+        # A public preview has no tokens, so listing them is rejected.
+        with pytest.raises(SandboxAPIError) as raised:
+            if isinstance(sandbox, Sandbox):
+                await asyncio.to_thread(
+                    lambda: list(sandbox.previews.list_tokens(preview_name=name))
+                )
+            else:
+                [t async for t in sandbox.previews.list_tokens(preview_name=name)]
+        assert raised.value.status == 400
+
+        if isinstance(sandbox, Sandbox):
+            deleted = await asyncio.to_thread(sandbox.previews.delete, name=name)
+        else:
+            deleted = await sandbox.previews.delete(name=name)
+        assert deleted.status in ("DELETING", "TERMINATED")
+        await _fetch_preview(
+            created.url, "no longer served", lambda status, body: status != 200
+        )
+    finally:
+        with contextlib.suppress(Exception):
+            if isinstance(sandbox, Sandbox):
+                await asyncio.to_thread(sandbox.previews.delete, name=name)
+            else:
+                await sandbox.previews.delete(name=name)
+        await _kill_quietly(sandbox, server)
+
+
+def _rejected(status: int, body: str) -> bool:
+    return status in (401, 403)
+
+
+async def _fetch_preview(
+    url: str, want: str, accept: Callable[[int, str], bool]
+) -> httpx.Response:
+    # The edge applies preview changes shortly after the API returns, so other
+    # responses and connection errors are retried, but only for a few seconds.
+    deadline = time.monotonic() + 3
+    while True:
+        # A fresh client per attempt, so the cookie a token request sets never
+        # stands in for the token.
+        async with httpx.AsyncClient(timeout=10) as http:
+            try:
+                response = await http.get(url)
+                if accept(response.status_code, response.text):
+                    return response
+                last = f"status {response.status_code}: {response.text}"
+            except httpx.HTTPError as err:
+                last = repr(err)
+        if time.monotonic() > deadline:
+            pytest.fail(f"preview {url}: want {want}, got {last}")
+        await asyncio.sleep(0.2)
+
+
 def test_uses_http2_by_default(shared: _Shared) -> None:
     versions: list[str] = []
     with _client() as client:

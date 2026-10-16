@@ -21,6 +21,7 @@ from typing import Any, Generic, Protocol, Self, TypeVar
 
 import httpx
 
+import baseten.client.managementapi
 import baseten.client.sandboxapi
 from baseten.sandbox._errors import SandboxError, converted_errors
 from baseten.sandbox._retry import (
@@ -114,6 +115,9 @@ class SandboxContext:
     headers: Mapping[str, str]
     raw_api: baseten.client.sandboxapi.ApiClient
     """The sandbox's execution API, authenticated."""
+    management_api: baseten.client.managementapi.ApiClient
+    """The client's management API, authenticated."""
+    team_id: str | None
     retry: ResolvedRetryOptions
     executor: ThreadPoolExecutor | None
     """The caller's thread pool for upload parts, if given."""
@@ -123,6 +127,12 @@ class SandboxContext:
         """Give the generated client, raising its error responses as ours."""
         with converted_errors("exec"):
             yield self.raw_api
+
+    @contextmanager
+    def control_api(self) -> Iterator[baseten.client.managementapi.ApiClient]:
+        """Give the generated management client, raising its error responses as ours."""
+        with converted_errors("control"):
+            yield self.management_api
 
     @contextmanager
     def api_with_timeout(
@@ -195,6 +205,9 @@ class AsyncSandboxContext:
     headers: Mapping[str, str]
     raw_api: baseten.client.sandboxapi.AsyncApiClient
     """The sandbox's execution API, authenticated."""
+    management_api: baseten.client.managementapi.AsyncApiClient
+    """The client's management API, authenticated."""
+    team_id: str | None
     retry: ResolvedRetryOptions
 
     @contextmanager
@@ -203,6 +216,12 @@ class AsyncSandboxContext:
         # A plain context manager suffices, since it only wraps awaited calls.
         with converted_errors("exec"):
             yield self.raw_api
+
+    @contextmanager
+    def control_api(self) -> Iterator[baseten.client.managementapi.AsyncApiClient]:
+        """Give the generated management client, raising its error responses as ours."""
+        with converted_errors("control"):
+            yield self.management_api
 
     @contextmanager
     def api_with_timeout(

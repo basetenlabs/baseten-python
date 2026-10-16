@@ -16,6 +16,7 @@ from baseten.sandbox import (
     AsyncSandboxClient,
     AsyncSandboxCreateResult,
     AsyncSandboxFileSystem,
+    AsyncSandboxPreviews,
     AsyncSandboxProcess,
     AsyncSandboxStream,
     ImageCleanupResult,
@@ -45,6 +46,9 @@ from baseten.sandbox import (
     SandboxNetworkProxy,
     SandboxNetworkProxyRoute,
     SandboxPort,
+    SandboxPreviewInfo,
+    SandboxPreviews,
+    SandboxPreviewTokenInfo,
     SandboxProcess,
     SandboxProcessInfo,
     SandboxProcessLogs,
@@ -63,6 +67,7 @@ _SYNC_IN_ASYNC = {(AsyncSandboxClient, "sandbox_from_url")}
         (SandboxCreateResult, AsyncSandboxCreateResult),
         (SandboxProcess, AsyncSandboxProcess),
         (SandboxFileSystem, AsyncSandboxFileSystem),
+        (SandboxPreviews, AsyncSandboxPreviews),
         (ImageClient, AsyncImageClient),
         (SandboxStream, AsyncSandboxStream),
     ],
@@ -182,6 +187,26 @@ _PARITY = {
     "SandboxClient.update": _Parity(
         ours=_kwargs(SandboxClient.update) - {"name"},
         generated=baseten.client.managementapi.UpdateSandboxRequest,
+    ),
+    "SandboxPreviewInfo": _Parity(
+        ours=_dataclass_fields(SandboxPreviewInfo),
+        generated=baseten.client.managementapi.SandboxPreview,
+    ),
+    "SandboxPreviewTokenInfo": _Parity(
+        ours=_dataclass_fields(SandboxPreviewTokenInfo),
+        generated=baseten.client.managementapi.SandboxPreviewToken,
+    ),
+    "SandboxPreviews.create": _Parity(
+        ours=_kwargs(SandboxPreviews.create),
+        generated=baseten.client.managementapi.CreateSandboxPreviewRequest,
+    ),
+    "SandboxPreviews.update": _Parity(
+        ours=_kwargs(SandboxPreviews.update) - {"name"},
+        generated=baseten.client.managementapi.UpdateSandboxPreviewRequest,
+    ),
+    "SandboxPreviews.create_token": _Parity(
+        ours=_kwargs(SandboxPreviews.create_token) - {"preview_name"},
+        generated=baseten.client.managementapi.CreateSandboxPreviewTokenRequest,
     ),
     "SandboxProcessInfo": _Parity(
         ours=_dataclass_fields(SandboxProcessInfo),
