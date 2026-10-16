@@ -1299,8 +1299,12 @@ async def test_previews(sandbox: Sandbox | AsyncSandbox) -> None:
                 t.name async for t in sandbox.previews.list_tokens(preview_name=name)
             ]
         assert not token.expired
-        assert reused.name == token.name
+        # The server may not find the token just created yet, so the result may
+        # be that token or a new one, either valid at least as long as asked.
+        assert not reused.expired
+        assert reused.expires_at >= expires_at - timedelta(minutes=30) - _CLOCK_SKEW
         assert token.name in token_names
+        assert reused.name in token_names
 
         # The preview adds its response header, and the app sees the request
         # header the preview adds.

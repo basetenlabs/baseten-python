@@ -302,7 +302,8 @@ class SandboxPreviews:
             expires_at: When the token stops working.
             create_if_not_exists: When true, return an existing unexpired token
                 of the preview that stays valid at least until *expires_at*,
-                instead of creating one.
+                instead of creating one. A token created moments before may not
+                be found yet, so a new one may be created anyway.
         """
         sandbox_name = _sandbox_name(self._context.name)
         with self._context.control_api() as api:
@@ -578,7 +579,8 @@ class AsyncSandboxPreviews:
             expires_at: When the token stops working.
             create_if_not_exists: When true, return an existing unexpired token
                 of the preview that stays valid at least until *expires_at*,
-                instead of creating one.
+                instead of creating one. A token created moments before may not
+                be found yet, so a new one may be created anyway.
         """
         sandbox_name = _sandbox_name(self._context.name)
         with self._context.control_api() as api:
