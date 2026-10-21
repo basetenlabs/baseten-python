@@ -828,7 +828,7 @@ class GetExploreMetadataParams(BaseModel):
     ] = None
 
 
-class GetRoutesParams(BaseModel):
+class GetGridRoutesParams(BaseModel):
     cursor: Annotated[
         str | None,
         Field(
@@ -848,9 +848,17 @@ class GetRoutesParams(BaseModel):
     team_id: Annotated[
         str | None,
         Field(
-            description="Identifier of the team whose routes to list.", title="Team Id"
+            description="Limit routes to this team. Without it, routes from every team where you can invoke routes.",
+            title="Team Id",
         ),
     ] = None
+    for_harnesses: Annotated[
+        bool,
+        Field(
+            description="Set by harness setup and sync. Returns routes from exactly one team: `team_id`, else the team you belong to; when you belong to several and name none, the request fails with a 400.",
+            title="For Harnesses",
+        ),
+    ] = False
     name: Annotated[
         str | None,
         Field(
@@ -860,7 +868,92 @@ class GetRoutesParams(BaseModel):
     ] = None
 
 
-class GetRoutesConnectionsParams(BaseModel):
+class TeamId(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="ID of the team. When omitted, the team you belong to; required when you belong to several.",
+            examples=["abc1234"],
+            min_length=1,
+            title="Team Id",
+        ),
+    ] = None
+
+
+class GetGridTeamSettingsParams(BaseModel):
+    team_id: Annotated[
+        TeamId | None,
+        Field(
+            description="ID of the team. When omitted, the team you belong to; required when you belong to several.",
+            examples=["abc1234"],
+            title="Team Id",
+        ),
+    ] = None
+
+
+class TeamId1(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="Limit the list to this team. Without it, the members of every team you administer, one row per team.",
+            examples=["abc1234"],
+            min_length=1,
+            title="Team Id",
+        ),
+    ] = None
+
+
+class GetGridTeamSettingsUsersParams(BaseModel):
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor returned by a previous page. Omit to fetch the first page.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of items to return.",
+            ge=1,
+            le=1000,
+            title="Limit",
+        ),
+    ] = 100
+    team_id: Annotated[
+        TeamId1 | None,
+        Field(
+            description="Limit the list to this team. Without it, the members of every team you administer, one row per team.",
+            examples=["abc1234"],
+            title="Team Id",
+        ),
+    ] = None
+
+
+class TeamId2(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="ID of the team. When omitted, the team you belong to; required when you belong to several.",
+            examples=["abc1234"],
+            min_length=1,
+            title="Team Id",
+        ),
+    ] = None
+
+
+class GetGridTeamSettingsUsersUserIdParams(BaseModel):
+    team_id: Annotated[
+        TeamId2 | None,
+        Field(
+            description="ID of the team. When omitted, the team you belong to; required when you belong to several.",
+            examples=["abc1234"],
+            title="Team Id",
+        ),
+    ] = None
+
+
+class GetGridConnectionsParams(BaseModel):
     cursor: Annotated[
         str | None,
         Field(
@@ -880,10 +973,29 @@ class GetRoutesConnectionsParams(BaseModel):
     team_id: Annotated[
         str | None,
         Field(
-            description="Identifier of the team whose connections to list.",
+            description="Limit connections to this team. Without it, connections from every team where you can invoke routes.",
             title="Team Id",
         ),
     ] = None
+
+
+class GetGridClassifiersParams(BaseModel):
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor returned by a previous page. Omit to fetch the first page.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of items to return.",
+            ge=1,
+            le=1000,
+            title="Limit",
+        ),
+    ] = 100
 
 
 class GetSandboxLogsParams(BaseModel):
@@ -3163,18 +3275,6 @@ class AuditLogEventDirectoryGroupRoleUpdated(BaseModel):
 
 
 class AuditLogEventEnvironmentCreated(BaseModel):
-    min_replica: Annotated[int, Field(title="Min Replica")]
-    max_replica: Annotated[int, Field(title="Max Replica")]
-    concurrency_target: Annotated[int, Field(title="Concurrency Target")]
-    autoscaling_window: Annotated[int | None, Field(title="Autoscaling Window")]
-    scale_down_delay: Annotated[int | None, Field(title="Scale Down Delay")]
-    target_utilization_percentage: Annotated[
-        int | None, Field(title="Target Utilization Percentage")
-    ]
-    target_in_flight_tokens: Annotated[
-        int | None, Field(title="Target In Flight Tokens")
-    ]
-    max_scale_down_rate: Annotated[float | None, Field(title="Max Scale Down Rate")]
     redeploy_on_promotion: Annotated[bool | None, Field(title="Redeploy On Promotion")]
     rolling_deploy: Annotated[bool | None, Field(title="Rolling Deploy")]
     rolling_deploy_strategy: Annotated[
@@ -3193,6 +3293,18 @@ class AuditLogEventEnvironmentCreated(BaseModel):
     promotion_cleanup_strategy: Annotated[
         str | None, Field(title="Promotion Cleanup Strategy")
     ]
+    min_replica: Annotated[int, Field(title="Min Replica")]
+    max_replica: Annotated[int, Field(title="Max Replica")]
+    concurrency_target: Annotated[int, Field(title="Concurrency Target")]
+    autoscaling_window: Annotated[int | None, Field(title="Autoscaling Window")]
+    scale_down_delay: Annotated[int | None, Field(title="Scale Down Delay")]
+    target_utilization_percentage: Annotated[
+        int | None, Field(title="Target Utilization Percentage")
+    ]
+    target_in_flight_tokens: Annotated[
+        int | None, Field(title="Target In Flight Tokens")
+    ]
+    max_scale_down_rate: Annotated[float | None, Field(title="Max Scale Down Rate")]
     ramp_up_while_promoting: Annotated[
         bool | None, Field(title="Ramp Up While Promoting")
     ]
@@ -3218,18 +3330,6 @@ class AuditLogEventEnvironmentDeleted(BaseModel):
 
 
 class AuditLogEventEnvironmentSettings(BaseModel):
-    min_replica: Annotated[int, Field(title="Min Replica")]
-    max_replica: Annotated[int, Field(title="Max Replica")]
-    concurrency_target: Annotated[int, Field(title="Concurrency Target")]
-    autoscaling_window: Annotated[int | None, Field(title="Autoscaling Window")]
-    scale_down_delay: Annotated[int | None, Field(title="Scale Down Delay")]
-    target_utilization_percentage: Annotated[
-        int | None, Field(title="Target Utilization Percentage")
-    ]
-    target_in_flight_tokens: Annotated[
-        int | None, Field(title="Target In Flight Tokens")
-    ]
-    max_scale_down_rate: Annotated[float | None, Field(title="Max Scale Down Rate")]
     redeploy_on_promotion: Annotated[bool | None, Field(title="Redeploy On Promotion")]
     rolling_deploy: Annotated[bool | None, Field(title="Rolling Deploy")]
     rolling_deploy_strategy: Annotated[
@@ -3248,6 +3348,18 @@ class AuditLogEventEnvironmentSettings(BaseModel):
     promotion_cleanup_strategy: Annotated[
         str | None, Field(title="Promotion Cleanup Strategy")
     ]
+    min_replica: Annotated[int, Field(title="Min Replica")]
+    max_replica: Annotated[int, Field(title="Max Replica")]
+    concurrency_target: Annotated[int, Field(title="Concurrency Target")]
+    autoscaling_window: Annotated[int | None, Field(title="Autoscaling Window")]
+    scale_down_delay: Annotated[int | None, Field(title="Scale Down Delay")]
+    target_utilization_percentage: Annotated[
+        int | None, Field(title="Target Utilization Percentage")
+    ]
+    target_in_flight_tokens: Annotated[
+        int | None, Field(title="Target In Flight Tokens")
+    ]
+    max_scale_down_rate: Annotated[float | None, Field(title="Max Scale Down Rate")]
     ramp_up_while_promoting: Annotated[
         bool | None, Field(title="Ramp Up While Promoting")
     ]
@@ -3344,18 +3456,6 @@ class AuditLogEventModelDeploymentInstanceTypeChanged(BaseModel):
     instance_type_name: Annotated[str, Field(title="Instance Type Name")]
 
 
-class AuditLogEventModelDeploymentPromoted(BaseModel):
-    event_type: Annotated[
-        Literal["MODEL_DEPLOYMENT_PROMOTED"], Field(title="Event Type")
-    ]
-    model_id: Annotated[str, Field(title="Model Id")]
-    model_name: Annotated[str, Field(title="Model Name")]
-    deployment_id: Annotated[str, Field(title="Deployment Id")]
-    deployment_name: Annotated[str, Field(title="Deployment Name")]
-    environment_name: Annotated[str | None, Field(title="Environment Name")]
-    environment_id: Annotated[str | None, Field(title="Environment Id")]
-
-
 class AuditLogEventModelDeploymentRequestBackpressureSettingsChanged(BaseModel):
     event_type: Annotated[
         Literal["MODEL_DEPLOYMENT_REQUEST_BACKPRESSURE_SETTINGS_CHANGED"],
@@ -3385,6 +3485,27 @@ class AuditLogEventModelRenamed(BaseModel):
     model_id: Annotated[str, Field(title="Model Id")]
     model_name: Annotated[str, Field(title="Model Name")]
     previous_name: Annotated[str | None, Field(title="Previous Name")]
+
+
+class AuditLogEventPromotionSettingsOverride(BaseModel):
+    redeploy_on_promotion: Annotated[bool | None, Field(title="Redeploy On Promotion")]
+    rolling_deploy: Annotated[bool | None, Field(title="Rolling Deploy")]
+    rolling_deploy_strategy: Annotated[
+        str | None, Field(title="Rolling Deploy Strategy")
+    ]
+    max_unavailable_percent: Annotated[
+        int | None, Field(title="Max Unavailable Percent")
+    ]
+    max_surge_percent: Annotated[int | None, Field(title="Max Surge Percent")]
+    stabilization_time_seconds: Annotated[
+        int | None, Field(title="Stabilization Time Seconds")
+    ]
+    replica_overhead_percent: Annotated[
+        int | None, Field(title="Replica Overhead Percent")
+    ]
+    promotion_cleanup_strategy: Annotated[
+        str | None, Field(title="Promotion Cleanup Strategy")
+    ]
 
 
 class AuditLogEventProviderConnectionCreated(BaseModel):
@@ -3950,23 +4071,153 @@ class UpdateRequestBackpressureSettings(BaseModel):
     ] = None
 
 
-class PromoteRequest(BaseModel):
-    scale_down_previous_production: Annotated[
-        bool,
+class MaxScaleDownRate1(RootModel[int]):
+    root: Annotated[
+        int,
         Field(
-            description="Whether to scale down the previous production deployment after promoting",
-            examples=[True],
-            title="Scale Down Previous Production",
+            description="Maximum percentage of replicas that can be removed per autoscaling window. Null stores no schedule override and follows the current environment value.",
+            ge=1,
+            le=50,
+            title="Max Scale Down Rate",
         ),
-    ] = True
-    preserve_env_instance_type: Annotated[
-        bool,
+    ]
+
+
+class AutoscalingScheduleSettingsRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    min_replica: Annotated[
+        int, Field(description="Minimum number of replicas", title="Min Replica")
+    ]
+    max_replica: Annotated[
+        int, Field(description="Maximum number of replicas", title="Max Replica")
+    ]
+    autoscaling_window: Annotated[
+        int | None,
         Field(
-            description="Whether to use the promoting deployment's instance type or preserve target environment's instance type",
-            examples=[True],
-            title="Preserve Env Instance Type",
+            description="Timeframe of traffic considered for autoscaling decisions. Null stores no schedule override and follows the current environment value.",
+            title="Autoscaling Window",
         ),
-    ] = True
+    ]
+    scale_down_delay: Annotated[
+        int | None,
+        Field(
+            description="Waiting period before scaling down any active replica. Null stores no schedule override and follows the current environment value.",
+            title="Scale Down Delay",
+        ),
+    ]
+    concurrency_target: Annotated[
+        int | None,
+        Field(
+            description="Number of requests per replica before scaling up. Null stores no schedule override and follows the current environment value.",
+            title="Concurrency Target",
+        ),
+    ]
+    target_utilization_percentage: Annotated[
+        int | None,
+        Field(
+            description="Target utilization percentage for scaling up/down. Null stores no schedule override and follows the current environment value.",
+            title="Target Utilization Percentage",
+        ),
+    ]
+    target_in_flight_tokens: Annotated[
+        int | None,
+        Field(
+            description="Target number of in-flight tokens for autoscaling decisions. Null stores no schedule override and follows the current environment value. Early access only.",
+            title="Target In Flight Tokens",
+        ),
+    ]
+    max_scale_down_rate: Annotated[
+        MaxScaleDownRate1 | None,
+        Field(
+            description="Maximum percentage of replicas that can be removed per autoscaling window. Null stores no schedule override and follows the current environment value.",
+            title="Max Scale Down Rate",
+        ),
+    ]
+
+
+class OneTimeAutoscalingScheduleUpsert(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: Annotated[
+        str | None,
+        Field(
+            description="Stable schedule identifier. Omit this field to create a schedule.",
+            title="Id",
+        ),
+    ] = None
+    name: Annotated[str, Field(description="Name of the schedule", title="Name")]
+    enabled: Annotated[
+        bool, Field(description="Whether the schedule is enabled", title="Enabled")
+    ]
+    autoscaling_settings: Annotated[
+        AutoscalingScheduleSettingsRequest,
+        Field(
+            description="Complete raw autoscaling overrides for the schedule. Every field is required; nullable fields store no schedule override and follow the current environment value."
+        ),
+    ]
+    cadence: Annotated[
+        Literal["ONE_TIME"],
+        Field(description="One-time schedule cadence", title="Cadence"),
+    ]
+    start_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="Inclusive start of the schedule window in ISO 8601 format. New schedules must start in the future.",
+            title="Start At",
+        ),
+    ]
+    end_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="Exclusive end of the schedule window in ISO 8601 format",
+            title="End At",
+        ),
+    ]
+
+
+class UpdateRollingDeployConfig(BaseModel):
+    rolling_deploy_strategy: Annotated[
+        Literal["REPLICA"] | str | None,
+        Field(
+            description="The rolling deploy strategy to use for promotions.",
+            examples=["REPLICA"],
+        ),
+    ] = None
+    max_surge_percent: Annotated[
+        int | None,
+        Field(
+            description="The maximum surge percentage for rolling deploys.",
+            examples=[25],
+            title="Max Surge Percent",
+        ),
+    ] = None
+    max_unavailable_percent: Annotated[
+        int | None,
+        Field(
+            description="The maximum unavailable percentage for rolling deploys.",
+            examples=[10],
+            title="Max Unavailable Percent",
+        ),
+    ] = None
+    stabilization_time_seconds: Annotated[
+        int | None,
+        Field(
+            description="The stabilization time in seconds for rolling deploys.",
+            examples=[300],
+            title="Stabilization Time Seconds",
+        ),
+    ] = None
+    replica_overhead_percent: Annotated[
+        int | None,
+        Field(
+            description="The replica overhead percentage for rolling deploys.",
+            examples=[0],
+            title="Replica Overhead Percent",
+        ),
+    ] = None
 
 
 class ActivateResponse(BaseModel):
@@ -4634,6 +4885,65 @@ class AutoscalingScheduleState(BaseModel):
     ]
 
 
+class AutoscalingSchedule(BaseModel):
+    id: Annotated[
+        str, Field(description="Stable unique identifier of the schedule", title="Id")
+    ]
+    name: Annotated[str, Field(description="Name of the schedule", title="Name")]
+    enabled: Annotated[
+        bool, Field(description="Whether the schedule is enabled", title="Enabled")
+    ]
+    autoscaling_settings: Annotated[
+        AutoscalingScheduleSettings,
+        Field(
+            description="Raw autoscaling overrides applied during the schedule window"
+        ),
+    ]
+    cadence: Annotated[
+        Literal["DAILY", "HOURLY"],
+        Field(
+            description="Cadence of the schedule. DAILY runs once per selected weekday; HOURLY repeats the minute window every hour on selected weekdays.",
+            title="Cadence",
+        ),
+    ]
+    weekdays: Annotated[
+        list[
+            Literal[
+                "SUNDAY",
+                "MONDAY",
+                "TUESDAY",
+                "WEDNESDAY",
+                "THURSDAY",
+                "FRIDAY",
+                "SATURDAY",
+            ]
+            | str
+        ],
+        Field(description="Weekdays on which the schedule runs", title="Weekdays"),
+    ]
+    start_hour: Annotated[
+        int | None,
+        Field(
+            description="Start hour in the environment schedule timezone. Omitted for unrestricted HOURLY schedules.",
+            title="Start Hour",
+        ),
+    ] = None
+    start_minute: Annotated[
+        int,
+        Field(description="Start minute of the schedule window", title="Start Minute"),
+    ]
+    end_hour: Annotated[
+        int | None,
+        Field(
+            description="End hour in the environment schedule timezone. Omitted for unrestricted HOURLY schedules.",
+            title="End Hour",
+        ),
+    ] = None
+    end_minute: Annotated[
+        int, Field(description="End minute of the schedule window", title="End Minute")
+    ]
+
+
 class InProgressPromotion(BaseModel):
     status: Annotated[
         Literal[
@@ -4695,45 +5005,156 @@ class OneTimeAutoscalingSchedule(BaseModel):
     ]
 
 
-class UpdateRollingDeployConfig(BaseModel):
+class RollingDeployConfig(BaseModel):
     rolling_deploy_strategy: Annotated[
-        Literal["REPLICA"] | str | None,
+        Literal["REPLICA"] | str,
         Field(
             description="The rolling deploy strategy to use for promotions.",
             examples=["REPLICA"],
+            title="RollingDeployStrategyV1",
         ),
-    ] = None
+    ] = "REPLICA"
     max_surge_percent: Annotated[
-        int | None,
+        int,
         Field(
             description="The maximum surge percentage for rolling deploys.",
             examples=[25],
             title="Max Surge Percent",
         ),
-    ] = None
+    ] = 25
     max_unavailable_percent: Annotated[
-        int | None,
+        int,
         Field(
             description="The maximum unavailable percentage for rolling deploys.",
             examples=[10],
             title="Max Unavailable Percent",
         ),
-    ] = None
+    ] = 0
     stabilization_time_seconds: Annotated[
-        int | None,
+        int,
         Field(
             description="The stabilization time in seconds for rolling deploys.",
             examples=[300],
             title="Stabilization Time Seconds",
         ),
-    ] = None
+    ] = 0
     replica_overhead_percent: Annotated[
-        int | None,
+        int,
         Field(
             description="The replica overhead percentage for rolling deploys.",
             examples=[0],
             title="Replica Overhead Percent",
         ),
+    ] = 0
+
+
+class TrafficRoutingTarget(BaseModel):
+    model_id: Annotated[
+        str, Field(description="ID of the target's model", title="Model Id")
+    ]
+    deployment_id: Annotated[
+        str | None,
+        Field(description="ID of the target deployment", title="Deployment Id"),
+    ] = None
+    environment: Annotated[
+        str | None,
+        Field(
+            description="Name of the target environment. Traffic goes to whichever deployment the environment is serving.",
+            title="Environment",
+        ),
+    ] = None
+
+
+class UpdateModelPromotionSettings(BaseModel):
+    redeploy_on_promotion: Annotated[
+        bool | None,
+        Field(
+            description="Whether to deploy on all promotions. Enabling this flag allows model code to safely handle environment-specific logic. When a deployment is promoted, a new deployment will be created with a copy of the image.",
+            examples=[True],
+            title="Redeploy On Promotion",
+        ),
+    ] = None
+    rolling_deploy: Annotated[
+        bool | None,
+        Field(
+            description="Whether the environment should rely on rolling deploy orchestration.",
+            examples=[True],
+            title="Rolling Deploy",
+        ),
+    ] = None
+    promotion_cleanup_strategy: Annotated[
+        Literal["KEEP", "SCALE_TO_ZERO", "DEACTIVATE"] | str | None,
+        Field(
+            description="The cleanup strategy to use after a promotion completes.",
+            examples=["SCALE_TO_ZERO"],
+        ),
+    ] = None
+    rolling_deploy_config: Annotated[
+        UpdateRollingDeployConfig | None,
+        Field(description="Rolling deploy configuration for promotions"),
+    ] = None
+    ramp_up_while_promoting: Annotated[
+        bool | None,
+        Field(
+            deprecated=True,
+            description="Deprecated: models don't support canary promotions, and `true` is rejected. Use `rolling_deploy`.",
+            title="Ramp Up While Promoting",
+        ),
+    ] = None
+    ramp_up_duration_seconds: Annotated[
+        int | None,
+        Field(
+            deprecated=True,
+            description="Deprecated: models don't support canary promotions.",
+            title="Ramp Up Duration Seconds",
+        ),
+    ] = None
+
+
+class CreateEnvironmentRequest(BaseModel):
+    name: Annotated[
+        str,
+        Field(
+            description="Name of the environment", examples=["staging"], title="Name"
+        ),
+    ]
+    autoscaling_settings: Annotated[
+        UpdateAutoscalingSettings | None,
+        Field(
+            description="Autoscaling settings for the environment",
+            examples=[
+                {
+                    "autoscaling_window": 800,
+                    "concurrency_target": 3,
+                    "max_replica": 2,
+                    "max_scale_down_rate": None,
+                    "min_replica": 1,
+                    "scale_down_delay": 60,
+                    "target_in_flight_tokens": None,
+                    "target_utilization_percentage": None,
+                }
+            ],
+        ),
+    ] = None
+    promotion_settings: Annotated[
+        UpdateModelPromotionSettings | None,
+        Field(
+            description="Promotion settings for the environment. New Model environments use rolling promotions by default. Set `rolling_deploy` to `false` to opt out.",
+            examples=[
+                {
+                    "promotion_cleanup_strategy": None,
+                    "ramp_up_duration_seconds": None,
+                    "ramp_up_while_promoting": None,
+                    "redeploy_on_promotion": True,
+                    "rolling_deploy": False,
+                    "rolling_deploy_config": None,
+                }
+            ],
+        ),
+    ] = None
+    request_backpressure_settings: Annotated[
+        UpdateRequestBackpressureSettings | None,
+        Field(description="Request backpressure settings for the environment."),
     ] = None
 
 
@@ -4747,234 +5168,18 @@ class EnvironmentTombstone(BaseModel):
     ]
 
 
-class MaxScaleDownRate1(RootModel[int]):
-    root: Annotated[
-        int,
-        Field(
-            description="Maximum percentage of replicas that can be removed per autoscaling window. Null stores no schedule override and follows the current environment value.",
-            ge=1,
-            le=50,
-            title="Max Scale Down Rate",
-        ),
-    ]
-
-
-class AutoscalingScheduleSettingsRequest(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    min_replica: Annotated[
-        int, Field(description="Minimum number of replicas", title="Min Replica")
-    ]
-    max_replica: Annotated[
-        int, Field(description="Maximum number of replicas", title="Max Replica")
-    ]
-    autoscaling_window: Annotated[
-        int | None,
-        Field(
-            description="Timeframe of traffic considered for autoscaling decisions. Null stores no schedule override and follows the current environment value.",
-            title="Autoscaling Window",
-        ),
-    ]
-    scale_down_delay: Annotated[
-        int | None,
-        Field(
-            description="Waiting period before scaling down any active replica. Null stores no schedule override and follows the current environment value.",
-            title="Scale Down Delay",
-        ),
-    ]
-    concurrency_target: Annotated[
-        int | None,
-        Field(
-            description="Number of requests per replica before scaling up. Null stores no schedule override and follows the current environment value.",
-            title="Concurrency Target",
-        ),
-    ]
-    target_utilization_percentage: Annotated[
-        int | None,
-        Field(
-            description="Target utilization percentage for scaling up/down. Null stores no schedule override and follows the current environment value.",
-            title="Target Utilization Percentage",
-        ),
-    ]
-    target_in_flight_tokens: Annotated[
-        int | None,
-        Field(
-            description="Target number of in-flight tokens for autoscaling decisions. Null stores no schedule override and follows the current environment value. Early access only.",
-            title="Target In Flight Tokens",
-        ),
-    ]
-    max_scale_down_rate: Annotated[
-        MaxScaleDownRate1 | None,
-        Field(
-            description="Maximum percentage of replicas that can be removed per autoscaling window. Null stores no schedule override and follows the current environment value.",
-            title="Max Scale Down Rate",
-        ),
-    ]
-
-
-class AutoscalingScheduleUpsert(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: Annotated[
-        str | None,
-        Field(
-            description="Stable schedule identifier. Omit this field to create a schedule.",
-            title="Id",
-        ),
-    ] = None
-    name: Annotated[str, Field(description="Name of the schedule", title="Name")]
-    enabled: Annotated[
-        bool, Field(description="Whether the schedule is enabled", title="Enabled")
-    ]
-    autoscaling_settings: Annotated[
-        AutoscalingScheduleSettingsRequest,
-        Field(
-            description="Complete raw autoscaling overrides for the schedule. Every field is required; nullable fields store no schedule override and follow the current environment value."
-        ),
-    ]
-    cadence: Annotated[
-        Literal["DAILY", "HOURLY"],
-        Field(description="Recurring schedule cadence", title="Cadence"),
-    ]
-    weekdays: Annotated[
-        list[
-            Literal[
-                "SUNDAY",
-                "MONDAY",
-                "TUESDAY",
-                "WEDNESDAY",
-                "THURSDAY",
-                "FRIDAY",
-                "SATURDAY",
-            ]
-            | str
-        ],
-        Field(description="Weekdays on which the schedule runs", title="Weekdays"),
-    ]
-    start_hour: Annotated[
-        int | None,
-        Field(
-            description="Start hour in the environment schedule timezone. Omit for unrestricted HOURLY schedules.",
-            title="Start Hour",
-        ),
-    ] = None
-    start_minute: Annotated[
-        int,
-        Field(description="Start minute of the schedule window", title="Start Minute"),
-    ]
-    end_hour: Annotated[
-        int | None,
-        Field(
-            description="End hour in the environment schedule timezone. Omit for unrestricted HOURLY schedules.",
-            title="End Hour",
-        ),
-    ] = None
-    end_minute: Annotated[
-        int, Field(description="End minute of the schedule window", title="End Minute")
-    ]
-
-
-class OneTimeAutoscalingScheduleUpsert(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: Annotated[
-        str | None,
-        Field(
-            description="Stable schedule identifier. Omit this field to create a schedule.",
-            title="Id",
-        ),
-    ] = None
-    name: Annotated[str, Field(description="Name of the schedule", title="Name")]
-    enabled: Annotated[
-        bool, Field(description="Whether the schedule is enabled", title="Enabled")
-    ]
-    autoscaling_settings: Annotated[
-        AutoscalingScheduleSettingsRequest,
-        Field(
-            description="Complete raw autoscaling overrides for the schedule. Every field is required; nullable fields store no schedule override and follow the current environment value."
-        ),
-    ]
-    cadence: Annotated[
-        Literal["ONE_TIME"],
-        Field(description="One-time schedule cadence", title="Cadence"),
-    ]
-    start_at: Annotated[
-        AwareDatetime,
-        Field(
-            description="Inclusive start of the schedule window in ISO 8601 format. New schedules must start in the future.",
-            title="Start At",
-        ),
-    ]
-    end_at: Annotated[
-        AwareDatetime,
-        Field(
-            description="Exclusive end of the schedule window in ISO 8601 format",
-            title="End At",
-        ),
-    ]
-
-
-class UpdateAutoscalingScheduleSettings(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    timezone: Annotated[
-        str | None,
-        Field(
-            description="IANA timezone shared by the resulting collection. Omission preserves the current timezone; null is allowed only when deleting every schedule.",
-            title="Timezone",
-        ),
-    ] = None
-    schedules: Annotated[
-        list[
-            Annotated[
-                Annotated[
-                    AutoscalingScheduleUpsert | OneTimeAutoscalingScheduleUpsert,
-                    Field(discriminator="cadence"),
-                ]
-                | dict[str, Any],
-                Field(union_mode="left_to_right"),
-            ]
-        ]
-        | None,
-        Field(
-            description="Complete schedules to create or replace. Existing schedules omitted from this list are unchanged.",
-            title="Schedules",
-        ),
-    ] = None
-    delete_schedules: Annotated[
-        list[str] | None,
-        Field(
-            description="Stable identifiers of schedules to delete. To clear all schedules, include every existing schedule identifier.",
-            title="Delete Schedules",
-        ),
-    ] = None
-
-
-class PromoteToEnvironmentRequest(BaseModel):
-    scale_down_previous_deployment: Annotated[
-        bool,
-        Field(
-            description="Whether to scale down the previous deployment after promoting",
-            examples=[True],
-            title="Scale Down Previous Deployment",
-        ),
-    ] = True
+class TrafficRoutingTargetUpsert(BaseModel):
     deployment_id: Annotated[
-        str,
-        Field(description="The id of the deployment to promote", title="Deployment Id"),
-    ]
-    preserve_env_instance_type: Annotated[
-        bool,
+        str | None,
+        Field(description="ID of the target deployment", title="Deployment Id"),
+    ] = None
+    environment: Annotated[
+        str | None,
         Field(
-            description="Whether to use the promoting deployment's instance type or preserve target environment's instance type",
-            examples=[True],
-            title="Preserve Env Instance Type",
+            description="Name of the target environment. Traffic goes to whichever deployment the environment is serving.",
+            title="Environment",
         ),
-    ] = True
+    ] = None
 
 
 class CancelPromotionResponse(BaseModel):
@@ -5143,6 +5348,52 @@ class ChainletEnvironmentSettings(BaseModel):
     instance_type: Annotated[
         InstanceType, Field(description="Instance type for the chainlet")
     ]
+
+
+class PromotionSettings(BaseModel):
+    redeploy_on_promotion: Annotated[
+        bool | None,
+        Field(
+            description="Whether to deploy on all promotions. Enabling this flag allows model code to safely handle environment-specific logic. When a deployment is promoted, a new deployment will be created with a copy of the image.",
+            examples=[True],
+            title="Redeploy On Promotion",
+        ),
+    ] = False
+    rolling_deploy: Annotated[
+        bool | None,
+        Field(
+            description="Whether the environment should rely on rolling deploy orchestration.",
+            examples=[True],
+            title="Rolling Deploy",
+        ),
+    ] = False
+    promotion_cleanup_strategy: Annotated[
+        Literal["KEEP", "SCALE_TO_ZERO", "DEACTIVATE"] | str | None,
+        Field(
+            description="The cleanup strategy to use after a promotion completes.",
+            examples=["SCALE_TO_ZERO"],
+        ),
+    ] = "SCALE_TO_ZERO"
+    rolling_deploy_config: Annotated[
+        RollingDeployConfig | None,
+        Field(description="Rolling deploy configuration for promotions"),
+    ] = None
+    ramp_up_while_promoting: Annotated[
+        bool | None,
+        Field(
+            description="Whether to ramp up traffic while promoting",
+            examples=[True],
+            title="Ramp Up While Promoting",
+        ),
+    ] = False
+    ramp_up_duration_seconds: Annotated[
+        int | None,
+        Field(
+            description="Duration of the ramp up in seconds",
+            examples=[600],
+            title="Ramp Up Duration Seconds",
+        ),
+    ] = 600
 
 
 class UpdateChainEnvironmentResponse(BaseModel):
@@ -6430,11 +6681,7 @@ class GetLoopsSamplerResponse(BaseModel):
 
 class LoopsLoRAConfig(BaseModel):
     config_version: Annotated[
-        str,
-        Field(
-            description="The config version, unique per base model.",
-            title="Config Version",
-        ),
+        str, Field(description="The config version, like v1.", title="Config Version")
     ]
     targets: Annotated[
         list[str],
@@ -7097,7 +7344,7 @@ class GetBlobCredentialsResponse(BaseModel):
     ]
 
 
-class TeamId(RootModel[str]):
+class TeamId3(RootModel[str]):
     root: Annotated[
         str | None,
         Field(
@@ -7149,7 +7396,7 @@ class CreateAPIKeyRequest(BaseModel):
         ),
     ] = None
     team_id: Annotated[
-        TeamId | None,
+        TeamId3 | None,
         Field(
             description="Team ID for a team-scoped key. When omitted, uses the team in the URL if present, otherwise your organization's default team. Must match the URL team when both are provided. Not supported for PERSONAL or WORKSPACE_MANAGE_API_KEYS keys.",
             title="Team Id",
@@ -7557,6 +7804,7 @@ class LibraryListingMetadata(BaseModel):
     release_date: Annotated[date_aliased | None, Field(title="Release Date")] = None
     description: Annotated[str | None, Field(title="Description")] = None
     trending: Annotated[bool, Field(title="Trending")] = False
+    model_family: Annotated[str | None, Field(title="Model Family")] = None
 
 
 class LibraryListing(BaseModel):
@@ -8357,7 +8605,7 @@ class ExploreMetadataAPIFormats(BaseModel):
     ] = False
 
 
-class RouteClassifierListingRef(BaseModel):
+class GridClassifier(BaseModel):
     id: Annotated[
         str,
         Field(
@@ -8376,7 +8624,7 @@ class RouteClassifierListingRef(BaseModel):
     ]
 
 
-class RouteRef(BaseModel):
+class GridRouteRef(BaseModel):
     id: Annotated[str, Field(description="Stable route identifier.", title="Id")]
     slug: Annotated[
         str,
@@ -8387,7 +8635,7 @@ class RouteRef(BaseModel):
     ]
 
 
-class RouteTargetBasetenModelAPI(BaseModel):
+class GridRouteTargetBasetenModelAPI(BaseModel):
     type: Annotated[
         Literal["BASETEN_MODEL_API"],
         Field(description="Target kind for a Baseten Model API.", title="Type"),
@@ -8398,22 +8646,22 @@ class RouteTargetBasetenModelAPI(BaseModel):
     ]
 
 
-class RouteTargetClassifier(BaseModel):
+class GridRouteTargetClassifier(BaseModel):
     type: Annotated[
         Literal["CLASSIFIER"],
         Field(description="Target kind for a classifier-based route.", title="Type"),
     ]
     classifier: Annotated[
-        RouteClassifierListingRef | None,
+        GridClassifier | None,
         Field(
             description="Classifier that picks a route for each request. Null for routers created before classifiers could be selected."
         ),
     ]
     default_route: Annotated[
-        RouteRef, Field(description="Route used when the classifier picks none.")
+        GridRouteRef, Field(description="Route used when the classifier picks none.")
     ]
     allowed_routes: Annotated[
-        list[RouteRef],
+        list[GridRouteRef],
         Field(
             description="Routes the classifier may pick, in creation order.",
             title="Allowed Routes",
@@ -8421,7 +8669,7 @@ class RouteTargetClassifier(BaseModel):
     ]
 
 
-class RouteTargetConnection(BaseModel):
+class GridRouteTargetConnection(BaseModel):
     type: Annotated[
         Literal["CONNECTION"],
         Field(
@@ -8444,7 +8692,7 @@ class RouteTargetConnection(BaseModel):
     ]
 
 
-class UpsertRouteTargetBasetenModelAPI(BaseModel):
+class UpsertGridRouteTargetBasetenModelAPI(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -8458,7 +8706,7 @@ class UpsertRouteTargetBasetenModelAPI(BaseModel):
     ]
 
 
-class UpsertRouteTargetClassifier(BaseModel):
+class UpsertGridRouteTargetClassifier(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -8493,7 +8741,7 @@ class UpsertRouteTargetClassifier(BaseModel):
     ]
 
 
-class UpsertRouteTargetConnection(BaseModel):
+class UpsertGridRouteTargetConnection(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -8521,7 +8769,7 @@ class UpsertRouteTargetConnection(BaseModel):
     ]
 
 
-class TeamId1(RootModel[str]):
+class TeamId4(RootModel[str]):
     root: Annotated[
         str | None,
         Field(
@@ -8558,12 +8806,12 @@ class Description(RootModel[str]):
     ] = None
 
 
-class CreateRouteRequest(BaseModel):
+class CreateGridRouteRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     team_id: Annotated[
-        TeamId1 | None,
+        TeamId4 | None,
         Field(
             description="Identifier of the team that owns the route.",
             examples=["abc1234"],
@@ -8580,9 +8828,9 @@ class CreateRouteRequest(BaseModel):
     ] = None
     target: Annotated[
         Annotated[
-            UpsertRouteTargetBasetenModelAPI
-            | UpsertRouteTargetConnection
-            | UpsertRouteTargetClassifier,
+            UpsertGridRouteTargetBasetenModelAPI
+            | UpsertGridRouteTargetConnection
+            | UpsertGridRouteTargetClassifier,
             Field(
                 description="Upstream target for the route. CONNECTION targets use the provider and credentials of a connection owned by the route's team.",
                 discriminator="type",
@@ -8603,7 +8851,7 @@ class CreateRouteRequest(BaseModel):
     ] = None
 
 
-class RoutesUsageResult(BaseModel):
+class GridRouteUsageResult(BaseModel):
     user_id: Annotated[
         str | None,
         Field(
@@ -8616,6 +8864,13 @@ class RoutesUsageResult(BaseModel):
         Field(
             description="ID of the team the usage was metered in. Null when not grouping by TEAM, and for usage metered before it was attributed to teams.",
             title="Team Id",
+        ),
+    ] = None
+    team_name: Annotated[
+        str | None,
+        Field(
+            description="Name of the team the usage was metered in. Null when `team_id` is null.",
+            title="Team Name",
         ),
     ] = None
     model: Annotated[
@@ -8643,7 +8898,7 @@ class RoutesUsageResult(BaseModel):
     router_id: Annotated[
         str | None,
         Field(
-            description="Slug of the intelligent router, matching its name in `GET /v1/routes`. Null when not grouping by ROUTER.",
+            description="Slug of the intelligent router, matching its name in `GET /v1/grid/routes`. Null when not grouping by ROUTER.",
             title="Router Id",
         ),
     ] = None
@@ -8688,26 +8943,71 @@ class RoutesUsageResult(BaseModel):
     ]
 
 
-class RouteSpendLimitTeamDefault(BaseModel):
-    team_id: Annotated[
-        str,
-        Field(
-            description="ID of the team whose per-member limit this is.",
-            examples=["abc1234"],
-            title="Team Id",
-        ),
+class GridRouteTombstone(BaseModel):
+    id: Annotated[
+        str, Field(description="Stable identifier of the deleted route.", title="Id")
     ]
-    per_member_monthly_limit_usd: Annotated[
-        str,
-        Field(
-            description="The team's per-member spend limit in USD for each UTC calendar month.",
-            examples=["100"],
-            title="Per Member Monthly Limit Usd",
-        ),
-    ]
+    name: Annotated[str, Field(description="Name of the deleted route.", title="Name")]
 
 
-class RouteTeamSpendLimitSetting(BaseModel):
+class Description1(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="New description. Omit to keep the current description; use an empty string to clear it. Null is not accepted.",
+            examples=["Assistant for code review and debugging."],
+            max_length=1000,
+            title="Description",
+        ),
+    ] = None
+
+
+class DisplayName1(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="New display label. Omit to keep the current label; null is not accepted.",
+            examples=["Assistant"],
+            max_length=255,
+            min_length=1,
+            title="Display Name",
+        ),
+    ] = None
+
+
+class UpdateGridRouteRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    description: Annotated[
+        Description1 | None,
+        Field(
+            description="New description. Omit to keep the current description; use an empty string to clear it. Null is not accepted.",
+            examples=["Assistant for code review and debugging."],
+            title="Description",
+        ),
+    ] = None
+    display_name: Annotated[
+        DisplayName1 | None,
+        Field(
+            description="New display label. Omit to keep the current label; null is not accepted.",
+            examples=["Assistant"],
+            title="Display Name",
+        ),
+    ] = None
+    target: Annotated[
+        UpsertGridRouteTargetBasetenModelAPI
+        | UpsertGridRouteTargetConnection
+        | UpsertGridRouteTargetClassifier
+        | None,
+        Field(
+            description="Complete new target configuration. Omit to keep the current configuration; null is not accepted. Only the CLASSIFIER configuration of a router route is mutable.",
+            title="Target",
+        ),
+    ] = None
+
+
+class GridTeamSpendLimitSetting(BaseModel):
     per_member_monthly_limit_usd: Annotated[
         str | None,
         Field(
@@ -8750,7 +9050,7 @@ class Background(RootModel[str]):
     ] = None
 
 
-class UpdateBackgroundHarnessModels(BaseModel):
+class UpdateGridBackgroundHarnessModels(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -8772,7 +9072,7 @@ class UpdateBackgroundHarnessModels(BaseModel):
     ] = None
 
 
-class UpdatePrimaryHarnessModels(BaseModel):
+class UpdateGridPrimaryHarnessModels(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -8786,37 +9086,7 @@ class UpdatePrimaryHarnessModels(BaseModel):
     ] = None
 
 
-class UpdateRouteHarnessDefaults(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    claude_code: Annotated[
-        UpdateBackgroundHarnessModels | None,
-        Field(
-            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
-        ),
-    ] = None
-    opencode: Annotated[
-        UpdateBackgroundHarnessModels | None,
-        Field(
-            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
-        ),
-    ] = None
-    codex: Annotated[
-        UpdatePrimaryHarnessModels | None,
-        Field(
-            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
-        ),
-    ] = None
-    pi: Annotated[
-        UpdatePrimaryHarnessModels | None,
-        Field(
-            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
-        ),
-    ] = None
-
-
-class UpdateRouteTeamSpendLimitSetting(BaseModel):
+class UpdateGridTeamSpendLimitSetting(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -8838,25 +9108,49 @@ class UpdateRouteTeamSpendLimitSetting(BaseModel):
     ] = None
 
 
-class UpdateRouteTeamSettingsRequest(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    harness_defaults: Annotated[
-        UpdateRouteHarnessDefaults | None,
+class GridEffectiveSpendLimit(BaseModel):
+    monthly_limit_usd: Annotated[
+        str | None,
         Field(
-            description="Harnesses to change; harnesses left out are unchanged. Pass null to clear every harness, so each role uses the team's default."
+            description="Spend limit in USD enforced for the current UTC calendar month: the user's own limit, else the team default. Null when no limit applies.",
+            examples=["200"],
+            title="Monthly Limit Usd",
         ),
-    ] = None
-    spend_limit: Annotated[
-        UpdateRouteTeamSpendLimitSetting | None,
+    ]
+    source: Annotated[
+        Literal["user", "team"] | str | None,
         Field(
-            description="Spend limit fields to change. Pass null to remove the team's limits; omit to leave them unchanged."
+            description="Where the limit comes from: `user` when it is set on the user, `team` when it is the team default. Null when no limit applies."
         ),
-    ] = None
+    ]
 
 
-class UpdateRouteSpendLimitSetting(BaseModel):
+class GridSpendLimitTeamDefault(BaseModel):
+    team_id: Annotated[
+        str,
+        Field(
+            description="ID of the team whose per-member limit this is.",
+            examples=["abc1234"],
+            title="Team Id",
+        ),
+    ]
+    team_name: Annotated[
+        str,
+        Field(
+            description="Name of the team.", examples=["Engineering"], title="Team Name"
+        ),
+    ]
+    per_member_monthly_limit_usd: Annotated[
+        str,
+        Field(
+            description="The team's per-member spend limit in USD for each UTC calendar month.",
+            examples=["100"],
+            title="Per Member Monthly Limit Usd",
+        ),
+    ]
+
+
+class UpdateGridSpendLimitSetting(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -8878,19 +9172,27 @@ class UpdateRouteSpendLimitSetting(BaseModel):
     ] = None
 
 
-class UpdateRouteUserSettingsRequest(BaseModel):
+class UpdateGridUserSettingsRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     spend_limit: Annotated[
-        UpdateRouteSpendLimitSetting | None,
+        UpdateGridSpendLimitSetting | None,
         Field(
             description="Spend limit fields to change. Pass null to remove the user's limit; omit to leave it unchanged."
         ),
     ] = None
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="ID of the team. When omitted, the team you belong to; required when you belong to several.",
+            examples=["abc1234"],
+            title="Team Id",
+        ),
+    ] = None
 
 
-class RouteConnectionConfigAnthropic(BaseModel):
+class GridConnectionConfigAnthropic(BaseModel):
     provider: Annotated[
         Literal["ANTHROPIC"],
         Field(description="Provider kind for Anthropic.", title="Provider"),
@@ -8911,7 +9213,7 @@ class RouteConnectionConfigAnthropic(BaseModel):
     ]
 
 
-class RouteConnectionConfigOpenAI(BaseModel):
+class GridConnectionConfigOpenAI(BaseModel):
     provider: Annotated[
         Literal["OPENAI"],
         Field(description="Provider kind for OpenAI.", title="Provider"),
@@ -8932,7 +9234,7 @@ class RouteConnectionConfigOpenAI(BaseModel):
     ]
 
 
-class RouteConnectionConfigXAI(BaseModel):
+class GridConnectionConfigXAI(BaseModel):
     provider: Annotated[
         Literal["XAI"], Field(description="Provider kind for xAI.", title="Provider")
     ]
@@ -8952,7 +9254,7 @@ class RouteConnectionConfigXAI(BaseModel):
     ]
 
 
-class RouteConnection(BaseModel):
+class GridConnection(BaseModel):
     id: Annotated[str, Field(description="Stable connection identifier.", title="Id")]
     team_id: Annotated[
         str,
@@ -8961,11 +9263,17 @@ class RouteConnection(BaseModel):
             title="Team Id",
         ),
     ]
+    team_name: Annotated[
+        str,
+        Field(
+            description="Name of the team that owns the connection.", title="Team Name"
+        ),
+    ]
     config: Annotated[
         Annotated[
-            RouteConnectionConfigAnthropic
-            | RouteConnectionConfigOpenAI
-            | RouteConnectionConfigXAI,
+            GridConnectionConfigAnthropic
+            | GridConnectionConfigOpenAI
+            | GridConnectionConfigXAI,
             Field(
                 description="Provider the connection authenticates with, and the team secret holding its API key.",
                 discriminator="provider",
@@ -8984,16 +9292,16 @@ class RouteConnection(BaseModel):
     ]
 
 
-class RouteConnectionsResponse(BaseModel):
+class GridConnectionsResponse(BaseModel):
     items: Annotated[
-        list[RouteConnection], Field(description="Items in this page.", title="Items")
+        list[GridConnection], Field(description="Items in this page.", title="Items")
     ]
     pagination: Annotated[
         PaginationResponse, Field(description="Pagination metadata for the page.")
     ]
 
 
-class UpsertRouteConnectionConfigAnthropic(BaseModel):
+class UpsertGridConnectionConfigAnthropic(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -9001,17 +9309,18 @@ class UpsertRouteConnectionConfigAnthropic(BaseModel):
         Literal["ANTHROPIC"],
         Field(description="Provider kind for Anthropic.", title="Provider"),
     ]
-    secret_id: Annotated[
+    secret_name: Annotated[
         str,
         Field(
-            description="Identifier of an existing secret, owned by the same team, that holds the provider API key.",
+            description="Name of an existing secret, owned by the same team, that holds the provider API key.",
+            examples=["anthropic-key"],
             min_length=1,
-            title="Secret Id",
+            title="Secret Name",
         ),
     ]
 
 
-class UpsertRouteConnectionConfigOpenAI(BaseModel):
+class UpsertGridConnectionConfigOpenAI(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -9019,34 +9328,36 @@ class UpsertRouteConnectionConfigOpenAI(BaseModel):
         Literal["OPENAI"],
         Field(description="Provider kind for OpenAI.", title="Provider"),
     ]
-    secret_id: Annotated[
+    secret_name: Annotated[
         str,
         Field(
-            description="Identifier of an existing secret, owned by the same team, that holds the provider API key.",
+            description="Name of an existing secret, owned by the same team, that holds the provider API key.",
+            examples=["anthropic-key"],
             min_length=1,
-            title="Secret Id",
+            title="Secret Name",
         ),
     ]
 
 
-class UpsertRouteConnectionConfigXAI(BaseModel):
+class UpsertGridConnectionConfigXAI(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     provider: Annotated[
         Literal["XAI"], Field(description="Provider kind for xAI.", title="Provider")
     ]
-    secret_id: Annotated[
+    secret_name: Annotated[
         str,
         Field(
-            description="Identifier of an existing secret, owned by the same team, that holds the provider API key.",
+            description="Name of an existing secret, owned by the same team, that holds the provider API key.",
+            examples=["anthropic-key"],
             min_length=1,
-            title="Secret Id",
+            title="Secret Name",
         ),
     ]
 
 
-class TeamId2(RootModel[str]):
+class TeamId5(RootModel[str]):
     root: Annotated[
         str | None,
         Field(
@@ -9058,12 +9369,12 @@ class TeamId2(RootModel[str]):
     ] = None
 
 
-class CreateRouteConnectionRequest(BaseModel):
+class CreateGridConnectionRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     team_id: Annotated[
-        TeamId2 | None,
+        TeamId5 | None,
         Field(
             description="Identifier of the team that owns the connection.",
             examples=["abc1234"],
@@ -9072,13 +9383,13 @@ class CreateRouteConnectionRequest(BaseModel):
     ] = None
     config: Annotated[
         Annotated[
-            UpsertRouteConnectionConfigAnthropic
-            | UpsertRouteConnectionConfigOpenAI
-            | UpsertRouteConnectionConfigXAI,
+            UpsertGridConnectionConfigAnthropic
+            | UpsertGridConnectionConfigOpenAI
+            | UpsertGridConnectionConfigXAI,
             Field(
                 description="Provider the connection authenticates with, and the team secret holding its API key.",
                 discriminator="provider",
-                examples=[{"provider": "ANTHROPIC", "secret_id": "abc1234"}],
+                examples=[{"provider": "ANTHROPIC", "secret_name": "anthropic-key"}],
                 title="Config",
             ),
         ]
@@ -9087,26 +9398,26 @@ class CreateRouteConnectionRequest(BaseModel):
     ]
 
 
-class RouteConnectionTombstone(BaseModel):
+class GridConnectionTombstone(BaseModel):
     id: Annotated[
         str,
         Field(description="Stable identifier of the deleted connection.", title="Id"),
     ]
 
 
-class UpdateRouteConnectionRequest(BaseModel):
+class UpdateGridConnectionRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     config: Annotated[
         Annotated[
-            UpsertRouteConnectionConfigAnthropic
-            | UpsertRouteConnectionConfigOpenAI
-            | UpsertRouteConnectionConfigXAI,
+            UpsertGridConnectionConfigAnthropic
+            | UpsertGridConnectionConfigOpenAI
+            | UpsertGridConnectionConfigXAI,
             Field(
                 description="Complete new connection configuration, replacing the current one. The provider must match the connection and is immutable.",
                 discriminator="provider",
-                examples=[{"provider": "ANTHROPIC", "secret_id": "abc1234"}],
+                examples=[{"provider": "ANTHROPIC", "secret_name": "anthropic-key"}],
                 title="Config",
             ),
         ]
@@ -9115,68 +9426,13 @@ class UpdateRouteConnectionRequest(BaseModel):
     ]
 
 
-class RouteTombstone(BaseModel):
-    id: Annotated[
-        str, Field(description="Stable identifier of the deleted route.", title="Id")
+class GridClassifiersResponse(BaseModel):
+    items: Annotated[
+        list[GridClassifier], Field(description="Items in this page.", title="Items")
     ]
-    name: Annotated[str, Field(description="Name of the deleted route.", title="Name")]
-
-
-class Description1(RootModel[str]):
-    root: Annotated[
-        str | None,
-        Field(
-            description="New description. Omit to keep the current description; use an empty string to clear it. Null is not accepted.",
-            examples=["Assistant for code review and debugging."],
-            max_length=1000,
-            title="Description",
-        ),
-    ] = None
-
-
-class DisplayName1(RootModel[str]):
-    root: Annotated[
-        str | None,
-        Field(
-            description="New display label. Omit to keep the current label; null is not accepted.",
-            examples=["Assistant"],
-            max_length=255,
-            min_length=1,
-            title="Display Name",
-        ),
-    ] = None
-
-
-class UpdateRouteRequest(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    description: Annotated[
-        Description1 | None,
-        Field(
-            description="New description. Omit to keep the current description; use an empty string to clear it. Null is not accepted.",
-            examples=["Assistant for code review and debugging."],
-            title="Description",
-        ),
-    ] = None
-    display_name: Annotated[
-        DisplayName1 | None,
-        Field(
-            description="New display label. Omit to keep the current label; null is not accepted.",
-            examples=["Assistant"],
-            title="Display Name",
-        ),
-    ] = None
-    target: Annotated[
-        UpsertRouteTargetBasetenModelAPI
-        | UpsertRouteTargetConnection
-        | UpsertRouteTargetClassifier
-        | None,
-        Field(
-            description="Complete new target configuration. Omit to keep the current configuration; null is not accepted. Only the CLASSIFIER configuration of a router route is mutable.",
-            title="Target",
-        ),
-    ] = None
+    pagination: Annotated[
+        PaginationResponse, Field(description="Pagination metadata for the page.")
+    ]
 
 
 class VertexTargetConfig(BaseModel):
@@ -11224,7 +11480,7 @@ class GetBillingModelApisParams(BaseModel):
     ] = None
 
 
-class GetRoutesUsageParams(BaseModel):
+class GetGridRoutesUsageParams(BaseModel):
     cursor: Annotated[
         str | None,
         Field(
@@ -11528,18 +11784,6 @@ class AuditLogEventEnvironmentUpdated(BaseModel):
     schedules: Annotated[
         list[AuditLogEventAutoscalingScheduleChange] | None, Field(title="Schedules")
     ]
-    min_replica: Annotated[int, Field(title="Min Replica")]
-    max_replica: Annotated[int, Field(title="Max Replica")]
-    concurrency_target: Annotated[int, Field(title="Concurrency Target")]
-    autoscaling_window: Annotated[int | None, Field(title="Autoscaling Window")]
-    scale_down_delay: Annotated[int | None, Field(title="Scale Down Delay")]
-    target_utilization_percentage: Annotated[
-        int | None, Field(title="Target Utilization Percentage")
-    ]
-    target_in_flight_tokens: Annotated[
-        int | None, Field(title="Target In Flight Tokens")
-    ]
-    max_scale_down_rate: Annotated[float | None, Field(title="Max Scale Down Rate")]
     redeploy_on_promotion: Annotated[bool | None, Field(title="Redeploy On Promotion")]
     rolling_deploy: Annotated[bool | None, Field(title="Rolling Deploy")]
     rolling_deploy_strategy: Annotated[
@@ -11558,6 +11802,18 @@ class AuditLogEventEnvironmentUpdated(BaseModel):
     promotion_cleanup_strategy: Annotated[
         str | None, Field(title="Promotion Cleanup Strategy")
     ]
+    min_replica: Annotated[int, Field(title="Min Replica")]
+    max_replica: Annotated[int, Field(title="Max Replica")]
+    concurrency_target: Annotated[int, Field(title="Concurrency Target")]
+    autoscaling_window: Annotated[int | None, Field(title="Autoscaling Window")]
+    scale_down_delay: Annotated[int | None, Field(title="Scale Down Delay")]
+    target_utilization_percentage: Annotated[
+        int | None, Field(title="Target Utilization Percentage")
+    ]
+    target_in_flight_tokens: Annotated[
+        int | None, Field(title="Target In Flight Tokens")
+    ]
+    max_scale_down_rate: Annotated[float | None, Field(title="Max Scale Down Rate")]
     ramp_up_while_promoting: Annotated[
         bool | None, Field(title="Ramp Up While Promoting")
     ]
@@ -11602,6 +11858,20 @@ class AuditLogEventModelDeploymentAutoscalingSettingsChanged(BaseModel):
     deployment_name: Annotated[str, Field(title="Deployment Name")]
     deployment_type: Annotated[str | None, Field(title="Deployment Type")]
     previous_settings: AuditLogEventAutoscalingSettings | None
+
+
+class AuditLogEventModelDeploymentPromoted(BaseModel):
+    event_type: Annotated[
+        Literal["MODEL_DEPLOYMENT_PROMOTED"], Field(title="Event Type")
+    ]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    deployment_id: Annotated[str, Field(title="Deployment Id")]
+    deployment_name: Annotated[str, Field(title="Deployment Name")]
+    environment_name: Annotated[str | None, Field(title="Environment Name")]
+    environment_id: Annotated[str | None, Field(title="Environment Id")]
+    region_update: Annotated[str | None, Field(title="Region Update")]
+    promotion_settings_override: AuditLogEventPromotionSettingsOverride | None
 
 
 class AuditLogEventModelPromotionControlAction(BaseModel):
@@ -11737,6 +12007,152 @@ class Deployments(BaseModel):
     ]
 
 
+class AutoscalingScheduleUpsert(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: Annotated[
+        str | None,
+        Field(
+            description="Stable schedule identifier. Omit this field to create a schedule.",
+            title="Id",
+        ),
+    ] = None
+    name: Annotated[str, Field(description="Name of the schedule", title="Name")]
+    enabled: Annotated[
+        bool, Field(description="Whether the schedule is enabled", title="Enabled")
+    ]
+    autoscaling_settings: Annotated[
+        AutoscalingScheduleSettingsRequest,
+        Field(
+            description="Complete raw autoscaling overrides for the schedule. Every field is required; nullable fields store no schedule override and follow the current environment value."
+        ),
+    ]
+    cadence: Annotated[
+        Literal["DAILY", "HOURLY"],
+        Field(description="Recurring schedule cadence", title="Cadence"),
+    ]
+    weekdays: Annotated[
+        list[
+            Literal[
+                "SUNDAY",
+                "MONDAY",
+                "TUESDAY",
+                "WEDNESDAY",
+                "THURSDAY",
+                "FRIDAY",
+                "SATURDAY",
+            ]
+            | str
+        ],
+        Field(description="Weekdays on which the schedule runs", title="Weekdays"),
+    ]
+    start_hour: Annotated[
+        int | None,
+        Field(
+            description="Start hour in the environment schedule timezone. Omit for unrestricted HOURLY schedules.",
+            title="Start Hour",
+        ),
+    ] = None
+    start_minute: Annotated[
+        int,
+        Field(description="Start minute of the schedule window", title="Start Minute"),
+    ]
+    end_hour: Annotated[
+        int | None,
+        Field(
+            description="End hour in the environment schedule timezone. Omit for unrestricted HOURLY schedules.",
+            title="End Hour",
+        ),
+    ] = None
+    end_minute: Annotated[
+        int, Field(description="End minute of the schedule window", title="End Minute")
+    ]
+
+
+class UpdateAutoscalingScheduleSettings(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    timezone: Annotated[
+        str | None,
+        Field(
+            description="IANA timezone shared by the resulting collection. Omission preserves the current timezone; null is allowed only when deleting every schedule.",
+            title="Timezone",
+        ),
+    ] = None
+    schedules: Annotated[
+        list[
+            Annotated[
+                Annotated[
+                    AutoscalingScheduleUpsert | OneTimeAutoscalingScheduleUpsert,
+                    Field(discriminator="cadence"),
+                ]
+                | dict[str, Any],
+                Field(union_mode="left_to_right"),
+            ]
+        ]
+        | None,
+        Field(
+            description="Complete schedules to create or replace. Existing schedules omitted from this list are unchanged.",
+            title="Schedules",
+        ),
+    ] = None
+    delete_schedules: Annotated[
+        list[str] | None,
+        Field(
+            description="Stable identifiers of schedules to delete. To clear all schedules, include every existing schedule identifier.",
+            title="Delete Schedules",
+        ),
+    ] = None
+
+
+class UpdatePromotionSettings(BaseModel):
+    redeploy_on_promotion: Annotated[
+        bool | None,
+        Field(
+            description="Whether to deploy on all promotions. Enabling this flag allows model code to safely handle environment-specific logic. When a deployment is promoted, a new deployment will be created with a copy of the image.",
+            examples=[True],
+            title="Redeploy On Promotion",
+        ),
+    ] = None
+    rolling_deploy: Annotated[
+        bool | None,
+        Field(
+            description="Whether the environment should rely on rolling deploy orchestration.",
+            examples=[True],
+            title="Rolling Deploy",
+        ),
+    ] = None
+    promotion_cleanup_strategy: Annotated[
+        Literal["KEEP", "SCALE_TO_ZERO", "DEACTIVATE"] | str | None,
+        Field(
+            description="The cleanup strategy to use after a promotion completes.",
+            examples=["SCALE_TO_ZERO"],
+        ),
+    ] = None
+    rolling_deploy_config: Annotated[
+        UpdateRollingDeployConfig | None,
+        Field(description="Rolling deploy configuration for promotions"),
+    ] = None
+    ramp_up_while_promoting: Annotated[
+        bool | None,
+        Field(
+            description="Whether to ramp up traffic while promoting",
+            examples=[True],
+            title="Ramp Up While Promoting",
+        ),
+    ] = None
+    ramp_up_duration_seconds: Annotated[
+        int | None,
+        Field(
+            description="Duration of the ramp up in seconds",
+            examples=[600],
+            title="Ramp Up Duration Seconds",
+        ),
+    ] = None
+
+
 class RetryDeploymentResponse(BaseModel):
     retried: Annotated[
         bool,
@@ -11759,7 +12175,17 @@ class RetryDeploymentResponse(BaseModel):
 class ModelMetricDescriptor(BaseModel):
     name: Annotated[str, Field(description="Canonical metric name.", title="Name")]
     unit_hint: Annotated[
-        Literal["PER_SECOND", "SECONDS", "BYTES", "MEBIBYTES", "COUNT", "RATIO"] | str,
+        Literal[
+            "PER_SECOND",
+            "SECONDS",
+            "BYTES",
+            "MEBIBYTES",
+            "COUNT",
+            "RATIO",
+            "CELSIUS",
+            "WATTS",
+        ]
+        | str,
         Field(
             description="Advisory unit of the metric's values.",
             title="ModelMetricUnitHintV1",
@@ -11849,65 +12275,6 @@ class StartupPhaseSummary(BaseModel):
     ]
 
 
-class AutoscalingSchedule(BaseModel):
-    id: Annotated[
-        str, Field(description="Stable unique identifier of the schedule", title="Id")
-    ]
-    name: Annotated[str, Field(description="Name of the schedule", title="Name")]
-    enabled: Annotated[
-        bool, Field(description="Whether the schedule is enabled", title="Enabled")
-    ]
-    autoscaling_settings: Annotated[
-        AutoscalingScheduleSettings,
-        Field(
-            description="Raw autoscaling overrides applied during the schedule window"
-        ),
-    ]
-    cadence: Annotated[
-        Literal["DAILY", "HOURLY"],
-        Field(
-            description="Cadence of the schedule. DAILY runs once per selected weekday; HOURLY repeats the minute window every hour on selected weekdays.",
-            title="Cadence",
-        ),
-    ]
-    weekdays: Annotated[
-        list[
-            Literal[
-                "SUNDAY",
-                "MONDAY",
-                "TUESDAY",
-                "WEDNESDAY",
-                "THURSDAY",
-                "FRIDAY",
-                "SATURDAY",
-            ]
-            | str
-        ],
-        Field(description="Weekdays on which the schedule runs", title="Weekdays"),
-    ]
-    start_hour: Annotated[
-        int | None,
-        Field(
-            description="Start hour in the environment schedule timezone. Omitted for unrestricted HOURLY schedules.",
-            title="Start Hour",
-        ),
-    ] = None
-    start_minute: Annotated[
-        int,
-        Field(description="Start minute of the schedule window", title="Start Minute"),
-    ]
-    end_hour: Annotated[
-        int | None,
-        Field(
-            description="End hour in the environment schedule timezone. Omitted for unrestricted HOURLY schedules.",
-            title="End Hour",
-        ),
-    ] = None
-    end_minute: Annotated[
-        int, Field(description="End minute of the schedule window", title="End Minute")
-    ]
-
-
 class EnvironmentAutoscalingSchedules(BaseModel):
     timezone: Annotated[
         str | None,
@@ -11940,50 +12307,7 @@ class EnvironmentAutoscalingSchedules(BaseModel):
     ]
 
 
-class RollingDeployConfig(BaseModel):
-    rolling_deploy_strategy: Annotated[
-        Literal["REPLICA"] | str,
-        Field(
-            description="The rolling deploy strategy to use for promotions.",
-            examples=["REPLICA"],
-            title="RollingDeployStrategyV1",
-        ),
-    ] = "REPLICA"
-    max_surge_percent: Annotated[
-        int,
-        Field(
-            description="The maximum surge percentage for rolling deploys.",
-            examples=[25],
-            title="Max Surge Percent",
-        ),
-    ] = 25
-    max_unavailable_percent: Annotated[
-        int,
-        Field(
-            description="The maximum unavailable percentage for rolling deploys.",
-            examples=[10],
-            title="Max Unavailable Percent",
-        ),
-    ] = 0
-    stabilization_time_seconds: Annotated[
-        int,
-        Field(
-            description="The stabilization time in seconds for rolling deploys.",
-            examples=[300],
-            title="Stabilization Time Seconds",
-        ),
-    ] = 0
-    replica_overhead_percent: Annotated[
-        int,
-        Field(
-            description="The replica overhead percentage for rolling deploys.",
-            examples=[0],
-            title="Replica Overhead Percent",
-        ),
-    ] = 0
-
-
-class UpdatePromotionSettings(BaseModel):
+class ModelPromotionSettings(BaseModel):
     redeploy_on_promotion: Annotated[
         bool | None,
         Field(
@@ -11991,7 +12315,7 @@ class UpdatePromotionSettings(BaseModel):
             examples=[True],
             title="Redeploy On Promotion",
         ),
-    ] = None
+    ] = False
     rolling_deploy: Annotated[
         bool | None,
         Field(
@@ -11999,80 +12323,154 @@ class UpdatePromotionSettings(BaseModel):
             examples=[True],
             title="Rolling Deploy",
         ),
-    ] = None
+    ] = False
     promotion_cleanup_strategy: Annotated[
         Literal["KEEP", "SCALE_TO_ZERO", "DEACTIVATE"] | str | None,
         Field(
             description="The cleanup strategy to use after a promotion completes.",
             examples=["SCALE_TO_ZERO"],
         ),
-    ] = None
+    ] = "SCALE_TO_ZERO"
     rolling_deploy_config: Annotated[
-        UpdateRollingDeployConfig | None,
+        RollingDeployConfig | None,
         Field(description="Rolling deploy configuration for promotions"),
     ] = None
     ramp_up_while_promoting: Annotated[
         bool | None,
         Field(
-            description="Whether to ramp up traffic while promoting",
-            examples=[True],
+            deprecated=True,
+            description="Deprecated: models don't support canary promotions. Use `rolling_deploy`.",
             title="Ramp Up While Promoting",
         ),
-    ] = None
+    ] = False
     ramp_up_duration_seconds: Annotated[
         int | None,
         Field(
-            description="Duration of the ramp up in seconds",
-            examples=[600],
+            deprecated=True,
+            description="Deprecated: models don't support canary promotions.",
             title="Ramp Up Duration Seconds",
         ),
-    ] = None
+    ] = 600
 
 
-class CreateEnvironmentRequest(BaseModel):
-    name: Annotated[
-        str,
+class TrafficRoutingRule(BaseModel):
+    id: Annotated[str, Field(description="Unique identifier of the rule", title="Id")]
+    type: Annotated[
+        Literal["SHADOW"] | str,
         Field(
-            description="Name of the environment", examples=["staging"], title="Name"
+            description="Rule type. A shadow rule sends a copy of the environment's traffic to its target.",
+            title="Type",
         ),
     ]
-    autoscaling_settings: Annotated[
-        UpdateAutoscalingSettings | None,
+    targets: Annotated[
+        list[TrafficRoutingTarget],
         Field(
-            description="Autoscaling settings for the environment",
-            examples=[
-                {
-                    "autoscaling_window": 800,
-                    "concurrency_target": 3,
-                    "max_replica": 2,
-                    "max_scale_down_rate": None,
-                    "min_replica": 1,
-                    "scale_down_delay": 60,
-                    "target_in_flight_tokens": None,
-                    "target_utilization_percentage": None,
-                }
-            ],
+            description="Where the rule sends traffic. Empty if the target has been deleted.",
+            title="Targets",
+        ),
+    ]
+    percent_traffic: Annotated[
+        int,
+        Field(
+            description="Percentage of the environment's traffic shadowed",
+            title="Percent Traffic",
+        ),
+    ]
+    expires_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="When the rule stops, in ISO 8601 format", title="Expires At"
+        ),
+    ]
+    sampling_mode: Annotated[
+        Literal["RANDOM", "USER_SESSION"] | str,
+        Field(
+            description="How requests are picked for shadowing",
+            title="TrafficRoutingRuleShadowSamplingModeV1",
+        ),
+    ]
+    propagate_client_cancellation: Annotated[
+        bool,
+        Field(
+            description="Whether a shadow request is cancelled when the original client disconnects",
+            title="Propagate Client Cancellation",
+        ),
+    ]
+
+
+class TrafficRoutingRuleUpsert(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: Annotated[
+        str | None,
+        Field(
+            description="Omit to create a rule, or pass an existing rule's ID to replace it. A replace can't change the target: delete the rule and create a new one instead.",
+            title="Id",
         ),
     ] = None
-    promotion_settings: Annotated[
-        UpdatePromotionSettings | None,
+    type: Annotated[
+        Literal["SHADOW"] | str,
         Field(
-            description="Promotion settings for the environment. New Model environments use rolling promotions by default. Set `rolling_deploy` to `false` to opt out.",
-            examples=[
-                {
-                    "promotion_cleanup_strategy": None,
-                    "ramp_up_duration_seconds": 600,
-                    "ramp_up_while_promoting": True,
-                    "redeploy_on_promotion": True,
-                    "rolling_deploy": False,
-                    "rolling_deploy_config": None,
-                }
-            ],
+            description="Rule type. A shadow rule sends a copy of the environment's traffic to its target.",
+            title="Type",
+        ),
+    ]
+    targets: Annotated[
+        list[TrafficRoutingTargetUpsert],
+        Field(
+            description="Where the rule sends traffic. Exactly one target.",
+            max_length=1,
+            min_length=1,
+            title="Targets",
+        ),
+    ]
+    percent_traffic: Annotated[
+        int,
+        Field(
+            description="Percentage of the environment's traffic to shadow",
+            ge=1,
+            le=100,
+            title="Percent Traffic",
+        ),
+    ]
+    expires_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="When the rule stops, in ISO 8601 format with a timezone, at most 7 days out",
+            title="Expires At",
+        ),
+    ]
+    sampling_mode: Annotated[
+        Literal["RANDOM", "USER_SESSION"] | str,
+        Field(
+            description="How requests are picked for shadowing",
+            title="TrafficRoutingRuleShadowSamplingModeV1",
+        ),
+    ]
+    propagate_client_cancellation: Annotated[
+        bool,
+        Field(
+            description="Whether a shadow request is cancelled when the original client disconnects",
+            title="Propagate Client Cancellation",
+        ),
+    ]
+
+
+class UpdateTrafficRoutingSettings(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    rules: Annotated[
+        list[TrafficRoutingRuleUpsert] | None,
+        Field(
+            description="Complete rules to create or replace. Existing rules omitted here are unchanged.",
+            title="Rules",
         ),
     ] = None
-    request_backpressure_settings: Annotated[
-        UpdateRequestBackpressureSettings | None,
-        Field(description="Request backpressure settings for the environment."),
+    delete_rules: Annotated[
+        list[str] | None,
+        Field(description="IDs of rules to delete", title="Delete Rules"),
     ] = None
 
 
@@ -12099,16 +12497,16 @@ class UpdateEnvironmentRequest(BaseModel):
         ),
     ] = None
     promotion_settings: Annotated[
-        UpdatePromotionSettings | None,
+        UpdateModelPromotionSettings | None,
         Field(
             description="Promotion settings for the environment",
             examples=[
                 {
                     "promotion_cleanup_strategy": None,
-                    "ramp_up_duration_seconds": 600,
-                    "ramp_up_while_promoting": True,
+                    "ramp_up_duration_seconds": None,
+                    "ramp_up_while_promoting": None,
                     "redeploy_on_promotion": True,
-                    "rolling_deploy": None,
+                    "rolling_deploy": True,
                     "rolling_deploy_config": None,
                 }
             ],
@@ -12159,6 +12557,27 @@ class UpdateEnvironmentRequest(BaseModel):
         Field(
             description="Request backpressure settings for the environment.",
             examples=[{"policy": "REJECT_ON_FULL"}],
+        ),
+    ] = None
+    traffic_routing_settings: Annotated[
+        UpdateTrafficRoutingSettings | None,
+        Field(
+            description="Partial traffic routing rule update. Each submitted rule is a complete create or replace. Deletes are applied first. In development.",
+            examples=[
+                {
+                    "rules": [
+                        {
+                            "expires_at": "2026-10-13T18:00:00Z",
+                            "percent_traffic": 25,
+                            "propagate_client_cancellation": True,
+                            "sampling_mode": "USER_SESSION",
+                            "targets": [{"deployment_id": "abc123"}],
+                            "type": "SHADOW",
+                        }
+                    ]
+                },
+                {"delete_rules": ["rule-id"]},
+            ],
         ),
     ] = None
 
@@ -12281,6 +12700,44 @@ class CreateChainEnvironmentRequest(BaseModel):
     ] = None
 
 
+class ChainEnvironment(BaseModel):
+    name: Annotated[str, Field(description="Name of the environment", title="Name")]
+    created_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="Time the environment was created in ISO 8601 format",
+            title="Created At",
+        ),
+    ]
+    chain_id: Annotated[
+        str, Field(description="Unique identifier of the chain", title="Chain Id")
+    ]
+    promotion_settings: Annotated[
+        PromotionSettings, Field(description="Promotion settings for the environment")
+    ]
+    chainlet_settings: Annotated[
+        list[ChainletEnvironmentSettings],
+        Field(
+            description="Environment settings for the chainlets",
+            title="Chainlet Settings",
+        ),
+    ]
+    current_deployment: Annotated[
+        ChainDeployment | None,
+        Field(description="Current chain deployment of the environment"),
+    ]
+    candidate_deployment: Annotated[
+        ChainDeployment | None,
+        Field(
+            description="Candidate chain deployment being promoted to the environment, if a promotion is in progress"
+        ),
+    ] = None
+    in_progress_promotion: Annotated[
+        InProgressPromotion | None,
+        Field(description="Details of the in-progress promotion, if any"),
+    ] = None
+
+
 class UpdateChainEnvironmentRequest(BaseModel):
     promotion_settings: Annotated[
         UpdatePromotionSettings | None,
@@ -12343,7 +12800,7 @@ class TrainingJob(BaseModel):
     error_message: Annotated[
         str | None,
         Field(
-            description="Error message if the training job failed.",
+            description="Error message if the training job failed. While the job is pending, a hint when switching it to spot capacity would let it start sooner.",
             title="Error Message",
         ),
     ] = None
@@ -13540,7 +13997,7 @@ class ExploreMetadataResponse(BaseModel):
     ]
 
 
-class Route(BaseModel):
+class GridRoute(BaseModel):
     id: Annotated[str, Field(description="Stable route identifier.", title="Id")]
     name: Annotated[
         str,
@@ -13571,7 +14028,9 @@ class Route(BaseModel):
     ]
     target: Annotated[
         Annotated[
-            RouteTargetBasetenModelAPI | RouteTargetConnection | RouteTargetClassifier,
+            GridRouteTargetBasetenModelAPI
+            | GridRouteTargetConnection
+            | GridRouteTargetClassifier,
             Field(
                 description="Configured upstream target.",
                 discriminator="type",
@@ -13599,16 +14058,16 @@ class Route(BaseModel):
     ]
 
 
-class RoutesResponse(BaseModel):
+class GridRoutesResponse(BaseModel):
     items: Annotated[
-        list[Route], Field(description="Items in this page.", title="Items")
+        list[GridRoute], Field(description="Items in this page.", title="Items")
     ]
     pagination: Annotated[
         PaginationResponse, Field(description="Pagination metadata for the page.")
     ]
 
 
-class RoutesUsageBucket(BaseModel):
+class GridRouteUsageBucket(BaseModel):
     date: Annotated[
         date_aliased,
         Field(
@@ -13617,7 +14076,7 @@ class RoutesUsageBucket(BaseModel):
         ),
     ]
     results: Annotated[
-        list[RoutesUsageResult],
+        list[GridRouteUsageResult],
         Field(
             description="Usage broken down by the requested dimensions. Empty when there is no usage.",
             title="Results",
@@ -13625,33 +14084,93 @@ class RoutesUsageBucket(BaseModel):
     ]
 
 
-class RoutesUsageResponse(BaseModel):
+class GridRouteUsageResponse(BaseModel):
     items: Annotated[
-        list[RoutesUsageBucket], Field(description="Items in this page.", title="Items")
+        list[GridRouteUsageBucket],
+        Field(description="Items in this page.", title="Items"),
     ]
     pagination: Annotated[
         PaginationResponse, Field(description="Pagination metadata for the page.")
     ]
 
 
-class RouteEffectiveSpendLimit(BaseModel):
-    monthly_limit_usd: Annotated[
+class GridHarnessModel(BaseModel):
+    source: Annotated[
+        Literal["user", "team"] | str,
+        Field(
+            description="Where this role's route comes from. `team` covers both a route a team admin set and the default chosen from the team's Model API routes.",
+            title="GridSettingSourceV1",
+        ),
+    ]
+    route: Annotated[GridRoute, Field(description="Route to use for this role.")]
+
+
+class GridPrimaryHarnessDefaults(BaseModel):
+    primary: Annotated[
+        GridHarnessModel | None,
+        Field(
+            description="Route for the primary model, which new sessions use. Null when the team has no route to use."
+        ),
+    ]
+
+
+class UpdateGridHarnessDefaults(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    claude_code: Annotated[
+        UpdateGridBackgroundHarnessModels | None,
+        Field(
+            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
+        ),
+    ] = None
+    opencode: Annotated[
+        UpdateGridBackgroundHarnessModels | None,
+        Field(
+            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
+        ),
+    ] = None
+    codex: Annotated[
+        UpdateGridPrimaryHarnessModels | None,
+        Field(
+            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
+        ),
+    ] = None
+    pi: Annotated[
+        UpdateGridPrimaryHarnessModels | None,
+        Field(
+            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
+        ),
+    ] = None
+
+
+class UpdateGridTeamSettingsRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    harness_defaults: Annotated[
+        UpdateGridHarnessDefaults | None,
+        Field(
+            description="Harnesses to change; harnesses left out are unchanged. Pass null to clear every harness, so each role uses the team's default."
+        ),
+    ] = None
+    spend_limit: Annotated[
+        UpdateGridTeamSpendLimitSetting | None,
+        Field(
+            description="Spend limit fields to change. Pass null to remove the team's limits; omit to leave them unchanged."
+        ),
+    ] = None
+    team_id: Annotated[
         str | None,
         Field(
-            description="Spend limit in USD enforced for the current UTC calendar month: the user's own limit, else the team default. Null when no limit applies.",
-            examples=["200"],
-            title="Monthly Limit Usd",
+            description="ID of the team. When omitted, the team you belong to; required when you belong to several.",
+            examples=["abc1234"],
+            title="Team Id",
         ),
-    ]
-    source: Annotated[
-        Literal["user", "team"] | str | None,
-        Field(
-            description="Where the limit comes from: `user` when it is set on the user, `team` when it is the team default. Null when no limit applies."
-        ),
-    ]
+    ] = None
 
 
-class RouteSpendLimitSetting(BaseModel):
+class GridSpendLimitSetting(BaseModel):
     user_monthly_limit_usd: Annotated[
         str | None,
         Field(
@@ -13669,13 +14188,13 @@ class RouteSpendLimitSetting(BaseModel):
         ),
     ]
     team_default: Annotated[
-        RouteSpendLimitTeamDefault | None,
+        GridSpendLimitTeamDefault | None,
         Field(
             description="Per-member limit of the team. This limit applies when the user has no limit of their own. Null when there is none."
         ),
     ]
     effective: Annotated[
-        RouteEffectiveSpendLimit,
+        GridEffectiveSpendLimit,
         Field(description="The effective limit enforced for the current month."),
     ]
     team_wide_monthly_limit_usd: Annotated[
@@ -13688,7 +14207,7 @@ class RouteSpendLimitSetting(BaseModel):
     ]
 
 
-class RouteTeamUserSettings(BaseModel):
+class GridTeamUserSettings(BaseModel):
     team_id: Annotated[
         str, Field(description="ID of the team.", examples=["abc1234"], title="Team Id")
     ]
@@ -13710,7 +14229,7 @@ class RouteTeamUserSettings(BaseModel):
         ),
     ]
     spend_limit: Annotated[
-        RouteSpendLimitSetting,
+        GridSpendLimitSetting,
         Field(
             description="Spend limit for Baseten Grid in the team. Applies to requests with Routes keys the user created in the team; personal API keys are not limited."
         ),
@@ -13738,34 +14257,13 @@ class RouteTeamUserSettings(BaseModel):
     ]
 
 
-class RouteUserTeamSettingsList(BaseModel):
-    teams: Annotated[
-        list[RouteTeamUserSettings],
-        Field(
-            description="The user's settings in each team they have a role in and in any team they have Grid spend in this month, alphabetical by team name.",
-            title="Teams",
-        ),
+class GridTeamUserSettingsList(BaseModel):
+    items: Annotated[
+        list[GridTeamUserSettings],
+        Field(description="Items in this page.", title="Items"),
     ]
-
-
-class RouteHarnessModel(BaseModel):
-    source: Annotated[
-        Literal["user", "team"] | str,
-        Field(
-            description="Where this role's route comes from. `team` covers both a route a team admin set and the default chosen from the team's Model API routes.",
-            title="RouteSettingSourceV1",
-        ),
-    ]
-    route: Annotated[Route, Field(description="Route to use for this role.")]
-
-
-class RouteTeamUserSettingsList(BaseModel):
-    users: Annotated[
-        list[RouteTeamUserSettings],
-        Field(
-            description="Settings of each user with a role in the team and of anyone with Grid spend in the team this month.",
-            title="Users",
-        ),
+    pagination: Annotated[
+        PaginationResponse, Field(description="Pagination metadata for the page.")
     ]
 
 
@@ -14305,6 +14803,76 @@ class ListAuditLogsResponse(BaseModel):
     ]
 
 
+class PromotionEnvironmentSettingsUpdate(BaseModel):
+    region: Annotated[
+        str | None,
+        Field(
+            description="Region for the promoted deployment, from `GET /v1/teams/{team_id}/regions`. Use an empty string for Global. If omitted, the deployment keeps its region. Regional environments only accept Global deployments.",
+            title="Region",
+        ),
+    ] = None
+    instance_type_id: Annotated[
+        str | None,
+        Field(
+            description="Instance type for the promoted deployment, from `GET /v1/instance_types`.",
+            title="Instance Type Id",
+        ),
+    ] = None
+    autoscaling_settings: Annotated[
+        UpdateAutoscalingSettings | None,
+        Field(description="Autoscaling settings for the promoted deployment."),
+    ] = None
+    request_backpressure_settings: Annotated[
+        UpdateRequestBackpressureSettings | None,
+        Field(description="Request backpressure settings for the promoted deployment."),
+    ] = None
+    autoscaling_schedule_settings: Annotated[
+        UpdateAutoscalingScheduleSettings | None,
+        Field(
+            description="Autoscaling schedule changes for the environment, applied when the promotion completes."
+        ),
+    ] = None
+    promotion_settings: Annotated[
+        UpdatePromotionSettings | None,
+        Field(
+            description="Promotion settings for the environment, also used for this promotion."
+        ),
+    ] = None
+
+
+class PromoteRequest(BaseModel):
+    scale_down_previous_production: Annotated[
+        bool,
+        Field(
+            description="Whether to scale down the previous production deployment after promoting",
+            examples=[True],
+            title="Scale Down Previous Production",
+        ),
+    ] = True
+    preserve_env_instance_type: Annotated[
+        bool,
+        Field(
+            description="Whether to use the promoting deployment's instance type or preserve target environment's instance type",
+            examples=[True],
+            title="Preserve Env Instance Type",
+        ),
+    ] = True
+    environment_settings_update: Annotated[
+        PromotionEnvironmentSettingsUpdate | None,
+        Field(
+            description="Changes to the environment's settings. Omitted fields are unchanged. The promoted deployment uses the environment's current settings with these changes applied, and the environment keeps the result when the promotion completes.",
+            examples=[{"autoscaling_settings": {"max_replica": 4, "min_replica": 2}}],
+        ),
+    ] = None
+    promotion_settings_override: Annotated[
+        UpdatePromotionSettings | None,
+        Field(
+            description="Promotion settings for this promotion only. Omitted fields keep the environment's values, and the environment's promotion settings are unchanged.",
+            examples=[{"rolling_deploy_config": {"max_surge_percent": 50}}],
+        ),
+    ] = None
+
+
 class StartupAttempt(BaseModel):
     model_id: Annotated[
         str, Field(description="Unique identifier of the model.", title="Model Id")
@@ -14377,53 +14945,14 @@ class StartupAttempts(BaseModel):
     ]
 
 
-class PromotionSettings(BaseModel):
-    redeploy_on_promotion: Annotated[
-        bool | None,
-        Field(
-            description="Whether to deploy on all promotions. Enabling this flag allows model code to safely handle environment-specific logic. When a deployment is promoted, a new deployment will be created with a copy of the image.",
-            examples=[True],
-            title="Redeploy On Promotion",
-        ),
-    ] = False
-    rolling_deploy: Annotated[
-        bool | None,
-        Field(
-            description="Whether the environment should rely on rolling deploy orchestration.",
-            examples=[True],
-            title="Rolling Deploy",
-        ),
-    ] = False
-    promotion_cleanup_strategy: Annotated[
-        Literal["KEEP", "SCALE_TO_ZERO", "DEACTIVATE"] | str | None,
-        Field(
-            description="The cleanup strategy to use after a promotion completes.",
-            examples=["SCALE_TO_ZERO"],
-        ),
-    ] = "SCALE_TO_ZERO"
-    rolling_deploy_config: Annotated[
-        RollingDeployConfig | None,
-        Field(description="Rolling deploy configuration for promotions"),
-    ] = None
-    ramp_up_while_promoting: Annotated[
-        bool | None,
-        Field(
-            description="Whether to ramp up traffic while promoting",
-            examples=[True],
-            title="Ramp Up While Promoting",
-        ),
-    ] = False
-    ramp_up_duration_seconds: Annotated[
-        int | None,
-        Field(
-            description="Duration of the ramp up in seconds",
-            examples=[600],
-            title="Ramp Up Duration Seconds",
-        ),
-    ] = 600
+class EnvironmentTrafficRouting(BaseModel):
+    rules: Annotated[
+        list[TrafficRoutingRule],
+        Field(description="The environment's active rules", title="Rules"),
+    ]
 
 
-class ChainEnvironment(BaseModel):
+class Environment(BaseModel):
     name: Annotated[str, Field(description="Name of the environment", title="Name")]
     created_at: Annotated[
         AwareDatetime,
@@ -14432,32 +14961,110 @@ class ChainEnvironment(BaseModel):
             title="Created At",
         ),
     ]
-    chain_id: Annotated[
-        str, Field(description="Unique identifier of the chain", title="Chain Id")
-    ]
-    promotion_settings: Annotated[
-        PromotionSettings, Field(description="Promotion settings for the environment")
-    ]
-    chainlet_settings: Annotated[
-        list[ChainletEnvironmentSettings],
-        Field(
-            description="Environment settings for the chainlets",
-            title="Chainlet Settings",
-        ),
+    model_id: Annotated[
+        str, Field(description="Unique identifier of the model", title="Model Id")
     ]
     current_deployment: Annotated[
-        ChainDeployment | None,
-        Field(description="Current chain deployment of the environment"),
+        Deployment | None, Field(description="Current deployment of the environment")
     ]
     candidate_deployment: Annotated[
-        ChainDeployment | None,
+        Deployment | None,
         Field(
-            description="Candidate chain deployment being promoted to the environment, if a promotion is in progress"
+            description="Candidate deployment being promoted to the environment, if a promotion is in progress"
         ),
     ] = None
     in_progress_promotion: Annotated[
         InProgressPromotion | None,
         Field(description="Details of the in-progress promotion, if any"),
+    ] = None
+    autoscaling_settings: Annotated[
+        AutoscalingSettings,
+        Field(description="Autoscaling settings for the environment"),
+    ]
+    promotion_settings: Annotated[
+        ModelPromotionSettings,
+        Field(description="Promotion settings for the environment"),
+    ]
+    instance_type: Annotated[
+        InstanceType, Field(description="Instance type for the environment")
+    ]
+    request_backpressure_settings: Annotated[
+        RequestBackpressureSettings,
+        Field(description="Request backpressure settings for the environment."),
+    ]
+    autoscaling_schedules: Annotated[
+        EnvironmentAutoscalingSchedules | None,
+        Field(description="Autoscaling schedules and their evaluated state"),
+    ] = None
+    traffic_routing: Annotated[
+        EnvironmentTrafficRouting | None,
+        Field(description="The environment's traffic routing rules. In development."),
+    ] = None
+
+
+class Environments(BaseModel):
+    environments: Annotated[list[Environment], Field(title="Environments")]
+
+
+class UpdateEnvironmentResponse(BaseModel):
+    environment: Annotated[
+        Environment,
+        Field(
+            description="The environment after the update, matching the shape returned by GET."
+        ),
+    ]
+    status: Annotated[
+        Literal["ACCEPTED", "QUEUED", "UNCHANGED"] | str,
+        Field(
+            deprecated=True,
+            description="Deprecated. Kept for legacy autoscaling-only update operation behavior.",
+            title="UpdateAutoscalingSettingsStatusV1",
+        ),
+    ]
+    message: Annotated[
+        str,
+        Field(
+            deprecated=True,
+            description="Deprecated. Kept for legacy autoscaling-only update operation behavior.",
+            title="Message",
+        ),
+    ]
+
+
+class PromoteToEnvironmentRequest(BaseModel):
+    scale_down_previous_deployment: Annotated[
+        bool,
+        Field(
+            description="Whether to scale down the previous deployment after promoting",
+            examples=[True],
+            title="Scale Down Previous Deployment",
+        ),
+    ] = True
+    deployment_id: Annotated[
+        str,
+        Field(description="The id of the deployment to promote", title="Deployment Id"),
+    ]
+    preserve_env_instance_type: Annotated[
+        bool,
+        Field(
+            description="Whether to use the promoting deployment's instance type or preserve target environment's instance type",
+            examples=[True],
+            title="Preserve Env Instance Type",
+        ),
+    ] = True
+    environment_settings_update: Annotated[
+        PromotionEnvironmentSettingsUpdate | None,
+        Field(
+            description="Changes to the environment's settings. Omitted fields are unchanged. The promoted deployment uses the environment's current settings with these changes applied, and the environment keeps the result when the promotion completes.",
+            examples=[{"autoscaling_settings": {"max_replica": 4, "min_replica": 2}}],
+        ),
+    ] = None
+    promotion_settings_override: Annotated[
+        UpdatePromotionSettings | None,
+        Field(
+            description="Promotion settings for this promotion only. Omitted fields keep the environment's values, and the environment's promotion settings are unchanged.",
+            examples=[{"rolling_deploy_config": {"max_surge_percent": 50}}],
+        ),
     ] = None
 
 
@@ -14590,55 +15197,55 @@ class GetLoopsDeploymentMetricsResponse(BaseModel):
     ]
 
 
-class BackgroundHarnessDefaults(BaseModel):
+class GridBackgroundHarnessDefaults(BaseModel):
     primary: Annotated[
-        RouteHarnessModel | None,
+        GridHarnessModel | None,
         Field(
             description="Route for the primary model, which new sessions use. Null when the team has no route to use."
         ),
     ]
     background: Annotated[
-        RouteHarnessModel | None,
+        GridHarnessModel | None,
         Field(
             description="Route for background tasks, such as session titles. Null when the team has no route to use."
         ),
     ]
 
 
-class PrimaryHarnessDefaults(BaseModel):
-    primary: Annotated[
-        RouteHarnessModel | None,
-        Field(
-            description="Route for the primary model, which new sessions use. Null when the team has no route to use."
-        ),
-    ]
-
-
-class RouteHarnessDefaults(BaseModel):
+class GridHarnessDefaults(BaseModel):
     claude_code: Annotated[
-        BackgroundHarnessDefaults, Field(description="Default models for Claude Code.")
+        GridBackgroundHarnessDefaults,
+        Field(description="Default models for Claude Code."),
     ]
     opencode: Annotated[
-        BackgroundHarnessDefaults, Field(description="Default models for OpenCode.")
+        GridBackgroundHarnessDefaults, Field(description="Default models for OpenCode.")
     ]
     codex: Annotated[
-        PrimaryHarnessDefaults, Field(description="Default models for Codex.")
+        GridPrimaryHarnessDefaults, Field(description="Default models for Codex.")
     ]
-    pi: Annotated[PrimaryHarnessDefaults, Field(description="Default models for Pi.")]
+    pi: Annotated[
+        GridPrimaryHarnessDefaults, Field(description="Default models for Pi.")
+    ]
 
 
-class RouteTeamSettings(BaseModel):
+class GridTeamSettings(BaseModel):
     team_id: Annotated[
         str, Field(description="ID of the team.", examples=["abc1234"], title="Team Id")
     ]
+    team_name: Annotated[
+        str,
+        Field(
+            description="Name of the team.", examples=["Engineering"], title="Team Name"
+        ),
+    ]
     harness_defaults: Annotated[
-        RouteHarnessDefaults,
+        GridHarnessDefaults,
         Field(
             description="Route for each model role of each coding harness. A role with no route set by a team admin uses the default chosen from the team's Model API routes: the recommended model for `primary` and the lowest-priced model for `background`. These defaults never use external-provider routes."
         ),
     ]
     spend_limit: Annotated[
-        RouteTeamSpendLimitSetting,
+        GridTeamSpendLimitSetting,
         Field(
             description="Spend limits for Baseten Grid for members' spend in this team."
         ),
@@ -15241,80 +15848,6 @@ class ListSandboxesResponse(BaseModel):
                     "cursor": "eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ",
                 }
             ],
-        ),
-    ]
-
-
-class Environment(BaseModel):
-    name: Annotated[str, Field(description="Name of the environment", title="Name")]
-    created_at: Annotated[
-        AwareDatetime,
-        Field(
-            description="Time the environment was created in ISO 8601 format",
-            title="Created At",
-        ),
-    ]
-    model_id: Annotated[
-        str, Field(description="Unique identifier of the model", title="Model Id")
-    ]
-    current_deployment: Annotated[
-        Deployment | None, Field(description="Current deployment of the environment")
-    ]
-    candidate_deployment: Annotated[
-        Deployment | None,
-        Field(
-            description="Candidate deployment being promoted to the environment, if a promotion is in progress"
-        ),
-    ] = None
-    in_progress_promotion: Annotated[
-        InProgressPromotion | None,
-        Field(description="Details of the in-progress promotion, if any"),
-    ] = None
-    autoscaling_settings: Annotated[
-        AutoscalingSettings,
-        Field(description="Autoscaling settings for the environment"),
-    ]
-    promotion_settings: Annotated[
-        PromotionSettings, Field(description="Promotion settings for the environment")
-    ]
-    instance_type: Annotated[
-        InstanceType, Field(description="Instance type for the environment")
-    ]
-    request_backpressure_settings: Annotated[
-        RequestBackpressureSettings,
-        Field(description="Request backpressure settings for the environment."),
-    ]
-    autoscaling_schedules: Annotated[
-        EnvironmentAutoscalingSchedules | None,
-        Field(description="Autoscaling schedules and their evaluated state"),
-    ] = None
-
-
-class Environments(BaseModel):
-    environments: Annotated[list[Environment], Field(title="Environments")]
-
-
-class UpdateEnvironmentResponse(BaseModel):
-    environment: Annotated[
-        Environment,
-        Field(
-            description="The environment after the update, matching the shape returned by GET."
-        ),
-    ]
-    status: Annotated[
-        Literal["ACCEPTED", "QUEUED", "UNCHANGED"] | str,
-        Field(
-            deprecated=True,
-            description="Deprecated. Kept for legacy autoscaling-only update operation behavior.",
-            title="UpdateAutoscalingSettingsStatusV1",
-        ),
-    ]
-    message: Annotated[
-        str,
-        Field(
-            deprecated=True,
-            description="Deprecated. Kept for legacy autoscaling-only update operation behavior.",
-            title="Message",
         ),
     ]
 

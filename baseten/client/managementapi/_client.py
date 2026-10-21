@@ -34,6 +34,8 @@ from ._models import (
     CreatedModelDeployment,
     CreateEndpointRequest,
     CreateEnvironmentRequest,
+    CreateGridConnectionRequest,
+    CreateGridRouteRequest,
     CreateGroupRequest,
     CreateLibraryListingRequest,
     CreateLibraryListingVersionRequest,
@@ -47,8 +49,6 @@ from ._models import (
     CreateLoopsTrainerRequest,
     CreateModelDeploymentRequest,
     CreateModelRequest,
-    CreateRouteConnectionRequest,
-    CreateRouteRequest,
     CreateSandboxParams,
     CreateSandboxPreviewParams,
     CreateSandboxPreviewRequest,
@@ -109,6 +109,13 @@ from ._models import (
     GetDeploymentPatchesStateResponse,
     GetExploreMetadataParams,
     GetGatewayEventsParams,
+    GetGridClassifiersParams,
+    GetGridConnectionsParams,
+    GetGridRoutesParams,
+    GetGridRoutesUsageParams,
+    GetGridTeamSettingsParams,
+    GetGridTeamSettingsUsersParams,
+    GetGridTeamSettingsUsersUserIdParams,
     GetImageBuildLogsParams,
     GetImageParams,
     GetLogsResponse,
@@ -143,9 +150,6 @@ from ._models import (
     GetModelsEnvironmentsStartupsParams,
     GetModelsEnvironmentsStartupsSummaryParams,
     GetModelsParams,
-    GetRoutesConnectionsParams,
-    GetRoutesParams,
-    GetRoutesUsageParams,
     GetSandboxConfigurationResponse,
     GetSandboxLogsParams,
     GetSandboxMetricsParams,
@@ -172,6 +176,18 @@ from ._models import (
     GetVolumesParams,
     GetVolumesSyncsParams,
     GetVolumesVersionsParams,
+    GridClassifier,
+    GridClassifiersResponse,
+    GridConnection,
+    GridConnectionsResponse,
+    GridConnectionTombstone,
+    GridRoute,
+    GridRoutesResponse,
+    GridRouteTombstone,
+    GridRouteUsageResponse,
+    GridTeamSettings,
+    GridTeamUserSettings,
+    GridTeamUserSettingsList,
     Group,
     GroupsResponse,
     InstanceTypePrices,
@@ -240,17 +256,6 @@ from ._models import (
     RestoreVolumeVersionRequest,
     RestoreVolumeVersionResponse,
     RetryDeploymentResponse,
-    Route,
-    RouteConnection,
-    RouteConnectionsResponse,
-    RouteConnectionTombstone,
-    RoutesResponse,
-    RoutesUsageResponse,
-    RouteTeamSettings,
-    RouteTeamUserSettings,
-    RouteTeamUserSettingsList,
-    RouteTombstone,
-    RouteUserTeamSettingsList,
     Sandbox,
     SandboxImage,
     SandboxImageBuildLogsResponse,
@@ -293,15 +298,15 @@ from ._models import (
     UpdateEnvironmentGroupRequest,
     UpdateEnvironmentRequest,
     UpdateEnvironmentResponse,
+    UpdateGridConnectionRequest,
+    UpdateGridRouteRequest,
+    UpdateGridTeamSettingsRequest,
+    UpdateGridUserSettingsRequest,
     UpdateGroupRequest,
     UpdateLibraryListingRequest,
     UpdateLibraryListingVersionRequest,
     UpdateModelRequest,
     UpdateRequestBackpressureSettings,
-    UpdateRouteConnectionRequest,
-    UpdateRouteRequest,
-    UpdateRouteTeamSettingsRequest,
-    UpdateRouteUserSettingsRequest,
     UpdateSandboxParams,
     UpdateSandboxPreviewParams,
     UpdateSandboxPreviewRequest,
@@ -525,6 +530,36 @@ class ApiClient:
             ),
         )
 
+    def delete_grid_connections(self, *, connection_id: str) -> GridConnectionTombstone:
+        """Deletes a connection"""
+        return self._do_json(
+            GridConnectionTombstone,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/grid/connections/{}",
+                path_args=[connection_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def delete_grid_routes(self, *, route_id: str) -> GridRouteTombstone:
+        """Deletes a route"""
+        return self._do_json(
+            GridRouteTombstone,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/grid/routes/{}",
+                path_args=[route_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     def delete_image(
         self, *, image_name: str, params: DeleteImageParams | None = None
     ) -> SandboxImage:
@@ -656,38 +691,6 @@ class ApiClient:
                 method="DELETE",
                 path_fmt="/v1/models/{}/environments/{}",
                 path_args=[model_id, env_name],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def delete_routes(self, *, route_id: str) -> RouteTombstone:
-        """Deletes a route"""
-        return self._do_json(
-            RouteTombstone,
-            _ApiRequest(
-                method="DELETE",
-                path_fmt="/v1/routes/{}",
-                path_args=[route_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def delete_routes_connections(
-        self, *, connection_id: str
-    ) -> RouteConnectionTombstone:
-        """Deletes a connection"""
-        return self._do_json(
-            RouteConnectionTombstone,
-            _ApiRequest(
-                method="DELETE",
-                path_fmt="/v1/routes/connections/{}",
-                path_args=[connection_id],
                 body=None,
                 query=None,
                 success_codes=[200],
@@ -1278,6 +1281,160 @@ class ApiClient:
                 path_args=[group_id],
                 body=None,
                 query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_grid_classifiers(
+        self, *, params: GetGridClassifiersParams | None = None
+    ) -> GridClassifiersResponse:
+        """Lists classifiers available for intelligent routes"""
+        return self._do_json(
+            GridClassifiersResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/classifiers",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_grid_classifiers_classifier_id(
+        self, *, classifier_id: str
+    ) -> GridClassifier:
+        """Gets a classifier available for intelligent routes"""
+        return self._do_json(
+            GridClassifier,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/classifiers/{}",
+                path_args=[classifier_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_grid_connections(
+        self, *, params: GetGridConnectionsParams | None = None
+    ) -> GridConnectionsResponse:
+        """Lists connections"""
+        return self._do_json(
+            GridConnectionsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/connections",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_grid_routes(
+        self, *, params: GetGridRoutesParams | None = None
+    ) -> GridRoutesResponse:
+        """Lists routes"""
+        return self._do_json(
+            GridRoutesResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/routes",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_grid_routes_route_id(self, *, route_id: str) -> GridRoute:
+        """Gets a route"""
+        return self._do_json(
+            GridRoute,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/routes/{}",
+                path_args=[route_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_grid_routes_usage(
+        self, *, params: GetGridRoutesUsageParams | None = None
+    ) -> GridRouteUsageResponse:
+        """Gets daily Grid usage and estimated costs"""
+        return self._do_json(
+            GridRouteUsageResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/routes/usage",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_grid_team_settings(
+        self, *, params: GetGridTeamSettingsParams | None = None
+    ) -> GridTeamSettings:
+        """Gets a team's Grid settings by team ID or your only team"""
+        return self._do_json(
+            GridTeamSettings,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/team_settings",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_grid_team_settings_users(
+        self, *, params: GetGridTeamSettingsUsersParams | None = None
+    ) -> GridTeamUserSettingsList:
+        """Lists members' Grid settings"""
+        return self._do_json(
+            GridTeamUserSettingsList,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/team_settings/users",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_grid_team_settings_users_user_id(
+        self,
+        *,
+        user_id: str,
+        params: GetGridTeamSettingsUsersUserIdParams | None = None,
+    ) -> GridTeamUserSettings:
+        """Gets a user's Grid settings by team ID or your only team"""
+        return self._do_json(
+            GridTeamUserSettings,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/team_settings/users/{}",
+                path_args=[user_id],
+                body=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -2091,136 +2248,6 @@ class ApiClient:
                 path_args=[],
                 body=None,
                 query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_routes(self, *, params: GetRoutesParams | None = None) -> RoutesResponse:
-        """Lists routes"""
-        return self._do_json(
-            RoutesResponse,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/routes",
-                path_args=[],
-                body=None,
-                query=params,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_routes_connections(
-        self, *, params: GetRoutesConnectionsParams | None = None
-    ) -> RouteConnectionsResponse:
-        """Lists connections"""
-        return self._do_json(
-            RouteConnectionsResponse,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/routes/connections",
-                path_args=[],
-                body=None,
-                query=params,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_routes_route_id(self, *, route_id: str) -> Route:
-        """Gets a route"""
-        return self._do_json(
-            Route,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/routes/{}",
-                path_args=[route_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_routes_settings_teams(self, *, team_id: str) -> RouteTeamSettings:
-        """Gets a team's route settings"""
-        return self._do_json(
-            RouteTeamSettings,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/routes/settings/teams/{}",
-                path_args=[team_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_routes_settings_teams_users(
-        self, *, team_id: str
-    ) -> RouteTeamUserSettingsList:
-        """Lists users' route settings in a team"""
-        return self._do_json(
-            RouteTeamUserSettingsList,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/routes/settings/teams/{}/users",
-                path_args=[team_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_routes_settings_teams_users_user_id(
-        self, *, team_id: str, user_id: str
-    ) -> RouteTeamUserSettings:
-        """Gets a user's route settings in a team"""
-        return self._do_json(
-            RouteTeamUserSettings,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/routes/settings/teams/{}/users/{}",
-                path_args=[team_id, user_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_routes_settings_users_teams(
-        self, *, user_id: str
-    ) -> RouteUserTeamSettingsList:
-        """Lists a user's route settings in each of their teams"""
-        return self._do_json(
-            RouteUserTeamSettingsList,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/routes/settings/users/{}/teams",
-                path_args=[user_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_routes_usage(
-        self, *, params: GetRoutesUsageParams | None = None
-    ) -> RoutesUsageResponse:
-        """Gets daily route usage and estimated costs"""
-        return self._do_json(
-            RoutesUsageResponse,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/routes/usage",
-                path_args=[],
-                body=None,
-                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -3057,6 +3084,74 @@ class ApiClient:
             ),
         )
 
+    def patch_grid_connections(
+        self, *, connection_id: str, request: UpdateGridConnectionRequest
+    ) -> GridConnection:
+        """Updates a connection"""
+        return self._do_json(
+            GridConnection,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/grid/connections/{}",
+                path_args=[connection_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def patch_grid_routes(
+        self, *, route_id: str, request: UpdateGridRouteRequest
+    ) -> GridRoute:
+        """Updates a route"""
+        return self._do_json(
+            GridRoute,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/grid/routes/{}",
+                path_args=[route_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def patch_grid_team_settings(
+        self, *, request: UpdateGridTeamSettingsRequest
+    ) -> GridTeamSettings:
+        """Updates a team's Grid settings by team ID or your only team"""
+        return self._do_json(
+            GridTeamSettings,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/grid/team_settings",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def patch_grid_team_settings_users(
+        self, *, user_id: str, request: UpdateGridUserSettingsRequest
+    ) -> GridTeamUserSettings:
+        """Updates a user's Grid settings by team ID or your only team"""
+        return self._do_json(
+            GridTeamUserSettings,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/grid/team_settings/users/{}",
+                path_args=[user_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     def patch_library_listings(
         self, *, user_defined_listing_id: str, request: UpdateLibraryListingRequest
     ) -> LibraryListing:
@@ -3226,72 +3321,6 @@ class ApiClient:
                 method="PATCH",
                 path_fmt="/v1/models/{}/environments/{}",
                 path_args=[model_id, env_name],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def patch_routes(self, *, route_id: str, request: UpdateRouteRequest) -> Route:
-        """Updates a route"""
-        return self._do_json(
-            Route,
-            _ApiRequest(
-                method="PATCH",
-                path_fmt="/v1/routes/{}",
-                path_args=[route_id],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def patch_routes_connections(
-        self, *, connection_id: str, request: UpdateRouteConnectionRequest
-    ) -> RouteConnection:
-        """Updates a connection"""
-        return self._do_json(
-            RouteConnection,
-            _ApiRequest(
-                method="PATCH",
-                path_fmt="/v1/routes/connections/{}",
-                path_args=[connection_id],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def patch_routes_settings_teams(
-        self, *, team_id: str, request: UpdateRouteTeamSettingsRequest
-    ) -> RouteTeamSettings:
-        """Updates a team's route settings"""
-        return self._do_json(
-            RouteTeamSettings,
-            _ApiRequest(
-                method="PATCH",
-                path_fmt="/v1/routes/settings/teams/{}",
-                path_args=[team_id],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def patch_routes_settings_teams_users(
-        self, *, team_id: str, user_id: str, request: UpdateRouteUserSettingsRequest
-    ) -> RouteTeamUserSettings:
-        """Updates a user's route settings in a team"""
-        return self._do_json(
-            RouteTeamUserSettings,
-            _ApiRequest(
-                method="PATCH",
-                path_fmt="/v1/routes/settings/teams/{}/users/{}",
-                path_args=[team_id, user_id],
                 body=request,
                 query=None,
                 success_codes=[200],
@@ -3537,6 +3566,38 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/gateway/groups/{}/api_keys/register",
                 path_args=[group_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def post_grid_connections(
+        self, *, request: CreateGridConnectionRequest
+    ) -> GridConnection:
+        """Creates a connection"""
+        return self._do_json(
+            GridConnection,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/grid/connections",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def post_grid_routes(self, *, request: CreateGridRouteRequest) -> GridRoute:
+        """Creates a route"""
+        return self._do_json(
+            GridRoute,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/grid/routes",
+                path_args=[],
                 body=request,
                 query=None,
                 success_codes=[200],
@@ -4236,38 +4297,6 @@ class ApiClient:
             _ApiRequest(
                 method="POST",
                 path_fmt="/v1/prepare_model_upload",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def post_routes(self, *, request: CreateRouteRequest) -> Route:
-        """Creates a route"""
-        return self._do_json(
-            Route,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/routes",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def post_routes_connections(
-        self, *, request: CreateRouteConnectionRequest
-    ) -> RouteConnection:
-        """Creates a connection"""
-        return self._do_json(
-            RouteConnection,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/routes/connections",
                 path_args=[],
                 body=request,
                 query=None,
@@ -5007,6 +5036,38 @@ class AsyncApiClient:
             ),
         )
 
+    async def delete_grid_connections(
+        self, *, connection_id: str
+    ) -> GridConnectionTombstone:
+        """Deletes a connection"""
+        return await self._do_json(
+            GridConnectionTombstone,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/grid/connections/{}",
+                path_args=[connection_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def delete_grid_routes(self, *, route_id: str) -> GridRouteTombstone:
+        """Deletes a route"""
+        return await self._do_json(
+            GridRouteTombstone,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/grid/routes/{}",
+                path_args=[route_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     async def delete_image(
         self, *, image_name: str, params: DeleteImageParams | None = None
     ) -> SandboxImage:
@@ -5138,38 +5199,6 @@ class AsyncApiClient:
                 method="DELETE",
                 path_fmt="/v1/models/{}/environments/{}",
                 path_args=[model_id, env_name],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def delete_routes(self, *, route_id: str) -> RouteTombstone:
-        """Deletes a route"""
-        return await self._do_json(
-            RouteTombstone,
-            _ApiRequest(
-                method="DELETE",
-                path_fmt="/v1/routes/{}",
-                path_args=[route_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def delete_routes_connections(
-        self, *, connection_id: str
-    ) -> RouteConnectionTombstone:
-        """Deletes a connection"""
-        return await self._do_json(
-            RouteConnectionTombstone,
-            _ApiRequest(
-                method="DELETE",
-                path_fmt="/v1/routes/connections/{}",
-                path_args=[connection_id],
                 body=None,
                 query=None,
                 success_codes=[200],
@@ -5764,6 +5793,160 @@ class AsyncApiClient:
                 path_args=[group_id],
                 body=None,
                 query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_grid_classifiers(
+        self, *, params: GetGridClassifiersParams | None = None
+    ) -> GridClassifiersResponse:
+        """Lists classifiers available for intelligent routes"""
+        return await self._do_json(
+            GridClassifiersResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/classifiers",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_grid_classifiers_classifier_id(
+        self, *, classifier_id: str
+    ) -> GridClassifier:
+        """Gets a classifier available for intelligent routes"""
+        return await self._do_json(
+            GridClassifier,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/classifiers/{}",
+                path_args=[classifier_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_grid_connections(
+        self, *, params: GetGridConnectionsParams | None = None
+    ) -> GridConnectionsResponse:
+        """Lists connections"""
+        return await self._do_json(
+            GridConnectionsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/connections",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_grid_routes(
+        self, *, params: GetGridRoutesParams | None = None
+    ) -> GridRoutesResponse:
+        """Lists routes"""
+        return await self._do_json(
+            GridRoutesResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/routes",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_grid_routes_route_id(self, *, route_id: str) -> GridRoute:
+        """Gets a route"""
+        return await self._do_json(
+            GridRoute,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/routes/{}",
+                path_args=[route_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_grid_routes_usage(
+        self, *, params: GetGridRoutesUsageParams | None = None
+    ) -> GridRouteUsageResponse:
+        """Gets daily Grid usage and estimated costs"""
+        return await self._do_json(
+            GridRouteUsageResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/routes/usage",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_grid_team_settings(
+        self, *, params: GetGridTeamSettingsParams | None = None
+    ) -> GridTeamSettings:
+        """Gets a team's Grid settings by team ID or your only team"""
+        return await self._do_json(
+            GridTeamSettings,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/team_settings",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_grid_team_settings_users(
+        self, *, params: GetGridTeamSettingsUsersParams | None = None
+    ) -> GridTeamUserSettingsList:
+        """Lists members' Grid settings"""
+        return await self._do_json(
+            GridTeamUserSettingsList,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/team_settings/users",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_grid_team_settings_users_user_id(
+        self,
+        *,
+        user_id: str,
+        params: GetGridTeamSettingsUsersUserIdParams | None = None,
+    ) -> GridTeamUserSettings:
+        """Gets a user's Grid settings by team ID or your only team"""
+        return await self._do_json(
+            GridTeamUserSettings,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/team_settings/users/{}",
+                path_args=[user_id],
+                body=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -6577,138 +6760,6 @@ class AsyncApiClient:
                 path_args=[],
                 body=None,
                 query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_routes(
-        self, *, params: GetRoutesParams | None = None
-    ) -> RoutesResponse:
-        """Lists routes"""
-        return await self._do_json(
-            RoutesResponse,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/routes",
-                path_args=[],
-                body=None,
-                query=params,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_routes_connections(
-        self, *, params: GetRoutesConnectionsParams | None = None
-    ) -> RouteConnectionsResponse:
-        """Lists connections"""
-        return await self._do_json(
-            RouteConnectionsResponse,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/routes/connections",
-                path_args=[],
-                body=None,
-                query=params,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_routes_route_id(self, *, route_id: str) -> Route:
-        """Gets a route"""
-        return await self._do_json(
-            Route,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/routes/{}",
-                path_args=[route_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_routes_settings_teams(self, *, team_id: str) -> RouteTeamSettings:
-        """Gets a team's route settings"""
-        return await self._do_json(
-            RouteTeamSettings,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/routes/settings/teams/{}",
-                path_args=[team_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_routes_settings_teams_users(
-        self, *, team_id: str
-    ) -> RouteTeamUserSettingsList:
-        """Lists users' route settings in a team"""
-        return await self._do_json(
-            RouteTeamUserSettingsList,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/routes/settings/teams/{}/users",
-                path_args=[team_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_routes_settings_teams_users_user_id(
-        self, *, team_id: str, user_id: str
-    ) -> RouteTeamUserSettings:
-        """Gets a user's route settings in a team"""
-        return await self._do_json(
-            RouteTeamUserSettings,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/routes/settings/teams/{}/users/{}",
-                path_args=[team_id, user_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_routes_settings_users_teams(
-        self, *, user_id: str
-    ) -> RouteUserTeamSettingsList:
-        """Lists a user's route settings in each of their teams"""
-        return await self._do_json(
-            RouteUserTeamSettingsList,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/routes/settings/users/{}/teams",
-                path_args=[user_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_routes_usage(
-        self, *, params: GetRoutesUsageParams | None = None
-    ) -> RoutesUsageResponse:
-        """Gets daily route usage and estimated costs"""
-        return await self._do_json(
-            RoutesUsageResponse,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/routes/usage",
-                path_args=[],
-                body=None,
-                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -7547,6 +7598,74 @@ class AsyncApiClient:
             ),
         )
 
+    async def patch_grid_connections(
+        self, *, connection_id: str, request: UpdateGridConnectionRequest
+    ) -> GridConnection:
+        """Updates a connection"""
+        return await self._do_json(
+            GridConnection,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/grid/connections/{}",
+                path_args=[connection_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def patch_grid_routes(
+        self, *, route_id: str, request: UpdateGridRouteRequest
+    ) -> GridRoute:
+        """Updates a route"""
+        return await self._do_json(
+            GridRoute,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/grid/routes/{}",
+                path_args=[route_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def patch_grid_team_settings(
+        self, *, request: UpdateGridTeamSettingsRequest
+    ) -> GridTeamSettings:
+        """Updates a team's Grid settings by team ID or your only team"""
+        return await self._do_json(
+            GridTeamSettings,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/grid/team_settings",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def patch_grid_team_settings_users(
+        self, *, user_id: str, request: UpdateGridUserSettingsRequest
+    ) -> GridTeamUserSettings:
+        """Updates a user's Grid settings by team ID or your only team"""
+        return await self._do_json(
+            GridTeamUserSettings,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/grid/team_settings/users/{}",
+                path_args=[user_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     async def patch_library_listings(
         self, *, user_defined_listing_id: str, request: UpdateLibraryListingRequest
     ) -> LibraryListing:
@@ -7718,74 +7837,6 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/models/{}/environments/{}",
                 path_args=[model_id, env_name],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def patch_routes(
-        self, *, route_id: str, request: UpdateRouteRequest
-    ) -> Route:
-        """Updates a route"""
-        return await self._do_json(
-            Route,
-            _ApiRequest(
-                method="PATCH",
-                path_fmt="/v1/routes/{}",
-                path_args=[route_id],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def patch_routes_connections(
-        self, *, connection_id: str, request: UpdateRouteConnectionRequest
-    ) -> RouteConnection:
-        """Updates a connection"""
-        return await self._do_json(
-            RouteConnection,
-            _ApiRequest(
-                method="PATCH",
-                path_fmt="/v1/routes/connections/{}",
-                path_args=[connection_id],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def patch_routes_settings_teams(
-        self, *, team_id: str, request: UpdateRouteTeamSettingsRequest
-    ) -> RouteTeamSettings:
-        """Updates a team's route settings"""
-        return await self._do_json(
-            RouteTeamSettings,
-            _ApiRequest(
-                method="PATCH",
-                path_fmt="/v1/routes/settings/teams/{}",
-                path_args=[team_id],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def patch_routes_settings_teams_users(
-        self, *, team_id: str, user_id: str, request: UpdateRouteUserSettingsRequest
-    ) -> RouteTeamUserSettings:
-        """Updates a user's route settings in a team"""
-        return await self._do_json(
-            RouteTeamUserSettings,
-            _ApiRequest(
-                method="PATCH",
-                path_fmt="/v1/routes/settings/teams/{}/users/{}",
-                path_args=[team_id, user_id],
                 body=request,
                 query=None,
                 success_codes=[200],
@@ -8033,6 +8084,38 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/gateway/groups/{}/api_keys/register",
                 path_args=[group_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def post_grid_connections(
+        self, *, request: CreateGridConnectionRequest
+    ) -> GridConnection:
+        """Creates a connection"""
+        return await self._do_json(
+            GridConnection,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/grid/connections",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def post_grid_routes(self, *, request: CreateGridRouteRequest) -> GridRoute:
+        """Creates a route"""
+        return await self._do_json(
+            GridRoute,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/grid/routes",
+                path_args=[],
                 body=request,
                 query=None,
                 success_codes=[200],
@@ -8738,38 +8821,6 @@ class AsyncApiClient:
             _ApiRequest(
                 method="POST",
                 path_fmt="/v1/prepare_model_upload",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def post_routes(self, *, request: CreateRouteRequest) -> Route:
-        """Creates a route"""
-        return await self._do_json(
-            Route,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/routes",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def post_routes_connections(
-        self, *, request: CreateRouteConnectionRequest
-    ) -> RouteConnection:
-        """Creates a connection"""
-        return await self._do_json(
-            RouteConnection,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/routes/connections",
                 path_args=[],
                 body=request,
                 query=None,
