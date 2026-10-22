@@ -1048,7 +1048,8 @@ def _copy_command(source: str, destination: str) -> str:
     quoted = [
         "'" + value.replace("'", "'\\''") + "'" for value in (source, destination)
     ]
-    return f"cp -r {quoted[0]} {quoted[1]}"
+    # End option parsing so relative paths beginning with - remain operands.
+    return f"cp -r -- {quoted[0]} {quoted[1]}"
 
 
 def _watch_path(path: str, recursive: bool | None) -> str:

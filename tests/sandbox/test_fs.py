@@ -646,7 +646,9 @@ class TestSandboxFileSystem:
 
         fake = _Fake(handle)
         fake.sandbox().fs.copy(source="/tmp/it's", destination="/tmp/b c")
-        assert _body(fake.requests[0])["command"] == "cp -r '/tmp/it'\\''s' '/tmp/b c'"
+        assert (
+            _body(fake.requests[0])["command"] == "cp -r -- '/tmp/it'\\''s' '/tmp/b c'"
+        )
         assert _path(fake.requests[1]) == "/process/7"
 
     @pytest.mark.parametrize(
