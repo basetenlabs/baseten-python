@@ -17,6 +17,7 @@ from baseten.sandbox import (
     SandboxEnvValue,
     SandboxError,
     SandboxExpirationPolicyIdle,
+    SandboxFileSystemOptions,
     SandboxInfo,
     SandboxLifecycle,
     SandboxNetwork,
@@ -145,6 +146,7 @@ class TestSandboxClient:
             ),
             ports=[SandboxPort(target=80)],
             network=SandboxNetwork(subnet="default"),
+            filesystem=SandboxFileSystemOptions(max_memory_usage="80%"),
         )
         assert _body(api.requests[0]) == {
             "name": "sbx",
@@ -162,6 +164,7 @@ class TestSandboxClient:
             },
             "ports": [{"target": 80}],
             "network": {"subnet": "default"},
+            "filesystem": {"max_memory_usage": "80%"},
         }
 
     def test_sends_team_id_on_every_call_when_set(self) -> None:
@@ -458,6 +461,7 @@ def _info() -> SandboxInfo:
         lifecycle=None,
         ports=[],
         network=None,
+        filesystem=None,
         created_at=datetime(2026, 10, 6, tzinfo=UTC),
         updated_at=None,
         created_by=None,

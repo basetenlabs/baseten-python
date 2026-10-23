@@ -36,6 +36,7 @@ from ._models import (
     GetFilesystemParams,
     GetFilesystemResponse,
     GetFilesystemSearchParams,
+    GetFilesystemTreeParams,
     GetNetworkProcessPortsResponse,
     GetProcessResponse,
     GetWatchFilesystemParams,
@@ -147,7 +148,11 @@ class ApiClient:
                 body=None,
                 query=None,
                 success_codes=[200],
-                error_codes={400: "ErrorResponse", 500: "ErrorResponse"},
+                error_codes={
+                    400: "ErrorResponse",
+                    404: "ErrorResponse",
+                    500: "ErrorResponse",
+                },
             ),
         )
 
@@ -497,7 +502,9 @@ class ApiClient:
             ),
         )
 
-    def get_filesystem_tree(self, *, path: str) -> Directory:
+    def get_filesystem_tree(
+        self, *, path: str, params: GetFilesystemTreeParams | None = None
+    ) -> Directory:
         """Get directory tree"""
         return self._do_json(
             Directory,
@@ -506,7 +513,7 @@ class ApiClient:
                 path_fmt="/filesystem/tree/{}",
                 path_args=[path],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
@@ -704,6 +711,7 @@ class ApiClient:
                     403: "ErrorResponse",
                     409: "ErrorResponse",
                     500: "ErrorResponse",
+                    507: "ErrorResponse",
                 },
             ),
         )
@@ -1140,7 +1148,11 @@ class AsyncApiClient:
                 body=None,
                 query=None,
                 success_codes=[200],
-                error_codes={400: "ErrorResponse", 500: "ErrorResponse"},
+                error_codes={
+                    400: "ErrorResponse",
+                    404: "ErrorResponse",
+                    500: "ErrorResponse",
+                },
             ),
         )
 
@@ -1492,7 +1504,9 @@ class AsyncApiClient:
             ),
         )
 
-    async def get_filesystem_tree(self, *, path: str) -> Directory:
+    async def get_filesystem_tree(
+        self, *, path: str, params: GetFilesystemTreeParams | None = None
+    ) -> Directory:
         """Get directory tree"""
         return await self._do_json(
             Directory,
@@ -1501,7 +1515,7 @@ class AsyncApiClient:
                 path_fmt="/filesystem/tree/{}",
                 path_args=[path],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
@@ -1703,6 +1717,7 @@ class AsyncApiClient:
                     403: "ErrorResponse",
                     409: "ErrorResponse",
                     500: "ErrorResponse",
+                    507: "ErrorResponse",
                 },
             ),
         )

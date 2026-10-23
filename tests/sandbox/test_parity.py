@@ -237,11 +237,17 @@ _PARITY = {
     "SandboxFileSystemDirectory": _Parity(
         ours=_dataclass_fields(SandboxFileSystemDirectory),
         generated=baseten.client.sandboxapi.Directory,
+        generated_only={
+            "recursive": "set only by the tree read, which list does not use"
+        },
     ),
     "SandboxFileSystemFileInfo": _Parity(
         ours=_dataclass_fields(SandboxFileSystemFileInfo),
         generated=baseten.client.sandboxapi.File,
         renamed={"size": "size_bytes", "lastModified": "last_modified"},
+        generated_only={
+            "content": "set only by the tree read, which list does not use"
+        },
     ),
     "SandboxFileSystemSubdirectoryInfo": _Parity(
         ours=_dataclass_fields(SandboxFileSystemSubdirectoryInfo),

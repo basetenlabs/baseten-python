@@ -42,12 +42,14 @@ from baseten.sandbox._images import (
 )
 from baseten.sandbox._info import (
     SandboxEnvValue,
+    SandboxFileSystemOptions,
     SandboxInfo,
     SandboxLifecycle,
     SandboxNetwork,
     SandboxPort,
     SandboxStatus,
     envs_to_api,
+    filesystem_to_api,
     lifecycle_to_api,
     network_to_api,
     ports_to_api,
@@ -285,6 +287,7 @@ class SandboxClient:
         lifecycle: SandboxLifecycle | None = None,
         ports: Sequence[SandboxPort] | None = None,
         network: SandboxNetwork | None = None,
+        filesystem: SandboxFileSystemOptions | None = None,
     ) -> SandboxCreateResult:
         """Create a sandbox.
 
@@ -307,6 +310,8 @@ class SandboxClient:
             ports: Ports the sandbox exposes.
             network: Network configuration, which cannot be changed after
                 creation.
+            filesystem: Filesystem configuration, which cannot be changed
+                after creation.
         """
         with self._control_api() as api:
             sandbox = api.create_sandbox(
@@ -328,6 +333,9 @@ class SandboxClient:
                         else lifecycle_to_api(lifecycle),
                         ports=None if ports is None else ports_to_api(ports),
                         network=None if network is None else network_to_api(network),
+                        filesystem=None
+                        if filesystem is None
+                        else filesystem_to_api(filesystem),
                     )
                 ),
             )
@@ -670,6 +678,7 @@ class AsyncSandboxClient:
         lifecycle: SandboxLifecycle | None = None,
         ports: Sequence[SandboxPort] | None = None,
         network: SandboxNetwork | None = None,
+        filesystem: SandboxFileSystemOptions | None = None,
     ) -> AsyncSandboxCreateResult:
         """Create a sandbox. As :meth:`SandboxClient.create`."""
         with self._control_api() as api:
@@ -692,6 +701,9 @@ class AsyncSandboxClient:
                         else lifecycle_to_api(lifecycle),
                         ports=None if ports is None else ports_to_api(ports),
                         network=None if network is None else network_to_api(network),
+                        filesystem=None
+                        if filesystem is None
+                        else filesystem_to_api(filesystem),
                     )
                 ),
             )

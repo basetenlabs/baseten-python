@@ -124,6 +124,13 @@ class DockerServer(BaseModel):
             title="No Build",
         ),
     ] = None
+    rebuild_free: Annotated[
+        bool | None,
+        Field(
+            description="Reject requirements, requirements_file, system_packages, and build_commands. The base image must already contain them.",
+            title="Rebuild Free",
+        ),
+    ] = None
 
 
 class EgressRestrictions(BaseModel):
@@ -1083,9 +1090,9 @@ class ModelConfig(BaseModel):
         ),
     ] = None
     secrets: Annotated[
-        dict[str, str | None] | None,
+        list[str] | dict[str, str | None] | None,
         Field(
-            description="Declare secrets your model needs at runtime, such as API keys or access tokens. Use null as a placeholder; store actual values in your organization settings.",
+            description="Declare names of secrets your model needs at runtime, such as API keys or access tokens. Store actual values in your organization settings.",
             title="Secrets",
         ),
     ] = None

@@ -2855,115 +2855,245 @@ class InstanceTypePrices(BaseModel):
     ]
 
 
-class DeploymentArchivePayload(BaseModel):
-    config: Annotated[
-        dict[str, Any],
-        Field(description="Parsed model config as a JSON object.", title="Config"),
+class MaxScaleDownRate(RootModel[int]):
+    root: Annotated[
+        int,
+        Field(
+            description="Maximum percentage of replicas that can be removed per autoscaling window. Null stores no schedule override and follows the current environment value.",
+            ge=1,
+            le=50,
+            title="Max Scale Down Rate",
+        ),
     ]
-    raw_config: Annotated[
-        str | None,
-        Field(
-            description="Original config.yaml text, persisted as-is on the deployment. Best-effort: invalid raw configs are logged and dropped without failing the request.",
-            title="Raw Config",
-        ),
-    ] = None
-    user_env: Annotated[
-        dict[str, Any] | None,
-        Field(
-            description="Client environment metadata (e.g. client version, Python version). Validated server-side.",
-            title="User Env",
-        ),
-    ] = None
-    environment_name: Annotated[
-        str | None,
-        Field(
-            description="Stable environment to push to (e.g. `production`). If unset, the deployment is created without environment selection. Caller must have push permission for the named environment.",
-            title="Environment Name",
-        ),
-    ] = None
-    create_environment_if_missing: Annotated[
-        bool,
-        Field(
-            description="Create the environment named by `environment_name` if it does not exist yet. If false, a push to an environment that does not exist is rejected. Only meaningful when `environment_name` is set to something other than `production`, which always exists. This field currently defaults to true, but that default will change to false in a future release. Set it explicitly to avoid a behavior change.",
-            title="Create Environment If Missing",
-        ),
-    ] = True
-    region: Annotated[
-        str | None,
-        Field(description="Region in which to deploy the model", title="Region"),
-    ] = None
-    preserve_env_instance_type: Annotated[
-        bool,
-        Field(
-            description="Retain the target environment's current instance type rather than the one in `config`. Only meaningful when `environment_name` is set and that environment already exists.",
-            title="Preserve Env Instance Type",
-        ),
-    ] = True
-    deploy_timeout_minutes: Annotated[
+
+
+class AutoscalingScheduleSettingsRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    min_replica: Annotated[
+        int, Field(description="Minimum number of replicas", title="Min Replica")
+    ]
+    max_replica: Annotated[
+        int, Field(description="Maximum number of replicas", title="Max Replica")
+    ]
+    autoscaling_window: Annotated[
         int | None,
         Field(
-            description="Deploy timeout in minutes; allowed range 10 to 1440. Server default applies if unset.",
-            title="Deploy Timeout Minutes",
-        ),
-    ] = None
-    deployment_name: Annotated[
-        str | None,
-        Field(
-            description="Optional human-readable name for the deployment.",
-            title="Deployment Name",
-        ),
-    ] = None
-    labels: Annotated[
-        dict[str, Any] | None,
-        Field(
-            description="User-provided key-value labels for the deployment.",
-            title="Labels",
-        ),
-    ] = None
-    is_development: Annotated[
-        bool,
-        Field(
-            description="If true, push as a development deployment: the model's single mutable dev slot, created if absent and overwritten in place otherwise. The following fields must be left at their defaults: `environment_name`, `preserve_env_instance_type`, `deployment_name`.",
-            title="Is Development",
-        ),
-    ] = False
-
-
-class PrepareModelUploadRequest(BaseModel):
-    deployment: Annotated[
-        DeploymentArchivePayload,
-        Field(
-            description="Deployment-level payload, identical to the payload sent at commit."
+            description="Timeframe of traffic considered for autoscaling decisions. Null stores no schedule override and follows the current environment value.",
+            title="Autoscaling Window",
         ),
     ]
-    name: Annotated[
+    scale_down_delay: Annotated[
+        int | None,
+        Field(
+            description="Waiting period before scaling down any active replica. Null stores no schedule override and follows the current environment value.",
+            title="Scale Down Delay",
+        ),
+    ]
+    concurrency_target: Annotated[
+        int | None,
+        Field(
+            description="Number of requests per replica before scaling up. Null stores no schedule override and follows the current environment value.",
+            title="Concurrency Target",
+        ),
+    ]
+    target_utilization_percentage: Annotated[
+        int | None,
+        Field(
+            description="Target utilization percentage for scaling up/down. Null stores no schedule override and follows the current environment value.",
+            title="Target Utilization Percentage",
+        ),
+    ]
+    target_in_flight_tokens: Annotated[
+        int | None,
+        Field(
+            description="Target number of in-flight tokens for autoscaling decisions. Null stores no schedule override and follows the current environment value. Early access only.",
+            title="Target In Flight Tokens",
+        ),
+    ]
+    max_scale_down_rate: Annotated[
+        MaxScaleDownRate | None,
+        Field(
+            description="Maximum percentage of replicas that can be removed per autoscaling window. Null stores no schedule override and follows the current environment value.",
+            title="Max Scale Down Rate",
+        ),
+    ]
+
+
+class OneTimeAutoscalingScheduleUpsert(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: Annotated[
         str | None,
         Field(
-            description="Set to validate a new-model push. Exactly one of `name` or `model_id` is required.",
-            title="Name",
+            description="Stable schedule identifier. Omit this field to create a schedule.",
+            title="Id",
         ),
     ] = None
-    team_id: Annotated[
-        str | None,
+    name: Annotated[str, Field(description="Name of the schedule", title="Name")]
+    enabled: Annotated[
+        bool, Field(description="Whether the schedule is enabled", title="Enabled")
+    ]
+    autoscaling_settings: Annotated[
+        AutoscalingScheduleSettingsRequest,
         Field(
-            description="Team the new model will belong to. Only valid when `name` is set; defaults to the organization's default team when omitted. Must not be set when `model_id` is set (the existing model already has a team).",
-            title="Team Id",
+            description="Complete raw autoscaling overrides for the schedule. Every field is required; nullable fields store no schedule override and follow the current environment value."
+        ),
+    ]
+    cadence: Annotated[
+        Literal["ONE_TIME"],
+        Field(description="One-time schedule cadence", title="Cadence"),
+    ]
+    start_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="Inclusive start of the schedule window in ISO 8601 format. New schedules must start in the future.",
+            title="Start At",
+        ),
+    ]
+    end_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="Exclusive end of the schedule window in ISO 8601 format",
+            title="End At",
+        ),
+    ]
+
+
+class MaxScaleDownRate1(RootModel[int]):
+    root: Annotated[
+        int | None,
+        Field(
+            description="Maximum percentage of replicas that can be removed per autoscaling window (1–50). E.g. 20 means at most 20% of replicas are removed per window.",
+            examples=[20],
+            ge=1,
+            le=50,
+            title="Max Scale Down Rate",
         ),
     ] = None
-    model_id: Annotated[
-        str | None,
+
+
+class UpdateAutoscalingSettings(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    min_replica: Annotated[
+        int | None,
         Field(
-            description="Set to validate an add-deployment push to an existing model. Exactly one of `name` or `model_id` is required.",
-            title="Model Id",
+            description="Minimum number of replicas", examples=[0], title="Min Replica"
         ),
     ] = None
-    dry_run: Annotated[
-        bool,
+    max_replica: Annotated[
+        int | None,
         Field(
-            description="If true, validate the payload only and do not issue upload credentials. The response sets `creds`, `s3_bucket`, and `s3_key` to `null`.",
-            title="Dry Run",
+            description="Maximum number of replicas", examples=[7], title="Max Replica"
         ),
-    ] = False
+    ] = None
+    autoscaling_window: Annotated[
+        int | None,
+        Field(
+            description="Timeframe of traffic considered for autoscaling decisions",
+            examples=[600],
+            title="Autoscaling Window",
+        ),
+    ] = None
+    scale_down_delay: Annotated[
+        int | None,
+        Field(
+            description="Waiting period before scaling down any active replica",
+            examples=[120],
+            title="Scale Down Delay",
+        ),
+    ] = None
+    concurrency_target: Annotated[
+        int | None,
+        Field(
+            description="Number of requests per replica before scaling up",
+            examples=[2],
+            title="Concurrency Target",
+        ),
+    ] = None
+    target_utilization_percentage: Annotated[
+        int | None,
+        Field(
+            description="Target utilization percentage for scaling up/down.",
+            examples=[70],
+            title="Target Utilization Percentage",
+        ),
+    ] = None
+    target_in_flight_tokens: Annotated[
+        int | None,
+        Field(
+            description="Target number of in-flight tokens for autoscaling decisions. Early access only.",
+            examples=[40000],
+            title="Target In Flight Tokens",
+        ),
+    ] = None
+    max_scale_down_rate: Annotated[
+        MaxScaleDownRate1 | None,
+        Field(
+            description="Maximum percentage of replicas that can be removed per autoscaling window (1–50). E.g. 20 means at most 20% of replicas are removed per window.",
+            examples=[20],
+            title="Max Scale Down Rate",
+        ),
+    ] = None
+
+
+class UpdateRequestBackpressureSettings(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    policy: Annotated[
+        Literal["QUEUE_ON_FULL", "REJECT_ON_FULL"] | str | None,
+        Field(
+            description="Backpressure policy to apply. Null indicates no policy (on update, clears an existing one).",
+            examples=["REJECT_ON_FULL"],
+        ),
+    ] = None
+
+
+class UpdateRollingDeployConfig(BaseModel):
+    rolling_deploy_strategy: Annotated[
+        Literal["REPLICA"] | str | None,
+        Field(
+            description="The rolling deploy strategy to use for promotions.",
+            examples=["REPLICA"],
+        ),
+    ] = None
+    max_surge_percent: Annotated[
+        int | None,
+        Field(
+            description="The maximum surge percentage for rolling deploys.",
+            examples=[25],
+            title="Max Surge Percent",
+        ),
+    ] = None
+    max_unavailable_percent: Annotated[
+        int | None,
+        Field(
+            description="The maximum unavailable percentage for rolling deploys.",
+            examples=[10],
+            title="Max Unavailable Percent",
+        ),
+    ] = None
+    stabilization_time_seconds: Annotated[
+        int | None,
+        Field(
+            description="The stabilization time in seconds for rolling deploys.",
+            examples=[300],
+            title="Stabilization Time Seconds",
+        ),
+    ] = None
+    replica_overhead_percent: Annotated[
+        int | None,
+        Field(
+            description="The replica overhead percentage for rolling deploys.",
+            examples=[0],
+            title="Replica Overhead Percent",
+        ),
+    ] = None
 
 
 class AWSCredentials(BaseModel):
@@ -3117,6 +3247,48 @@ class AuditLogEventAutoscalingScheduleSettings(BaseModel):
     end_minute: Annotated[int | None, Field(title="End Minute")]
     start_at: Annotated[str | None, Field(title="Start At")] = None
     end_at: Annotated[str | None, Field(title="End At")] = None
+
+
+class AuditLogEventAutoscalingScheduleUpsert(BaseModel):
+    min_replica: Annotated[int, Field(title="Min Replica")]
+    max_replica: Annotated[int, Field(title="Max Replica")]
+    concurrency_target: Annotated[int | None, Field(title="Concurrency Target")]
+    autoscaling_window: Annotated[int | None, Field(title="Autoscaling Window")]
+    scale_down_delay: Annotated[int | None, Field(title="Scale Down Delay")]
+    target_utilization_percentage: Annotated[
+        int | None, Field(title="Target Utilization Percentage")
+    ]
+    target_in_flight_tokens: Annotated[
+        int | None, Field(title="Target In Flight Tokens")
+    ]
+    max_scale_down_rate: Annotated[float | None, Field(title="Max Scale Down Rate")]
+    schedule_name: Annotated[str, Field(title="Schedule Name")]
+    enabled: Annotated[bool, Field(title="Enabled")]
+    cadence: Annotated[str, Field(title="Cadence")]
+    timezone: Annotated[str | None, Field(title="Timezone")]
+    weekdays: Annotated[list[str] | None, Field(title="Weekdays")]
+    start_hour: Annotated[int | None, Field(title="Start Hour")]
+    start_minute: Annotated[int | None, Field(title="Start Minute")]
+    end_hour: Annotated[int | None, Field(title="End Hour")]
+    end_minute: Annotated[int | None, Field(title="End Minute")]
+    start_at: Annotated[str | None, Field(title="Start At")] = None
+    end_at: Annotated[str | None, Field(title="End At")] = None
+    schedule_id: Annotated[str | None, Field(title="Schedule Id")]
+
+
+class AuditLogEventAutoscalingSettingsUpdate(BaseModel):
+    min_replica: Annotated[int | None, Field(title="Min Replica")]
+    max_replica: Annotated[int | None, Field(title="Max Replica")]
+    concurrency_target: Annotated[int | None, Field(title="Concurrency Target")]
+    autoscaling_window: Annotated[int | None, Field(title="Autoscaling Window")]
+    scale_down_delay: Annotated[int | None, Field(title="Scale Down Delay")]
+    target_utilization_percentage: Annotated[
+        int | None, Field(title="Target Utilization Percentage")
+    ]
+    target_in_flight_tokens: Annotated[
+        int | None, Field(title="Target In Flight Tokens")
+    ]
+    max_scale_down_rate: Annotated[float | None, Field(title="Max Scale Down Rate")]
 
 
 class AuditLogEventAutoscalingSettings(BaseModel):
@@ -3544,6 +3716,10 @@ class AuditLogEventReplicaTerminated(BaseModel):
     replica_id: Annotated[str, Field(title="Replica Id")]
 
 
+class AuditLogEventRequestBackpressureSettingsUpdate(BaseModel):
+    policy: Annotated[str | None, Field(title="Policy")]
+
+
 class AuditLogEventRequireGroupBasedAdminsEnabled(BaseModel):
     event_type: Annotated[
         Literal["REQUIRE_GROUP_BASED_ADMINS_ENABLED"], Field(title="Event Type")
@@ -3762,46 +3938,6 @@ class LibraryListingSource(BaseModel):
     ] = None
 
 
-class ModelArchiveSource(BaseModel):
-    kind: Annotated[Literal["model_archive"], Field(title="Kind")] = "model_archive"
-    name: Annotated[str, Field(description="Name of the new model.", title="Name")]
-    deployment: Annotated[
-        DeploymentArchivePayload,
-        Field(
-            description="Deployment-level configuration for the model's first deployment."
-        ),
-    ]
-    s3_key: Annotated[
-        str | None,
-        Field(
-            description="S3 key of the uploaded archive, from the credentials returned by `POST /v1/prepare_model_upload`. Omit for model formats that are not built from an archive (for example, BIS-LLM), where prepare issues no upload target.",
-            title="S3 Key",
-        ),
-    ] = None
-    disable_archive_download: Annotated[
-        bool,
-        Field(
-            description="If true, the uploaded archive is not downloadable after creation. Locked at model creation; cannot be changed by subsequent deployments.",
-            title="Disable Archive Download",
-        ),
-    ] = False
-
-
-class CreateModelRequest(BaseModel):
-    source: Annotated[
-        Annotated[
-            LibraryListingSource | ModelArchiveSource,
-            Field(
-                description="Where the new model is created from.",
-                discriminator="kind",
-                title="Source",
-            ),
-        ]
-        | dict[str, Any],
-        Field(union_mode="left_to_right"),
-    ]
-
-
 class AutoscalingSettings(BaseModel):
     min_replica: Annotated[
         int, Field(description="Minimum number of replicas", title="Min Replica")
@@ -3894,35 +4030,6 @@ class UpdateModelRequest(BaseModel):
     ] = None
 
 
-class DeploymentArchiveSource(BaseModel):
-    kind: Annotated[Literal["model_archive"], Field(title="Kind")] = "model_archive"
-    deployment: Annotated[
-        DeploymentArchivePayload, Field(description="Deployment-level configuration.")
-    ]
-    s3_key: Annotated[
-        str | None,
-        Field(
-            description="S3 key of the uploaded archive, from the credentials returned by `POST /v1/prepare_model_upload`. Omit for model formats that are not built from an archive (for example, BIS-LLM), where prepare issues no upload target.",
-            title="S3 Key",
-        ),
-    ] = None
-
-
-class CreateModelDeploymentRequest(BaseModel):
-    source: Annotated[
-        Annotated[
-            DeploymentArchiveSource,
-            Field(
-                description="Where the new deployment is created from.",
-                discriminator="kind",
-                title="Source",
-            ),
-        ]
-        | dict[str, Any],
-        Field(union_mode="left_to_right"),
-    ]
-
-
 class DeploymentTombstone(BaseModel):
     id: Annotated[
         str, Field(description="Unique identifier of the deployment", title="Id")
@@ -3962,85 +4069,6 @@ class UpdateDeploymentRequest(BaseModel):
     ] = None
 
 
-class MaxScaleDownRate(RootModel[int]):
-    root: Annotated[
-        int | None,
-        Field(
-            description="Maximum percentage of replicas that can be removed per autoscaling window (1–50). E.g. 20 means at most 20% of replicas are removed per window.",
-            examples=[20],
-            ge=1,
-            le=50,
-            title="Max Scale Down Rate",
-        ),
-    ] = None
-
-
-class UpdateAutoscalingSettings(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    min_replica: Annotated[
-        int | None,
-        Field(
-            description="Minimum number of replicas", examples=[0], title="Min Replica"
-        ),
-    ] = None
-    max_replica: Annotated[
-        int | None,
-        Field(
-            description="Maximum number of replicas", examples=[7], title="Max Replica"
-        ),
-    ] = None
-    autoscaling_window: Annotated[
-        int | None,
-        Field(
-            description="Timeframe of traffic considered for autoscaling decisions",
-            examples=[600],
-            title="Autoscaling Window",
-        ),
-    ] = None
-    scale_down_delay: Annotated[
-        int | None,
-        Field(
-            description="Waiting period before scaling down any active replica",
-            examples=[120],
-            title="Scale Down Delay",
-        ),
-    ] = None
-    concurrency_target: Annotated[
-        int | None,
-        Field(
-            description="Number of requests per replica before scaling up",
-            examples=[2],
-            title="Concurrency Target",
-        ),
-    ] = None
-    target_utilization_percentage: Annotated[
-        int | None,
-        Field(
-            description="Target utilization percentage for scaling up/down.",
-            examples=[70],
-            title="Target Utilization Percentage",
-        ),
-    ] = None
-    target_in_flight_tokens: Annotated[
-        int | None,
-        Field(
-            description="Target number of in-flight tokens for autoscaling decisions. Early access only.",
-            examples=[40000],
-            title="Target In Flight Tokens",
-        ),
-    ] = None
-    max_scale_down_rate: Annotated[
-        MaxScaleDownRate | None,
-        Field(
-            description="Maximum percentage of replicas that can be removed per autoscaling window (1–50). E.g. 20 means at most 20% of replicas are removed per window.",
-            examples=[20],
-            title="Max Scale Down Rate",
-        ),
-    ] = None
-
-
 class UpdateAutoscalingSettingsResponse(BaseModel):
     status: Annotated[
         Literal["ACCEPTED", "QUEUED", "UNCHANGED"] | str,
@@ -4056,168 +4084,6 @@ class UpdateAutoscalingSettingsResponse(BaseModel):
             title="Message",
         ),
     ]
-
-
-class UpdateRequestBackpressureSettings(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    policy: Annotated[
-        Literal["QUEUE_ON_FULL", "REJECT_ON_FULL"] | str | None,
-        Field(
-            description="Backpressure policy to apply. Null indicates no policy (on update, clears an existing one).",
-            examples=["REJECT_ON_FULL"],
-        ),
-    ] = None
-
-
-class MaxScaleDownRate1(RootModel[int]):
-    root: Annotated[
-        int,
-        Field(
-            description="Maximum percentage of replicas that can be removed per autoscaling window. Null stores no schedule override and follows the current environment value.",
-            ge=1,
-            le=50,
-            title="Max Scale Down Rate",
-        ),
-    ]
-
-
-class AutoscalingScheduleSettingsRequest(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    min_replica: Annotated[
-        int, Field(description="Minimum number of replicas", title="Min Replica")
-    ]
-    max_replica: Annotated[
-        int, Field(description="Maximum number of replicas", title="Max Replica")
-    ]
-    autoscaling_window: Annotated[
-        int | None,
-        Field(
-            description="Timeframe of traffic considered for autoscaling decisions. Null stores no schedule override and follows the current environment value.",
-            title="Autoscaling Window",
-        ),
-    ]
-    scale_down_delay: Annotated[
-        int | None,
-        Field(
-            description="Waiting period before scaling down any active replica. Null stores no schedule override and follows the current environment value.",
-            title="Scale Down Delay",
-        ),
-    ]
-    concurrency_target: Annotated[
-        int | None,
-        Field(
-            description="Number of requests per replica before scaling up. Null stores no schedule override and follows the current environment value.",
-            title="Concurrency Target",
-        ),
-    ]
-    target_utilization_percentage: Annotated[
-        int | None,
-        Field(
-            description="Target utilization percentage for scaling up/down. Null stores no schedule override and follows the current environment value.",
-            title="Target Utilization Percentage",
-        ),
-    ]
-    target_in_flight_tokens: Annotated[
-        int | None,
-        Field(
-            description="Target number of in-flight tokens for autoscaling decisions. Null stores no schedule override and follows the current environment value. Early access only.",
-            title="Target In Flight Tokens",
-        ),
-    ]
-    max_scale_down_rate: Annotated[
-        MaxScaleDownRate1 | None,
-        Field(
-            description="Maximum percentage of replicas that can be removed per autoscaling window. Null stores no schedule override and follows the current environment value.",
-            title="Max Scale Down Rate",
-        ),
-    ]
-
-
-class OneTimeAutoscalingScheduleUpsert(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    id: Annotated[
-        str | None,
-        Field(
-            description="Stable schedule identifier. Omit this field to create a schedule.",
-            title="Id",
-        ),
-    ] = None
-    name: Annotated[str, Field(description="Name of the schedule", title="Name")]
-    enabled: Annotated[
-        bool, Field(description="Whether the schedule is enabled", title="Enabled")
-    ]
-    autoscaling_settings: Annotated[
-        AutoscalingScheduleSettingsRequest,
-        Field(
-            description="Complete raw autoscaling overrides for the schedule. Every field is required; nullable fields store no schedule override and follow the current environment value."
-        ),
-    ]
-    cadence: Annotated[
-        Literal["ONE_TIME"],
-        Field(description="One-time schedule cadence", title="Cadence"),
-    ]
-    start_at: Annotated[
-        AwareDatetime,
-        Field(
-            description="Inclusive start of the schedule window in ISO 8601 format. New schedules must start in the future.",
-            title="Start At",
-        ),
-    ]
-    end_at: Annotated[
-        AwareDatetime,
-        Field(
-            description="Exclusive end of the schedule window in ISO 8601 format",
-            title="End At",
-        ),
-    ]
-
-
-class UpdateRollingDeployConfig(BaseModel):
-    rolling_deploy_strategy: Annotated[
-        Literal["REPLICA"] | str | None,
-        Field(
-            description="The rolling deploy strategy to use for promotions.",
-            examples=["REPLICA"],
-        ),
-    ] = None
-    max_surge_percent: Annotated[
-        int | None,
-        Field(
-            description="The maximum surge percentage for rolling deploys.",
-            examples=[25],
-            title="Max Surge Percent",
-        ),
-    ] = None
-    max_unavailable_percent: Annotated[
-        int | None,
-        Field(
-            description="The maximum unavailable percentage for rolling deploys.",
-            examples=[10],
-            title="Max Unavailable Percent",
-        ),
-    ] = None
-    stabilization_time_seconds: Annotated[
-        int | None,
-        Field(
-            description="The stabilization time in seconds for rolling deploys.",
-            examples=[300],
-            title="Stabilization Time Seconds",
-        ),
-    ] = None
-    replica_overhead_percent: Annotated[
-        int | None,
-        Field(
-            description="The replica overhead percentage for rolling deploys.",
-            examples=[0],
-            title="Replica Overhead Percent",
-        ),
-    ] = None
 
 
 class ActivateResponse(BaseModel):
@@ -6267,6 +6133,13 @@ class SupportedModel(BaseModel):
             title="Enabled",
         ),
     ] = True
+    serverless: Annotated[
+        bool | None,
+        Field(
+            description="Early access only. Whether this workspace can use serverless Loops for this model.",
+            title="Serverless",
+        ),
+    ] = None
     enablement_details: Annotated[
         EnablementDetails | None,
         Field(
@@ -7585,95 +7458,14 @@ class EgressRestrictions(BaseModel):
     ] = None
 
 
-class CreateLLMModelRequest(BaseModel):
-    resources: Annotated[
-        dict[str, Any],
-        Field(description="Resources allocated to the model", title="Resources"),
-    ]
-    region: Annotated[
-        str | None,
-        Field(description="Region in which to deploy the model", title="Region"),
-    ] = None
-    llm_version: Annotated[
-        str | None,
-        Field(description="Version of the helm chart to use.", title="Llm Version"),
-    ] = None
-    llm_config: Annotated[
-        dict[str, Any] | None,
+class RuntimeOidc(BaseModel):
+    enabled: Annotated[
+        bool | None,
         Field(
-            description="Configuration specific to the LLM model", title="Llm Config"
+            description="If true, mounts an OIDC bearer token for the deployment to access at runtime. If unset, the platform default applies.",
+            title="Enabled",
         ),
     ] = None
-    environment_variables: Annotated[
-        dict[str, Any] | None,
-        Field(
-            description="Environment variables for the model",
-            title="Environment Variables",
-        ),
-    ] = None
-    model_metadata: Annotated[
-        dict[str, Any] | None,
-        Field(
-            description="Model metadata persisted into model_config",
-            title="Model Metadata",
-        ),
-    ] = None
-    autoscaling_settings: Annotated[
-        UpdateAutoscalingSettings | None,
-        Field(
-            description="Autoscaling settings for the model",
-            examples=[
-                {
-                    "autoscaling_window": 600,
-                    "concurrency_target": None,
-                    "max_replica": 5,
-                    "max_scale_down_rate": None,
-                    "min_replica": 1,
-                    "scale_down_delay": 300,
-                    "target_in_flight_tokens": None,
-                    "target_utilization_percentage": None,
-                }
-            ],
-        ),
-    ] = None
-    additional_autoscaling_config: Annotated[
-        dict[str, Any] | None,
-        Field(
-            description="Additional autoscaling configuration (e.g. target in-flight tokens)",
-            examples=[{"metrics": [{"name": "in_flight_tokens", "target": 40000}]}],
-            title="Additional Autoscaling Config",
-        ),
-    ] = None
-    metadata: Annotated[
-        dict[str, Any] | None,
-        Field(
-            description="User-defined metadata for the deployment",
-            examples=[{"environment": "production", "git_sha": "abc123"}],
-            title="Metadata",
-        ),
-    ] = None
-    weights: Annotated[
-        list[dict[str, Any]] | None,
-        Field(
-            description="Weight configurations for BDN model weight distribution",
-            examples=[
-                [
-                    {
-                        "mount_location": "/models/base",
-                        "source": "hf://meta-llama/Llama-3-8B",
-                    }
-                ]
-            ],
-            title="Weights",
-        ),
-    ] = None
-    egress_restrictions: Annotated[
-        EgressRestrictions | None,
-        Field(
-            description="Restricts this deployment's egress to the specified FQDNs and IP addresses; an empty block allows none. Requires the organization to have egress restrictions enabled."
-        ),
-    ] = None
-    name: Annotated[str, Field(description="Name of the model", title="Name")]
 
 
 class LLMModelHandle(BaseModel):
@@ -7692,96 +7484,6 @@ class LLMModelHandle(BaseModel):
         Field(
             description="Name of the instance type the model deployment is running on",
             title="Instance Type Name",
-        ),
-    ] = None
-
-
-class CreateLLMModelVersionRequest(BaseModel):
-    resources: Annotated[
-        dict[str, Any],
-        Field(description="Resources allocated to the model", title="Resources"),
-    ]
-    region: Annotated[
-        str | None,
-        Field(description="Region in which to deploy the model", title="Region"),
-    ] = None
-    llm_version: Annotated[
-        str | None,
-        Field(description="Version of the helm chart to use.", title="Llm Version"),
-    ] = None
-    llm_config: Annotated[
-        dict[str, Any] | None,
-        Field(
-            description="Configuration specific to the LLM model", title="Llm Config"
-        ),
-    ] = None
-    environment_variables: Annotated[
-        dict[str, Any] | None,
-        Field(
-            description="Environment variables for the model",
-            title="Environment Variables",
-        ),
-    ] = None
-    model_metadata: Annotated[
-        dict[str, Any] | None,
-        Field(
-            description="Model metadata persisted into model_config",
-            title="Model Metadata",
-        ),
-    ] = None
-    autoscaling_settings: Annotated[
-        UpdateAutoscalingSettings | None,
-        Field(
-            description="Autoscaling settings for the model",
-            examples=[
-                {
-                    "autoscaling_window": 600,
-                    "concurrency_target": None,
-                    "max_replica": 5,
-                    "max_scale_down_rate": None,
-                    "min_replica": 1,
-                    "scale_down_delay": 300,
-                    "target_in_flight_tokens": None,
-                    "target_utilization_percentage": None,
-                }
-            ],
-        ),
-    ] = None
-    additional_autoscaling_config: Annotated[
-        dict[str, Any] | None,
-        Field(
-            description="Additional autoscaling configuration (e.g. target in-flight tokens)",
-            examples=[{"metrics": [{"name": "in_flight_tokens", "target": 40000}]}],
-            title="Additional Autoscaling Config",
-        ),
-    ] = None
-    metadata: Annotated[
-        dict[str, Any] | None,
-        Field(
-            description="User-defined metadata for the deployment",
-            examples=[{"environment": "production", "git_sha": "abc123"}],
-            title="Metadata",
-        ),
-    ] = None
-    weights: Annotated[
-        list[dict[str, Any]] | None,
-        Field(
-            description="Weight configurations for BDN model weight distribution",
-            examples=[
-                [
-                    {
-                        "mount_location": "/models/base",
-                        "source": "hf://meta-llama/Llama-3-8B",
-                    }
-                ]
-            ],
-            title="Weights",
-        ),
-    ] = None
-    egress_restrictions: Annotated[
-        EgressRestrictions | None,
-        Field(
-            description="Restricts this deployment's egress to the specified FQDNs and IP addresses; an empty block allows none. Requires the organization to have egress restrictions enabled."
         ),
     ] = None
 
@@ -10053,6 +9755,16 @@ class SandboxPort(BaseModel):
     ]
 
 
+class SandboxFilesystem(BaseModel):
+    max_memory_usage: Annotated[
+        str | int | None,
+        Field(
+            description='Maximum memory the filesystem can use, as a percentage of the sandbox memory (e.g. "80%"), a size (e.g. "2Gi") or a number of Mi (e.g. 2048). Defaults to 50%.',
+            examples=["80%"],
+        ),
+    ] = None
+
+
 class SandboxApiPagination(BaseModel):
     has_more: Annotated[
         bool, Field(description="Whether another page is available.", examples=[True])
@@ -10281,12 +9993,12 @@ class CleanupSandboxImagesResponse(BaseModel):
 
 class SandboxPreviewConfiguration(BaseModel):
     public: Annotated[
-        bool,
+        bool | None,
         Field(
-            description="Whether the URL is reachable without a preview token. Defaults to false.",
+            description="Whether the URL is reachable without a preview token. Defaults to false on creation; a PATCH without it keeps the current value.",
             examples=[True],
         ),
-    ] = False
+    ] = None
     response_headers: Annotated[
         dict[str, str] | None,
         Field(
@@ -10300,14 +10012,6 @@ class SandboxPreviewConfiguration(BaseModel):
             examples=[{"Authorization": "Bearer app-internal-token"}],
         ),
     ] = None
-    ttl: Annotated[
-        str | None,
-        Field(
-            description="Lifetime counted from the request, using seconds, minutes, hours or composite durations such as 1h30m. Whole days are also supported, for example 7d; days cannot be combined with other units. The preview is deleted when it elapses.",
-            examples=["24h"],
-            pattern="^([0-9]+d|(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+)$",
-        ),
-    ] = None
     expires_at: Annotated[
         AwareDatetime | None,
         Field(
@@ -10318,6 +10022,14 @@ class SandboxPreviewConfiguration(BaseModel):
 
 
 class CreateSandboxPreviewRequest(SandboxPreviewConfiguration):
+    ttl: Annotated[
+        str | None,
+        Field(
+            description="Lifetime counted from the request, using seconds, minutes, hours or composite durations such as 1h30m. Whole days are also supported, for example 7d; days cannot be combined with other units. The preview is deleted when it elapses.",
+            examples=["24h"],
+            pattern="^([0-9]+d|(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+)$",
+        ),
+    ] = None
     create_if_not_exists: Annotated[
         bool | None,
         Field(
@@ -10341,7 +10053,14 @@ class CreateSandboxPreviewRequest(SandboxPreviewConfiguration):
 
 
 class UpdateSandboxPreviewRequest(SandboxPreviewConfiguration):
-    pass
+    ttl: Annotated[
+        str | None,
+        Field(
+            description="Lifetime counted from the request, using seconds, minutes, hours or composite durations such as 1h30m. Whole days are also supported, for example 7d; days cannot be combined with other units. The preview is deleted when it elapses.",
+            examples=["24h"],
+            pattern="^([0-9]+d|(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+)$",
+        ),
+    ] = None
 
 
 class SandboxPreview(SandboxPreviewConfiguration):
@@ -10382,7 +10101,7 @@ class SandboxPreview(SandboxPreviewConfiguration):
     public: Annotated[
         bool,
         Field(
-            description="Whether the URL is reachable without a preview token. Defaults to false.",
+            description="Whether the URL is reachable without a preview token. Defaults to false on creation; a PATCH without it keeps the current value.",
             examples=[True],
         ),
     ]
@@ -10397,7 +10116,7 @@ class CreateSandboxPreviewTokenRequest(BaseModel):
     create_if_not_exists: Annotated[
         bool | None,
         Field(
-            description="When true, return an existing unexpired token of this preview that stays valid at least until expires_at instead of creating a new one. Defaults to false when omitted."
+            description="When true, may return an existing unexpired token of this preview that stays valid at least until expires_at instead of creating a new one. A token created a moment earlier may not be found yet, in which case a new token is created. Defaults to false when omitted."
         ),
     ] = None
     expires_at: Annotated[
@@ -10420,7 +10139,7 @@ class SandboxPreviewToken(BaseModel):
     token: Annotated[
         str,
         Field(
-            description="Value to send as the bl_preview_token query parameter.",
+            description="Value to send as the preview_token query parameter.",
             examples=["7f3k2m9q1x8c4v6b0n5z"],
         ),
     ]
@@ -11767,246 +11486,6 @@ class EnvironmentGroups(BaseModel):
     ]
 
 
-class AuditLogEventAutoscalingScheduleChange(BaseModel):
-    action: Annotated[
-        Literal["CREATED", "UPDATED", "DELETED", "UNCHANGED"] | str,
-        Field(
-            description="What an autoscaling change did to one schedule.",
-            title="AuditLogEventAutoscalingScheduleActionV1",
-        ),
-    ]
-    schedule_id: Annotated[str, Field(title="Schedule Id")]
-    previous: AuditLogEventAutoscalingScheduleSettings | None
-    current: AuditLogEventAutoscalingScheduleSettings | None
-
-
-class AuditLogEventEnvironmentUpdated(BaseModel):
-    schedules: Annotated[
-        list[AuditLogEventAutoscalingScheduleChange] | None, Field(title="Schedules")
-    ]
-    redeploy_on_promotion: Annotated[bool | None, Field(title="Redeploy On Promotion")]
-    rolling_deploy: Annotated[bool | None, Field(title="Rolling Deploy")]
-    rolling_deploy_strategy: Annotated[
-        str | None, Field(title="Rolling Deploy Strategy")
-    ]
-    max_unavailable_percent: Annotated[
-        int | None, Field(title="Max Unavailable Percent")
-    ]
-    max_surge_percent: Annotated[int | None, Field(title="Max Surge Percent")]
-    stabilization_time_seconds: Annotated[
-        int | None, Field(title="Stabilization Time Seconds")
-    ]
-    replica_overhead_percent: Annotated[
-        int | None, Field(title="Replica Overhead Percent")
-    ]
-    promotion_cleanup_strategy: Annotated[
-        str | None, Field(title="Promotion Cleanup Strategy")
-    ]
-    min_replica: Annotated[int, Field(title="Min Replica")]
-    max_replica: Annotated[int, Field(title="Max Replica")]
-    concurrency_target: Annotated[int, Field(title="Concurrency Target")]
-    autoscaling_window: Annotated[int | None, Field(title="Autoscaling Window")]
-    scale_down_delay: Annotated[int | None, Field(title="Scale Down Delay")]
-    target_utilization_percentage: Annotated[
-        int | None, Field(title="Target Utilization Percentage")
-    ]
-    target_in_flight_tokens: Annotated[
-        int | None, Field(title="Target In Flight Tokens")
-    ]
-    max_scale_down_rate: Annotated[float | None, Field(title="Max Scale Down Rate")]
-    ramp_up_while_promoting: Annotated[
-        bool | None, Field(title="Ramp Up While Promoting")
-    ]
-    ramp_up_duration_seconds: Annotated[
-        int | None, Field(title="Ramp Up Duration Seconds")
-    ]
-    ramp_up_step_size: Annotated[int | None, Field(title="Ramp Up Step Size")]
-    request_backpressure_policy: Annotated[
-        str | None, Field(title="Request Backpressure Policy")
-    ] = None
-    model_id: Annotated[str, Field(title="Model Id")]
-    model_name: Annotated[str, Field(title="Model Name")]
-    environment_name: Annotated[str, Field(title="Environment Name")]
-    deployment_type: Annotated[str | None, Field(title="Deployment Type")]
-    event_type: Annotated[Literal["ENVIRONMENT_UPDATED"], Field(title="Event Type")]
-    previous_settings: AuditLogEventEnvironmentSettings | None
-
-
-class AuditLogEventModelDeploymentAutoscalingSettingsChanged(BaseModel):
-    schedules: Annotated[
-        list[AuditLogEventAutoscalingScheduleChange] | None, Field(title="Schedules")
-    ]
-    min_replica: Annotated[int, Field(title="Min Replica")]
-    max_replica: Annotated[int, Field(title="Max Replica")]
-    concurrency_target: Annotated[int, Field(title="Concurrency Target")]
-    autoscaling_window: Annotated[int | None, Field(title="Autoscaling Window")]
-    scale_down_delay: Annotated[int | None, Field(title="Scale Down Delay")]
-    target_utilization_percentage: Annotated[
-        int | None, Field(title="Target Utilization Percentage")
-    ]
-    target_in_flight_tokens: Annotated[
-        int | None, Field(title="Target In Flight Tokens")
-    ]
-    max_scale_down_rate: Annotated[float | None, Field(title="Max Scale Down Rate")]
-    event_type: Annotated[
-        Literal["MODEL_DEPLOYMENT_AUTOSCALING_SETTINGS_CHANGED"],
-        Field(title="Event Type"),
-    ]
-    model_id: Annotated[str, Field(title="Model Id")]
-    model_name: Annotated[str, Field(title="Model Name")]
-    deployment_id: Annotated[str, Field(title="Deployment Id")]
-    deployment_name: Annotated[str, Field(title="Deployment Name")]
-    deployment_type: Annotated[str | None, Field(title="Deployment Type")]
-    previous_settings: AuditLogEventAutoscalingSettings | None
-
-
-class AuditLogEventModelDeploymentPromoted(BaseModel):
-    event_type: Annotated[
-        Literal["MODEL_DEPLOYMENT_PROMOTED"], Field(title="Event Type")
-    ]
-    model_id: Annotated[str, Field(title="Model Id")]
-    model_name: Annotated[str, Field(title="Model Name")]
-    deployment_id: Annotated[str, Field(title="Deployment Id")]
-    deployment_name: Annotated[str, Field(title="Deployment Name")]
-    environment_name: Annotated[str | None, Field(title="Environment Name")]
-    environment_id: Annotated[str | None, Field(title="Environment Id")]
-    region_update: Annotated[str | None, Field(title="Region Update")]
-    promotion_settings_override: AuditLogEventPromotionSettingsOverride | None
-
-
-class AuditLogEventModelPromotionControlAction(BaseModel):
-    event_type: Annotated[
-        Literal["MODEL_PROMOTION_CONTROL_ACTION"], Field(title="Event Type")
-    ]
-    model_id: Annotated[str, Field(title="Model Id")]
-    model_name: Annotated[str, Field(title="Model Name")]
-    deployment_id: Annotated[str, Field(title="Deployment Id")]
-    deployment_name: Annotated[str, Field(title="Deployment Name")]
-    environment_name: Annotated[str, Field(title="Environment Name")]
-    environment_id: Annotated[str | None, Field(title="Environment Id")]
-    action: Annotated[
-        Literal[
-            "PAUSE", "RESUME", "FORCE_CANCEL", "FORCE_ROLL_FORWARD", "GRACEFUL_CANCEL"
-        ]
-        | str,
-        Field(
-            description="User-initiated promotion control signal recorded on a promotion-control event.",
-            title="AuditLogPromotionControlActionV1",
-        ),
-    ]
-
-
-class Deployment(BaseModel):
-    id: Annotated[
-        str, Field(description="Unique identifier of the deployment", title="Id")
-    ]
-    created_at: Annotated[
-        AwareDatetime,
-        Field(
-            description="Time the deployment was created in ISO 8601 format",
-            title="Created At",
-        ),
-    ]
-    name: Annotated[str, Field(description="Name of the deployment", title="Name")]
-    model_id: Annotated[
-        str, Field(description="Unique identifier of the model", title="Model Id")
-    ]
-    is_production: Annotated[
-        bool,
-        Field(
-            description="Whether the deployment is the production deployment of the model",
-            title="Is Production",
-        ),
-    ]
-    is_development: Annotated[
-        bool,
-        Field(
-            description="Whether the deployment is the development deployment of the model",
-            title="Is Development",
-        ),
-    ]
-    status: Annotated[
-        Literal[
-            "BUILDING",
-            "DEPLOYING",
-            "DEPLOY_FAILED",
-            "LOADING_MODEL",
-            "ACTIVE",
-            "UNHEALTHY",
-            "BUILD_FAILED",
-            "BUILD_STOPPED",
-            "DEACTIVATING",
-            "INACTIVE",
-            "FAILED",
-            "UPDATING",
-            "SCALED_TO_ZERO",
-            "WAKING_UP",
-        ]
-        | str,
-        Field(description="Status of the deployment", title="DeploymentStatusV1"),
-    ]
-    active_replica_count: Annotated[
-        int,
-        Field(description="Number of active replicas", title="Active Replica Count"),
-    ]
-    autoscaling_settings: Annotated[
-        AutoscalingSettings | None,
-        Field(
-            description="Autoscaling settings for the deployment. If null, the model has not finished deploying"
-        ),
-    ]
-    instance_type_name: Annotated[
-        str | None,
-        Field(
-            description="Name of the instance type the model deployment is running on",
-            title="Instance Type Name",
-        ),
-    ]
-    environment: Annotated[
-        str | None,
-        Field(
-            description="The environment associated with the deployment",
-            title="Environment",
-        ),
-    ]
-    labels: Annotated[
-        dict[str, Any] | None,
-        Field(
-            description="User-provided key-value labels for the deployment",
-            title="Labels",
-        ),
-    ] = None
-    region: Annotated[
-        Region | None,
-        Field(description="The selected region for the deployment, if any"),
-    ] = None
-    request_backpressure_settings: Annotated[
-        RequestBackpressureSettings,
-        Field(
-            description="Effective request backpressure settings for the deployment."
-        ),
-    ]
-
-
-class CreatedModelDeployment(BaseModel):
-    model: Annotated[
-        Model,
-        Field(
-            description="The model the deployment belongs to. May have been created by this call."
-        ),
-    ]
-    deployment: Annotated[
-        Deployment, Field(description="The newly created deployment.")
-    ]
-
-
-class Deployments(BaseModel):
-    deployments: Annotated[
-        list[Deployment],
-        Field(description="A list of deployments of a model", title="Deployments"),
-    ]
-
-
 class AutoscalingScheduleUpsert(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -12149,6 +11628,336 @@ class UpdatePromotionSettings(BaseModel):
             description="Duration of the ramp up in seconds",
             examples=[600],
             title="Ramp Up Duration Seconds",
+        ),
+    ] = None
+
+
+class AuditLogEventAutoscalingScheduleChange(BaseModel):
+    action: Annotated[
+        Literal["CREATED", "UPDATED", "DELETED", "UNCHANGED"] | str,
+        Field(
+            description="What an autoscaling change did to one schedule.",
+            title="AuditLogEventAutoscalingScheduleActionV1",
+        ),
+    ]
+    schedule_id: Annotated[str, Field(title="Schedule Id")]
+    previous: AuditLogEventAutoscalingScheduleSettings | None
+    current: AuditLogEventAutoscalingScheduleSettings | None
+
+
+class AuditLogEventAutoscalingScheduleOperations(BaseModel):
+    timezone: Annotated[str | None, Field(title="Timezone")]
+    schedules: Annotated[
+        list[AuditLogEventAutoscalingScheduleUpsert], Field(title="Schedules")
+    ]
+    delete_schedule_ids: Annotated[list[str], Field(title="Delete Schedule Ids")]
+
+
+class AuditLogEventEnvironmentUpdated(BaseModel):
+    schedules: Annotated[
+        list[AuditLogEventAutoscalingScheduleChange] | None, Field(title="Schedules")
+    ]
+    redeploy_on_promotion: Annotated[bool | None, Field(title="Redeploy On Promotion")]
+    rolling_deploy: Annotated[bool | None, Field(title="Rolling Deploy")]
+    rolling_deploy_strategy: Annotated[
+        str | None, Field(title="Rolling Deploy Strategy")
+    ]
+    max_unavailable_percent: Annotated[
+        int | None, Field(title="Max Unavailable Percent")
+    ]
+    max_surge_percent: Annotated[int | None, Field(title="Max Surge Percent")]
+    stabilization_time_seconds: Annotated[
+        int | None, Field(title="Stabilization Time Seconds")
+    ]
+    replica_overhead_percent: Annotated[
+        int | None, Field(title="Replica Overhead Percent")
+    ]
+    promotion_cleanup_strategy: Annotated[
+        str | None, Field(title="Promotion Cleanup Strategy")
+    ]
+    min_replica: Annotated[int, Field(title="Min Replica")]
+    max_replica: Annotated[int, Field(title="Max Replica")]
+    concurrency_target: Annotated[int, Field(title="Concurrency Target")]
+    autoscaling_window: Annotated[int | None, Field(title="Autoscaling Window")]
+    scale_down_delay: Annotated[int | None, Field(title="Scale Down Delay")]
+    target_utilization_percentage: Annotated[
+        int | None, Field(title="Target Utilization Percentage")
+    ]
+    target_in_flight_tokens: Annotated[
+        int | None, Field(title="Target In Flight Tokens")
+    ]
+    max_scale_down_rate: Annotated[float | None, Field(title="Max Scale Down Rate")]
+    ramp_up_while_promoting: Annotated[
+        bool | None, Field(title="Ramp Up While Promoting")
+    ]
+    ramp_up_duration_seconds: Annotated[
+        int | None, Field(title="Ramp Up Duration Seconds")
+    ]
+    ramp_up_step_size: Annotated[int | None, Field(title="Ramp Up Step Size")]
+    request_backpressure_policy: Annotated[
+        str | None, Field(title="Request Backpressure Policy")
+    ] = None
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    environment_name: Annotated[str, Field(title="Environment Name")]
+    deployment_type: Annotated[str | None, Field(title="Deployment Type")]
+    event_type: Annotated[Literal["ENVIRONMENT_UPDATED"], Field(title="Event Type")]
+    previous_settings: AuditLogEventEnvironmentSettings | None
+
+
+class AuditLogEventModelDeploymentAutoscalingSettingsChanged(BaseModel):
+    schedules: Annotated[
+        list[AuditLogEventAutoscalingScheduleChange] | None, Field(title="Schedules")
+    ]
+    min_replica: Annotated[int, Field(title="Min Replica")]
+    max_replica: Annotated[int, Field(title="Max Replica")]
+    concurrency_target: Annotated[int, Field(title="Concurrency Target")]
+    autoscaling_window: Annotated[int | None, Field(title="Autoscaling Window")]
+    scale_down_delay: Annotated[int | None, Field(title="Scale Down Delay")]
+    target_utilization_percentage: Annotated[
+        int | None, Field(title="Target Utilization Percentage")
+    ]
+    target_in_flight_tokens: Annotated[
+        int | None, Field(title="Target In Flight Tokens")
+    ]
+    max_scale_down_rate: Annotated[float | None, Field(title="Max Scale Down Rate")]
+    event_type: Annotated[
+        Literal["MODEL_DEPLOYMENT_AUTOSCALING_SETTINGS_CHANGED"],
+        Field(title="Event Type"),
+    ]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    deployment_id: Annotated[str, Field(title="Deployment Id")]
+    deployment_name: Annotated[str, Field(title="Deployment Name")]
+    deployment_type: Annotated[str | None, Field(title="Deployment Type")]
+    previous_settings: AuditLogEventAutoscalingSettings | None
+
+
+class AuditLogEventModelDeploymentPromoted(BaseModel):
+    event_type: Annotated[
+        Literal["MODEL_DEPLOYMENT_PROMOTED"], Field(title="Event Type")
+    ]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    deployment_id: Annotated[str, Field(title="Deployment Id")]
+    deployment_name: Annotated[str, Field(title="Deployment Name")]
+    environment_name: Annotated[str | None, Field(title="Environment Name")]
+    environment_id: Annotated[str | None, Field(title="Environment Id")]
+    region_update: Annotated[str | None, Field(title="Region Update")]
+    instance_type_id_update: Annotated[
+        str | None, Field(title="Instance Type Id Update")
+    ]
+    promotion_settings_override: AuditLogEventPromotionSettingsOverride | None
+    autoscaling_settings_update: AuditLogEventAutoscalingSettingsUpdate | None
+    request_backpressure_settings_update: (
+        AuditLogEventRequestBackpressureSettingsUpdate | None
+    )
+    autoscaling_schedule_settings_update: (
+        AuditLogEventAutoscalingScheduleOperations | None
+    )
+
+
+class AuditLogEventModelPromotionControlAction(BaseModel):
+    event_type: Annotated[
+        Literal["MODEL_PROMOTION_CONTROL_ACTION"], Field(title="Event Type")
+    ]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    deployment_id: Annotated[str, Field(title="Deployment Id")]
+    deployment_name: Annotated[str, Field(title="Deployment Name")]
+    environment_name: Annotated[str, Field(title="Environment Name")]
+    environment_id: Annotated[str | None, Field(title="Environment Id")]
+    action: Annotated[
+        Literal[
+            "PAUSE", "RESUME", "FORCE_CANCEL", "FORCE_ROLL_FORWARD", "GRACEFUL_CANCEL"
+        ]
+        | str,
+        Field(
+            description="User-initiated promotion control signal recorded on a promotion-control event.",
+            title="AuditLogPromotionControlActionV1",
+        ),
+    ]
+
+
+class Deployment(BaseModel):
+    id: Annotated[
+        str, Field(description="Unique identifier of the deployment", title="Id")
+    ]
+    created_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="Time the deployment was created in ISO 8601 format",
+            title="Created At",
+        ),
+    ]
+    name: Annotated[str, Field(description="Name of the deployment", title="Name")]
+    model_id: Annotated[
+        str, Field(description="Unique identifier of the model", title="Model Id")
+    ]
+    is_production: Annotated[
+        bool,
+        Field(
+            description="Whether the deployment is the production deployment of the model",
+            title="Is Production",
+        ),
+    ]
+    is_development: Annotated[
+        bool,
+        Field(
+            description="Whether the deployment is the development deployment of the model",
+            title="Is Development",
+        ),
+    ]
+    status: Annotated[
+        Literal[
+            "BUILDING",
+            "DEPLOYING",
+            "DEPLOY_FAILED",
+            "LOADING_MODEL",
+            "ACTIVE",
+            "UNHEALTHY",
+            "BUILD_FAILED",
+            "BUILD_STOPPED",
+            "DEACTIVATING",
+            "INACTIVE",
+            "FAILED",
+            "UPDATING",
+            "SCALED_TO_ZERO",
+            "WAKING_UP",
+        ]
+        | str,
+        Field(description="Status of the deployment", title="DeploymentStatusV1"),
+    ]
+    active_replica_count: Annotated[
+        int,
+        Field(description="Number of active replicas", title="Active Replica Count"),
+    ]
+    autoscaling_settings: Annotated[
+        AutoscalingSettings | None,
+        Field(
+            description="Autoscaling settings for the deployment. If null, the model has not finished deploying"
+        ),
+    ]
+    instance_type_name: Annotated[
+        str | None,
+        Field(
+            description="Name of the instance type the model deployment is running on",
+            title="Instance Type Name",
+        ),
+    ]
+    environment: Annotated[
+        str | None,
+        Field(
+            description="The environment associated with the deployment",
+            title="Environment",
+        ),
+    ]
+    labels: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="User-provided key-value labels for the deployment",
+            title="Labels",
+        ),
+    ] = None
+    region: Annotated[
+        Region | None,
+        Field(description="The selected region for the deployment, if any"),
+    ] = None
+    request_backpressure_settings: Annotated[
+        RequestBackpressureSettings,
+        Field(
+            description="Effective request backpressure settings for the deployment."
+        ),
+    ]
+
+
+class CreatedModelDeployment(BaseModel):
+    model: Annotated[
+        Model,
+        Field(
+            description="The model the deployment belongs to. May have been created by this call."
+        ),
+    ]
+    deployment: Annotated[
+        Deployment, Field(description="The newly created deployment.")
+    ]
+
+
+class Deployments(BaseModel):
+    deployments: Annotated[
+        list[Deployment],
+        Field(description="A list of deployments of a model", title="Deployments"),
+    ]
+
+
+class PromotionEnvironmentSettingsUpdate(BaseModel):
+    region: Annotated[
+        str | None,
+        Field(
+            description="Region for the promoted deployment, from `GET /v1/teams/{team_id}/regions`. Use an empty string for Global. If omitted, the deployment keeps its region. Regional environments only accept Global deployments.",
+            title="Region",
+        ),
+    ] = None
+    instance_type_id: Annotated[
+        str | None,
+        Field(
+            description="Instance type for the promoted deployment, from `GET /v1/instance_types`. A different instance type than the deployment's creates a new deployment on it. Cannot be set with `preserve_env_instance_type: true`.",
+            title="Instance Type Id",
+        ),
+    ] = None
+    autoscaling_settings: Annotated[
+        UpdateAutoscalingSettings | None,
+        Field(description="Autoscaling settings for the promoted deployment."),
+    ] = None
+    request_backpressure_settings: Annotated[
+        UpdateRequestBackpressureSettings | None,
+        Field(
+            description="Request backpressure settings for the promoted deployment. A null policy clears it."
+        ),
+    ] = None
+    autoscaling_schedule_settings: Annotated[
+        UpdateAutoscalingScheduleSettings | None,
+        Field(
+            description="Autoscaling schedule changes for the environment, applied when the promotion completes."
+        ),
+    ] = None
+    promotion_settings: Annotated[
+        UpdatePromotionSettings | None,
+        Field(
+            description="Promotion settings for the environment, also used for this promotion."
+        ),
+    ] = None
+
+
+class PromoteRequest(BaseModel):
+    scale_down_previous_production: Annotated[
+        bool,
+        Field(
+            description="Whether to scale down the previous production deployment after promoting",
+            examples=[True],
+            title="Scale Down Previous Production",
+        ),
+    ] = True
+    preserve_env_instance_type: Annotated[
+        bool,
+        Field(
+            description="Whether to use the promoting deployment's instance type or preserve target environment's instance type",
+            examples=[True],
+            title="Preserve Env Instance Type",
+        ),
+    ] = True
+    environment_settings_update: Annotated[
+        PromotionEnvironmentSettingsUpdate | None,
+        Field(
+            description="Changes to the environment's settings. Omitted fields are unchanged. The promoted deployment uses the environment's current settings with these changes applied, and the environment keeps the result when the promotion completes.",
+            examples=[{"autoscaling_settings": {"max_replica": 4, "min_replica": 2}}],
+        ),
+    ] = None
+    promotion_settings_override: Annotated[
+        UpdatePromotionSettings | None,
+        Field(
+            description="Promotion settings for this promotion only. Omitted fields keep the environment's values, and the environment's promotion settings are unchanged.",
+            examples=[{"rolling_deploy_config": {"max_surge_percent": 50}}],
         ),
     ] = None
 
@@ -12578,6 +12387,43 @@ class UpdateEnvironmentRequest(BaseModel):
                 },
                 {"delete_rules": ["rule-id"]},
             ],
+        ),
+    ] = None
+
+
+class PromoteToEnvironmentRequest(BaseModel):
+    scale_down_previous_deployment: Annotated[
+        bool,
+        Field(
+            description="Whether to scale down the previous deployment after promoting",
+            examples=[True],
+            title="Scale Down Previous Deployment",
+        ),
+    ] = True
+    deployment_id: Annotated[
+        str,
+        Field(description="The id of the deployment to promote", title="Deployment Id"),
+    ]
+    preserve_env_instance_type: Annotated[
+        bool,
+        Field(
+            description="Whether to use the promoting deployment's instance type or preserve target environment's instance type",
+            examples=[True],
+            title="Preserve Env Instance Type",
+        ),
+    ] = True
+    environment_settings_update: Annotated[
+        PromotionEnvironmentSettingsUpdate | None,
+        Field(
+            description="Changes to the environment's settings. Omitted fields are unchanged. The promoted deployment uses the environment's current settings with these changes applied, and the environment keeps the result when the promotion completes.",
+            examples=[{"autoscaling_settings": {"max_replica": 4, "min_replica": 2}}],
+        ),
+    ] = None
+    promotion_settings_override: Annotated[
+        UpdatePromotionSettings | None,
+        Field(
+            description="Promotion settings for this promotion only. Omitted fields keep the environment's values, and the environment's promotion settings are unchanged.",
+            examples=[{"rolling_deploy_config": {"max_surge_percent": 50}}],
         ),
     ] = None
 
@@ -13583,6 +13429,200 @@ class ModelApisUsageResponse(BaseModel):
     pagination: Annotated[
         PaginationResponse, Field(description="Pagination metadata for the page.")
     ]
+
+
+class LLMRuntime(BaseModel):
+    oidc: Annotated[
+        RuntimeOidc | None,
+        Field(description="Runtime OIDC token mounting configuration"),
+    ] = None
+
+
+class CreateLLMModelRequest(BaseModel):
+    resources: Annotated[
+        dict[str, Any],
+        Field(description="Resources allocated to the model", title="Resources"),
+    ]
+    region: Annotated[
+        str | None,
+        Field(description="Region in which to deploy the model", title="Region"),
+    ] = None
+    llm_version: Annotated[
+        str | None,
+        Field(description="Version of the helm chart to use.", title="Llm Version"),
+    ] = None
+    llm_config: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="Configuration specific to the LLM model", title="Llm Config"
+        ),
+    ] = None
+    environment_variables: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="Environment variables for the model",
+            title="Environment Variables",
+        ),
+    ] = None
+    model_metadata: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="Model metadata persisted into model_config",
+            title="Model Metadata",
+        ),
+    ] = None
+    autoscaling_settings: Annotated[
+        UpdateAutoscalingSettings | None,
+        Field(
+            description="Autoscaling settings for the model",
+            examples=[
+                {
+                    "autoscaling_window": 600,
+                    "concurrency_target": None,
+                    "max_replica": 5,
+                    "max_scale_down_rate": None,
+                    "min_replica": 1,
+                    "scale_down_delay": 300,
+                    "target_in_flight_tokens": None,
+                    "target_utilization_percentage": None,
+                }
+            ],
+        ),
+    ] = None
+    additional_autoscaling_config: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="Additional autoscaling configuration (e.g. target in-flight tokens)",
+            examples=[{"metrics": [{"name": "in_flight_tokens", "target": 40000}]}],
+            title="Additional Autoscaling Config",
+        ),
+    ] = None
+    metadata: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="User-defined metadata for the deployment",
+            examples=[{"environment": "production", "git_sha": "abc123"}],
+            title="Metadata",
+        ),
+    ] = None
+    weights: Annotated[
+        list[dict[str, Any]] | None,
+        Field(
+            description="Weight configurations for BDN model weight distribution",
+            examples=[
+                [
+                    {
+                        "mount_location": "/models/base",
+                        "source": "hf://meta-llama/Llama-3-8B",
+                    }
+                ]
+            ],
+            title="Weights",
+        ),
+    ] = None
+    egress_restrictions: Annotated[
+        EgressRestrictions | None,
+        Field(
+            description="Restricts this deployment's egress to the specified FQDNs and IP addresses; an empty block allows none. Requires the organization to have egress restrictions enabled."
+        ),
+    ] = None
+    runtime: Annotated[
+        LLMRuntime | None, Field(description="Runtime configuration for the deployment")
+    ] = None
+    name: Annotated[str, Field(description="Name of the model", title="Name")]
+
+
+class CreateLLMModelVersionRequest(BaseModel):
+    resources: Annotated[
+        dict[str, Any],
+        Field(description="Resources allocated to the model", title="Resources"),
+    ]
+    region: Annotated[
+        str | None,
+        Field(description="Region in which to deploy the model", title="Region"),
+    ] = None
+    llm_version: Annotated[
+        str | None,
+        Field(description="Version of the helm chart to use.", title="Llm Version"),
+    ] = None
+    llm_config: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="Configuration specific to the LLM model", title="Llm Config"
+        ),
+    ] = None
+    environment_variables: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="Environment variables for the model",
+            title="Environment Variables",
+        ),
+    ] = None
+    model_metadata: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="Model metadata persisted into model_config",
+            title="Model Metadata",
+        ),
+    ] = None
+    autoscaling_settings: Annotated[
+        UpdateAutoscalingSettings | None,
+        Field(
+            description="Autoscaling settings for the model",
+            examples=[
+                {
+                    "autoscaling_window": 600,
+                    "concurrency_target": None,
+                    "max_replica": 5,
+                    "max_scale_down_rate": None,
+                    "min_replica": 1,
+                    "scale_down_delay": 300,
+                    "target_in_flight_tokens": None,
+                    "target_utilization_percentage": None,
+                }
+            ],
+        ),
+    ] = None
+    additional_autoscaling_config: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="Additional autoscaling configuration (e.g. target in-flight tokens)",
+            examples=[{"metrics": [{"name": "in_flight_tokens", "target": 40000}]}],
+            title="Additional Autoscaling Config",
+        ),
+    ] = None
+    metadata: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="User-defined metadata for the deployment",
+            examples=[{"environment": "production", "git_sha": "abc123"}],
+            title="Metadata",
+        ),
+    ] = None
+    weights: Annotated[
+        list[dict[str, Any]] | None,
+        Field(
+            description="Weight configurations for BDN model weight distribution",
+            examples=[
+                [
+                    {
+                        "mount_location": "/models/base",
+                        "source": "hf://meta-llama/Llama-3-8B",
+                    }
+                ]
+            ],
+            title="Weights",
+        ),
+    ] = None
+    egress_restrictions: Annotated[
+        EgressRestrictions | None,
+        Field(
+            description="Restricts this deployment's egress to the specified FQDNs and IP addresses; an empty block allows none. Requires the organization to have egress restrictions enabled."
+        ),
+    ] = None
+    runtime: Annotated[
+        LLMRuntime | None, Field(description="Runtime configuration for the deployment")
+    ] = None
 
 
 class BenchmarkSnapshot(BaseModel):
@@ -14629,6 +14669,151 @@ class ListSandboxLibraryImagesResponse(BaseModel):
     items: Annotated[list[SandboxLibraryImage], Field(description="Built-in images.")]
 
 
+class DeploymentArchivePayload(BaseModel):
+    config: Annotated[
+        dict[str, Any],
+        Field(description="Parsed model config as a JSON object.", title="Config"),
+    ]
+    raw_config: Annotated[
+        str | None,
+        Field(
+            description="Original config.yaml text, persisted as-is on the deployment. Best-effort: invalid raw configs are logged and dropped without failing the request.",
+            title="Raw Config",
+        ),
+    ] = None
+    user_env: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="Client environment metadata (e.g. client version, Python version). Validated server-side.",
+            title="User Env",
+        ),
+    ] = None
+    environment_name: Annotated[
+        str | None,
+        Field(
+            description="Stable environment to push to (e.g. `production`). If unset, the deployment is created without environment selection. Caller must have push permission for the named environment.",
+            title="Environment Name",
+        ),
+    ] = None
+    create_environment_if_missing: Annotated[
+        bool,
+        Field(
+            description="Create the environment named by `environment_name` if it does not exist yet. If false, a push to an environment that does not exist is rejected. Only meaningful when `environment_name` is set to something other than `production`, which always exists. This field currently defaults to true, but that default will change to false in a future release. Set it explicitly to avoid a behavior change.",
+            title="Create Environment If Missing",
+        ),
+    ] = True
+    region: Annotated[
+        str | None,
+        Field(description="Region in which to deploy the model", title="Region"),
+    ] = None
+    preserve_env_instance_type: Annotated[
+        bool,
+        Field(
+            description="Retain the target environment's current instance type rather than the one in `config`. Only meaningful when `environment_name` is set and that environment already exists.",
+            title="Preserve Env Instance Type",
+        ),
+    ] = True
+    deploy_timeout_minutes: Annotated[
+        int | None,
+        Field(
+            description="Deploy timeout in minutes; allowed range 10 to 1440. Server default applies if unset.",
+            title="Deploy Timeout Minutes",
+        ),
+    ] = None
+    deployment_name: Annotated[
+        str | None,
+        Field(
+            description="Optional human-readable name for the deployment.",
+            title="Deployment Name",
+        ),
+    ] = None
+    labels: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="User-provided key-value labels for the deployment.",
+            title="Labels",
+        ),
+    ] = None
+    is_development: Annotated[
+        bool,
+        Field(
+            description="If true, push as a development deployment: the model's single mutable dev slot, created if absent and overwritten in place otherwise. The following fields must be left at their defaults: `environment_name`, `preserve_env_instance_type`, `deployment_name`.",
+            title="Is Development",
+        ),
+    ] = False
+    autoscaling_settings: Annotated[
+        UpdateAutoscalingSettings | None,
+        Field(
+            description="Autoscaling settings for the new deployment. With `environment_name`, the new deployment starts from the environment's settings with these changes applied, and the environment keeps the result when the promotion completes. Without it, they apply to the new deployment only.",
+            examples=[{"max_replica": 4, "min_replica": 2}],
+        ),
+    ] = None
+    request_backpressure_settings: Annotated[
+        UpdateRequestBackpressureSettings | None,
+        Field(
+            description="Request backpressure settings for the new deployment, applied the same way as `autoscaling_settings`.",
+            examples=[{"policy": "REJECT_ON_FULL"}],
+        ),
+    ] = None
+    autoscaling_schedule_settings: Annotated[
+        UpdateAutoscalingScheduleSettings | None,
+        Field(
+            description="Autoscaling schedule changes for the environment named by `environment_name`, applied when the promotion completes. Requires `environment_name`."
+        ),
+    ] = None
+    promotion_settings_override: Annotated[
+        UpdatePromotionSettings | None,
+        Field(
+            description="Promotion settings for promoting the new deployment into the environment named by `environment_name`, for this promotion only. Omitted fields keep the environment's values, and the environment's promotion settings are unchanged. Requires `environment_name`.",
+            examples=[{"rolling_deploy_config": {"max_surge_percent": 50}}],
+        ),
+    ] = None
+    instance_type_id: Annotated[
+        str | None,
+        Field(
+            description="Instance type for the new deployment, from `GET /v1/instance_types`, in place of the one in `config`. With `environment_name`, the environment takes it when the promotion completes. Without it, it applies to the new deployment only. Cannot be set with `preserve_env_instance_type: true`.",
+            title="Instance Type Id",
+        ),
+    ] = None
+
+
+class PrepareModelUploadRequest(BaseModel):
+    deployment: Annotated[
+        DeploymentArchivePayload,
+        Field(
+            description="Deployment-level payload, identical to the payload sent at commit."
+        ),
+    ]
+    name: Annotated[
+        str | None,
+        Field(
+            description="Set to validate a new-model push. Exactly one of `name` or `model_id` is required.",
+            title="Name",
+        ),
+    ] = None
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Team the new model will belong to. Only valid when `name` is set; defaults to the organization's default team when omitted. Must not be set when `model_id` is set (the existing model already has a team).",
+            title="Team Id",
+        ),
+    ] = None
+    model_id: Annotated[
+        str | None,
+        Field(
+            description="Set to validate an add-deployment push to an existing model. Exactly one of `name` or `model_id` is required.",
+            title="Model Id",
+        ),
+    ] = None
+    dry_run: Annotated[
+        bool,
+        Field(
+            description="If true, validate the payload only and do not issue upload credentials. The response sets `creds`, `s3_bucket`, and `s3_key` to `null`.",
+            title="Dry Run",
+        ),
+    ] = False
+
+
 class AuditLogEntry(BaseModel):
     id: Annotated[
         str, Field(description="Unique identifier of the audit-log entry.", title="Id")
@@ -14803,74 +14988,73 @@ class ListAuditLogsResponse(BaseModel):
     ]
 
 
-class PromotionEnvironmentSettingsUpdate(BaseModel):
-    region: Annotated[
+class ModelArchiveSource(BaseModel):
+    kind: Annotated[Literal["model_archive"], Field(title="Kind")] = "model_archive"
+    name: Annotated[str, Field(description="Name of the new model.", title="Name")]
+    deployment: Annotated[
+        DeploymentArchivePayload,
+        Field(
+            description="Deployment-level configuration for the model's first deployment."
+        ),
+    ]
+    s3_key: Annotated[
         str | None,
         Field(
-            description="Region for the promoted deployment, from `GET /v1/teams/{team_id}/regions`. Use an empty string for Global. If omitted, the deployment keeps its region. Regional environments only accept Global deployments.",
-            title="Region",
+            description="S3 key of the uploaded archive, from the credentials returned by `POST /v1/prepare_model_upload`. Omit for model formats that are not built from an archive (for example, BIS-LLM), where prepare issues no upload target.",
+            title="S3 Key",
         ),
     ] = None
-    instance_type_id: Annotated[
+    disable_archive_download: Annotated[
+        bool,
+        Field(
+            description="If true, the uploaded archive is not downloadable after creation. Locked at model creation; cannot be changed by subsequent deployments.",
+            title="Disable Archive Download",
+        ),
+    ] = False
+
+
+class CreateModelRequest(BaseModel):
+    source: Annotated[
+        Annotated[
+            LibraryListingSource | ModelArchiveSource,
+            Field(
+                description="Where the new model is created from.",
+                discriminator="kind",
+                title="Source",
+            ),
+        ]
+        | dict[str, Any],
+        Field(union_mode="left_to_right"),
+    ]
+
+
+class DeploymentArchiveSource(BaseModel):
+    kind: Annotated[Literal["model_archive"], Field(title="Kind")] = "model_archive"
+    deployment: Annotated[
+        DeploymentArchivePayload, Field(description="Deployment-level configuration.")
+    ]
+    s3_key: Annotated[
         str | None,
         Field(
-            description="Instance type for the promoted deployment, from `GET /v1/instance_types`.",
-            title="Instance Type Id",
-        ),
-    ] = None
-    autoscaling_settings: Annotated[
-        UpdateAutoscalingSettings | None,
-        Field(description="Autoscaling settings for the promoted deployment."),
-    ] = None
-    request_backpressure_settings: Annotated[
-        UpdateRequestBackpressureSettings | None,
-        Field(description="Request backpressure settings for the promoted deployment."),
-    ] = None
-    autoscaling_schedule_settings: Annotated[
-        UpdateAutoscalingScheduleSettings | None,
-        Field(
-            description="Autoscaling schedule changes for the environment, applied when the promotion completes."
-        ),
-    ] = None
-    promotion_settings: Annotated[
-        UpdatePromotionSettings | None,
-        Field(
-            description="Promotion settings for the environment, also used for this promotion."
+            description="S3 key of the uploaded archive, from the credentials returned by `POST /v1/prepare_model_upload`. Omit for model formats that are not built from an archive (for example, BIS-LLM), where prepare issues no upload target.",
+            title="S3 Key",
         ),
     ] = None
 
 
-class PromoteRequest(BaseModel):
-    scale_down_previous_production: Annotated[
-        bool,
-        Field(
-            description="Whether to scale down the previous production deployment after promoting",
-            examples=[True],
-            title="Scale Down Previous Production",
-        ),
-    ] = True
-    preserve_env_instance_type: Annotated[
-        bool,
-        Field(
-            description="Whether to use the promoting deployment's instance type or preserve target environment's instance type",
-            examples=[True],
-            title="Preserve Env Instance Type",
-        ),
-    ] = True
-    environment_settings_update: Annotated[
-        PromotionEnvironmentSettingsUpdate | None,
-        Field(
-            description="Changes to the environment's settings. Omitted fields are unchanged. The promoted deployment uses the environment's current settings with these changes applied, and the environment keeps the result when the promotion completes.",
-            examples=[{"autoscaling_settings": {"max_replica": 4, "min_replica": 2}}],
-        ),
-    ] = None
-    promotion_settings_override: Annotated[
-        UpdatePromotionSettings | None,
-        Field(
-            description="Promotion settings for this promotion only. Omitted fields keep the environment's values, and the environment's promotion settings are unchanged.",
-            examples=[{"rolling_deploy_config": {"max_surge_percent": 50}}],
-        ),
-    ] = None
+class CreateModelDeploymentRequest(BaseModel):
+    source: Annotated[
+        Annotated[
+            DeploymentArchiveSource,
+            Field(
+                description="Where the new deployment is created from.",
+                discriminator="kind",
+                title="Source",
+            ),
+        ]
+        | dict[str, Any],
+        Field(union_mode="left_to_right"),
+    ]
 
 
 class StartupAttempt(BaseModel):
@@ -15029,43 +15213,6 @@ class UpdateEnvironmentResponse(BaseModel):
             title="Message",
         ),
     ]
-
-
-class PromoteToEnvironmentRequest(BaseModel):
-    scale_down_previous_deployment: Annotated[
-        bool,
-        Field(
-            description="Whether to scale down the previous deployment after promoting",
-            examples=[True],
-            title="Scale Down Previous Deployment",
-        ),
-    ] = True
-    deployment_id: Annotated[
-        str,
-        Field(description="The id of the deployment to promote", title="Deployment Id"),
-    ]
-    preserve_env_instance_type: Annotated[
-        bool,
-        Field(
-            description="Whether to use the promoting deployment's instance type or preserve target environment's instance type",
-            examples=[True],
-            title="Preserve Env Instance Type",
-        ),
-    ] = True
-    environment_settings_update: Annotated[
-        PromotionEnvironmentSettingsUpdate | None,
-        Field(
-            description="Changes to the environment's settings. Omitted fields are unchanged. The promoted deployment uses the environment's current settings with these changes applied, and the environment keeps the result when the promotion completes.",
-            examples=[{"autoscaling_settings": {"max_replica": 4, "min_replica": 2}}],
-        ),
-    ] = None
-    promotion_settings_override: Annotated[
-        UpdatePromotionSettings | None,
-        Field(
-            description="Promotion settings for this promotion only. Omitted fields keep the environment's values, and the environment's promotion settings are unchanged.",
-            examples=[{"rolling_deploy_config": {"max_surge_percent": 50}}],
-        ),
-    ] = None
 
 
 class DockerAuth(BaseModel):
@@ -15463,6 +15610,13 @@ class SandboxConfiguration(BaseModel):
             le=262144,
         ),
     ] = None
+    filesystem: Annotated[
+        SandboxFilesystem | None,
+        Field(
+            description="Filesystem configuration. Set at creation only.",
+            examples=[{"max_memory_usage": "80%"}],
+        ),
+    ] = None
     ports: Annotated[
         list[SandboxPort] | None,
         Field(
@@ -15593,6 +15747,13 @@ class CreateSandboxRequest(BaseModel):
             le=262144,
         ),
     ] = 4096
+    filesystem: Annotated[
+        SandboxFilesystem | None,
+        Field(
+            description="Filesystem configuration. Set at creation only.",
+            examples=[{"max_memory_usage": "80%"}],
+        ),
+    ] = None
     ports: Annotated[
         list[SandboxPort] | None,
         Field(

@@ -172,6 +172,12 @@ class ErrorResponse(BaseModel):
 
 
 class File(BaseModel):
+    content: Annotated[
+        str | None,
+        Field(
+            description="Content is set only by a tree read with content=true, for regular files."
+        ),
+    ] = None
     group: str
     lastModified: str
     name: str
@@ -558,6 +564,51 @@ class DeleteFilesystemTreeParams(BaseModel):
     ] = None
 
 
+class GetFilesystemTreeParams(BaseModel):
+    recursive: Annotated[
+        bool | None,
+        Field(
+            description="List every file and directory below the path, not only its direct children (default: false)"
+        ),
+    ] = None
+    content: Annotated[
+        bool | None,
+        Field(
+            description="Include the content of each regular file, as UTF-8 text (default: false)"
+        ),
+    ] = None
+    patterns: Annotated[
+        str | None,
+        Field(
+            description="Comma-separated glob patterns matched against file names (e.g., *.json,*.md). Directories are not filtered."
+        ),
+    ] = None
+    excludeDirs: Annotated[
+        str | None,
+        Field(
+            description="Comma-separated directory names to skip with everything below them (default: none)"
+        ),
+    ] = None
+    excludeHidden: Annotated[
+        bool | None,
+        Field(
+            description="Skip files and directories whose name starts with a dot (default: false)"
+        ),
+    ] = None
+    maxFiles: Annotated[
+        int | None,
+        Field(
+            description="Fail with 422 when more files match (default: 10000 with recursive or content, otherwise unlimited; at most 100000)"
+        ),
+    ] = None
+    maxBytes: Annotated[
+        int | None,
+        Field(
+            description="With content=true, fail with 422 when the matching files hold more bytes (default: 33554432, 32 MiB; at most 268435456, 256 MiB)"
+        ),
+    ] = None
+
+
 class GetWatchFilesystemParams(BaseModel):
     ignore: Annotated[
         str | None,
@@ -608,6 +659,12 @@ class Directory(BaseModel):
     files: list[File]
     name: str
     path: str
+    recursive: Annotated[
+        bool | None,
+        Field(
+            description="Recursive is true when files and subdirectories hold every level below\npath (tree read with recursive=true). Older APIs ignore that parameter\nand omit this field, so clients can tell a one-level listing apart."
+        ),
+    ] = None
     subdirectories: Annotated[
         list[Subdirectory], Field(description="@name Subdirectories")
     ]

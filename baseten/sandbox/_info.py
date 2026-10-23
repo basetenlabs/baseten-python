@@ -202,6 +202,22 @@ class SandboxNetwork:
 
 
 @dataclass(kw_only=True)
+class SandboxFileSystemOptions:
+    """Filesystem configuration of a sandbox, fixed at creation.
+
+    The filesystem is held in memory, so files written count against the
+    sandbox's memory.
+    """
+
+    max_memory_usage: str | int | None = None
+    """Maximum memory the filesystem can use.
+
+    A percentage of the sandbox's memory such as ``"80%"``, a size such as
+    ``"2Gi"``, or a number of megabytes. The server defaults to 50%.
+    """
+
+
+@dataclass(kw_only=True)
 class SandboxInfo:
     """A sandbox as last reported by the control plane."""
 
@@ -239,6 +255,8 @@ class SandboxInfo:
 
     network: SandboxNetwork | None
 
+    filesystem: SandboxFileSystemOptions | None
+
     created_at: datetime
 
     updated_at: datetime | None
@@ -270,6 +288,11 @@ def sandbox_info_from_api(sandbox: baseten.client.managementapi.Sandbox) -> Sand
         else _lifecycle_from_api(sandbox.lifecycle),
         ports=ports_from_api(sandbox.ports),
         network=None if sandbox.network is None else _network_from_api(sandbox.network),
+        filesystem=None
+        if sandbox.filesystem is None
+        else SandboxFileSystemOptions(
+            max_memory_usage=sandbox.filesystem.max_memory_usage
+        ),
         created_at=sandbox.created_at,
         updated_at=sandbox.updated_at,
         created_by=sandbox.created_by,
@@ -362,6 +385,15 @@ def network_to_api(
                 )
             ),
         )
+    )
+
+
+def filesystem_to_api(
+    filesystem: SandboxFileSystemOptions,
+) -> baseten.client.managementapi.SandboxFilesystem:
+    """Convert a filesystem configuration to the control plane's form."""
+    return baseten.client.managementapi.SandboxFilesystem(
+        **set_fields(max_memory_usage=filesystem.max_memory_usage)
     )
 
 

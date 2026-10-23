@@ -10,6 +10,7 @@ from baseten.sandbox import (
     SandboxExpirationPolicyIdle,
     SandboxExpirationPolicyMaxAge,
     SandboxExpirationPolicyUnknown,
+    SandboxFileSystemOptions,
     SandboxLifecycle,
     SandboxNetwork,
     SandboxNetworkProxy,
@@ -18,6 +19,7 @@ from baseten.sandbox import (
 )
 from baseten.sandbox._info import (
     envs_to_api,
+    filesystem_to_api,
     lifecycle_to_api,
     network_to_api,
     ports_to_api,
@@ -55,6 +57,7 @@ _FULL_RECORD: dict[str, Any] = {
             "routing": [{"destinations": ["*"], "headers": {"X-A": "b"}}],
         },
     },
+    "filesystem": {"max_memory_usage": 2048},
     "created_at": "2026-10-06T12:00:00Z",
     "updated_at": "2026-10-06T13:00:00Z",
     "created_by": "creator",
@@ -109,6 +112,7 @@ def test_maps_sandbox_record() -> None:
             ],
         ),
     )
+    assert info.filesystem == SandboxFileSystemOptions(max_memory_usage=2048)
     assert info.created_at == datetime(2026, 10, 6, 12, tzinfo=UTC)
     assert info.updated_at == datetime(2026, 10, 6, 13, tzinfo=UTC)
     assert (info.created_by, info.updated_by) == ("creator", "updater")
@@ -133,6 +137,7 @@ def test_maps_sandbox_record_without_optional_fields() -> None:
     assert info.lifecycle is None
     assert info.ports == []
     assert info.network is None
+    assert info.filesystem is None
     assert info.expires_in is None
 
 
@@ -182,6 +187,7 @@ def test_inputs_send_only_set_fields() -> None:
             )
         )
     ) == {"proxy": {"bypass": ["example.com"], "routing": [{"secrets": {"k": "v"}}]}}
+    assert _dump(filesystem_to_api(SandboxFileSystemOptions())) == {}
 
 
 def _dump(model: Any) -> Any:

@@ -12,7 +12,6 @@ from baseten.sandbox._common import (
     format_duration,
     paginate,
     paginate_async,
-    parse_duration,
 )
 from baseten.sandbox._info import set_fields
 
@@ -54,12 +53,6 @@ class SandboxPreviewInfo:
     """Headers added to every request forwarded to the sandbox.
 
     Values come back as ``"****"`` unless read with *show_secrets*.
-    """
-
-    ttl: timedelta | None
-    """Lifetime set by the last create or update that had one, counted from that request.
-
-    :attr:`expires_at` is when the preview is deleted.
     """
 
     expires_at: datetime | None
@@ -676,7 +669,6 @@ def _preview_info_from_api(
         public=preview.public,
         response_headers=dict(preview.response_headers or {}),
         request_headers=dict(preview.request_headers or {}),
-        ttl=None if not preview.ttl else parse_duration(preview.ttl, "preview TTL"),
         expires_at=preview.expires_at,
         region=preview.region,
         created_at=preview.created_at,
