@@ -708,8 +708,6 @@ class TestImageClientListing:
                     ImageLibraryVolume(
                         name="v",
                         mount_path="/data",
-                        type=None,
-                        size=None,
                         read_only=False,
                     )
                 ],

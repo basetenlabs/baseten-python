@@ -166,16 +166,10 @@ class ImageLibraryVolume:
     """A volume attachment a built-in image suggests, in :class:`ImageLibraryInfo`."""
 
     name: str
-    """Volume name, or an internal identifier for an ephemeral volume."""
+    """Volume name."""
 
     mount_path: str
     """Absolute path the volume is mounted at."""
-
-    type: str | None
-    """Volume type, persistent when empty or ``None``."""
-
-    size: int | None
-    """Storage capacity in megabytes of an ephemeral volume."""
 
     read_only: bool
     """Whether the volume is mounted read-only."""
@@ -1495,8 +1489,6 @@ def _library_info(
             ImageLibraryVolume(
                 name=volume.name,
                 mount_path=volume.mount_path,
-                type=volume.type,
-                size=volume.size,
                 read_only=bool(volume.read_only),
             )
             for volume in options.volumes or []

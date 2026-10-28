@@ -7590,11 +7590,21 @@ class LibraryListingMetadata(BaseModel):
     parameter_count: Annotated[int | None, Field(title="Parameter Count")] = None
     context_length: Annotated[int | None, Field(title="Context Length")] = None
     input_modalities: Annotated[
-        list[Literal["text", "image", "audio", "video", "embedding", "rerank"] | str],
+        list[
+            Literal[
+                "text", "image", "audio", "video", "embedding", "rerank", "decision"
+            ]
+            | str
+        ],
         Field(title="Input Modalities"),
     ] = ["text"]
     output_modalities: Annotated[
-        list[Literal["text", "image", "audio", "video", "embedding", "rerank"] | str],
+        list[
+            Literal[
+                "text", "image", "audio", "video", "embedding", "rerank", "decision"
+            ]
+            | str
+        ],
         Field(title="Output Modalities"),
     ] = ["text"]
     license: Annotated[str, Field(title="License")]
@@ -10035,8 +10045,8 @@ class SandboxLibraryImageVolume(BaseModel):
     name: Annotated[
         str,
         Field(
-            description="Volume name, or an internal identifier for ephemeral volumes.",
-            examples=["scratch"],
+            description="Volume name, used in volume_name path parameters and sandbox volumes.",
+            examples=["datasets"],
         ),
     ]
     mount_path: Annotated[
@@ -10046,19 +10056,6 @@ class SandboxLibraryImageVolume(BaseModel):
             examples=["/mnt/data"],
         ),
     ]
-    type: Annotated[
-        str | None,
-        Field(
-            description="Volume type, persistent when empty.", examples=["ephemeral"]
-        ),
-    ] = None
-    size: Annotated[
-        int | None,
-        Field(
-            description="Storage capacity in megabytes for ephemeral volumes.",
-            examples=[10240],
-        ),
-    ] = None
     read_only: Annotated[
         bool | None,
         Field(description="Whether the volume is mounted read-only.", examples=[False]),
@@ -10121,7 +10118,7 @@ class SandboxPreviewConfiguration(BaseModel):
     request_headers: Annotated[
         dict[str, str] | None,
         Field(
-            description='Headers added to every request forwarded to the sandbox, for example an Authorization header expected by the application. Responses return each name with the value "****", except a GET with show_secrets=true by a workspace administrator. Sending "****" back as a value returns 400. A PATCH replaces the whole set.',
+            description='Headers added to every request forwarded to the sandbox, for example an Authorization header expected by the application. Responses return each name with the value "****", except a GET with show_secrets=true by a workspace administrator. Sending "****" back as a value returns 400. A PATCH replaces the whole set. Some header names are reserved by the platform.',
             examples=[{"Authorization": "Bearer app-internal-token"}],
         ),
     ] = None
