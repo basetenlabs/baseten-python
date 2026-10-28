@@ -113,9 +113,7 @@ def shared() -> Iterator[_Shared]:
             labels=_LABELS,
             envs=_SHARED_ENVS,
         )
-        # Create returns once the sandbox is up, so there is nothing to wait
-        # for.
-        assert created.info.status == "DEPLOYED"
+        _wait_deployed(client, name)
     except BaseException:
         try:
             client.delete(name=name)
@@ -1107,13 +1105,13 @@ def pushed_image() -> Iterator[_PushedImage]:
         pushed = client.images.push(name=image_name, builder=builder)
         assert (pushed.name, pushed.status) == (image_name, "BUILT")
         sandbox_created = True
-        created = client.create(
+        client.create(
             name=sandbox_name,
             image=f"{image_name}:latest",
             region=_REGION,
             labels=_LABELS,
         )
-        assert created.info.status == "DEPLOYED"
+        _wait_deployed(client, sandbox_name)
         yield _PushedImage(name=image_name, builder=builder, sandbox_name=sandbox_name)
     finally:
         # The image cannot be deleted while a sandbox uses it. Cleanup errors
@@ -1509,8 +1507,8 @@ def test_volume_mount() -> None:
             sandbox = client.create(
                 name=sandbox_name, region=_REGION, labels=_LABELS, volumes=[mount]
             )
-            assert sandbox.info.status == "DEPLOYED"
             assert sandbox.info.volumes == [mount]
+            _wait_deployed(client, sandbox_name)
             assert volumes.get_info(name=volume_name).attached_to == sandbox_name
             sandbox.fs.write(path="/data/written.txt", content="written")
             assert sandbox.fs.read(path="/data/written.txt") == "written"
@@ -1683,6 +1681,18 @@ def _watch_until_written_sync(
         finally:
             found.set()
             writer.join()
+
+
+def _wait_deployed(client: SandboxClient, name: str) -> None:
+    # Create waits only briefly for deployment, so it may return the sandbox
+    # still deploying.
+    deadline = time.monotonic() + 120
+    while (info := client.get_info(name=name)).status != "DEPLOYED":
+        if info.status != "DEPLOYING":
+            pytest.fail(f"sandbox {name} is {info.status}, not deploying")
+        if time.monotonic() > deadline:
+            pytest.fail(f"sandbox {name} is still deploying")
+        time.sleep(1)
 
 
 def _delete_and_wait(client: SandboxClient, name: str) -> None:
