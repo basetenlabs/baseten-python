@@ -48,6 +48,7 @@ from baseten.sandbox._info import (
     SandboxNetwork,
     SandboxPort,
     SandboxStatus,
+    SandboxVolumeMount,
     envs_to_api,
     filesystem_to_api,
     lifecycle_to_api,
@@ -55,9 +56,16 @@ from baseten.sandbox._info import (
     ports_to_api,
     sandbox_info_from_api,
     set_fields,
+    volumes_to_api,
 )
 from baseten.sandbox._retry import SandboxRetryOptions, resolve_retry_options
 from baseten.sandbox._sandbox import AsyncSandbox, Sandbox
+from baseten.sandbox._volumes import (
+    AsyncVolumeClient,
+    AsyncVolumeClientContext,
+    VolumeClient,
+    VolumeClientContext,
+)
 
 # Timeouts of the HTTP client a sandbox client creates. No read timeout: a
 # process run that waits for completion sends response headers only when the
@@ -248,6 +256,9 @@ class SandboxClient:
                 http_client=self._http_client,
             )
         )
+        self._volumes = VolumeClient(
+            VolumeClientContext(raw_api=self._raw_api, team_id=team_id)
+        )
 
     @property
     def options(self) -> SandboxClientOptions:
@@ -263,6 +274,11 @@ class SandboxClient:
     def images(self) -> ImageClient:
         """Images that sandboxes are created from."""
         return self._images
+
+    @property
+    def volumes(self) -> VolumeClient:
+        """Persistent volumes that sandboxes mount."""
+        return self._volumes
 
     @property
     def raw_api(self) -> baseten.client.managementapi.ApiClient:
@@ -288,6 +304,7 @@ class SandboxClient:
         ports: Sequence[SandboxPort] | None = None,
         network: SandboxNetwork | None = None,
         filesystem: SandboxFileSystemOptions | None = None,
+        volumes: Sequence[SandboxVolumeMount] | None = None,
     ) -> SandboxCreateResult:
         """Create a sandbox.
 
@@ -312,6 +329,9 @@ class SandboxClient:
                 creation.
             filesystem: Filesystem configuration, which cannot be changed
                 after creation.
+            volumes: Persistent volumes to mount, each in the sandbox's
+                region and not mounted elsewhere. At most one is currently
+                supported. They cannot be changed after creation.
         """
         with self._control_api() as api:
             sandbox = api.create_sandbox(
@@ -336,6 +356,7 @@ class SandboxClient:
                         filesystem=None
                         if filesystem is None
                         else filesystem_to_api(filesystem),
+                        volumes=None if volumes is None else volumes_to_api(volumes),
                     )
                 ),
             )
@@ -639,6 +660,9 @@ class AsyncSandboxClient:
                 http_client=self._http_client,
             )
         )
+        self._volumes = AsyncVolumeClient(
+            AsyncVolumeClientContext(raw_api=self._raw_api, team_id=team_id)
+        )
 
     @property
     def options(self) -> SandboxClientOptions:
@@ -654,6 +678,11 @@ class AsyncSandboxClient:
     def images(self) -> AsyncImageClient:
         """Images that sandboxes are created from."""
         return self._images
+
+    @property
+    def volumes(self) -> AsyncVolumeClient:
+        """Persistent volumes that sandboxes mount."""
+        return self._volumes
 
     @property
     def raw_api(self) -> baseten.client.managementapi.AsyncApiClient:
@@ -679,6 +708,7 @@ class AsyncSandboxClient:
         ports: Sequence[SandboxPort] | None = None,
         network: SandboxNetwork | None = None,
         filesystem: SandboxFileSystemOptions | None = None,
+        volumes: Sequence[SandboxVolumeMount] | None = None,
     ) -> AsyncSandboxCreateResult:
         """Create a sandbox. As :meth:`SandboxClient.create`."""
         with self._control_api() as api:
@@ -704,6 +734,7 @@ class AsyncSandboxClient:
                         filesystem=None
                         if filesystem is None
                         else filesystem_to_api(filesystem),
+                        volumes=None if volumes is None else volumes_to_api(volumes),
                     )
                 ),
             )

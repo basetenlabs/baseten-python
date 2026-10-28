@@ -22,6 +22,7 @@ from baseten.sandbox import (
     SandboxLifecycle,
     SandboxNetwork,
     SandboxPort,
+    SandboxVolumeMount,
 )
 
 _SANDBOX_URL = "https://sbx.example.dev/"
@@ -147,6 +148,7 @@ class TestSandboxClient:
             ports=[SandboxPort(target=80)],
             network=SandboxNetwork(subnet="default"),
             filesystem=SandboxFileSystemOptions(max_memory_usage="80%"),
+            volumes=[SandboxVolumeMount(name="data", mount_path="/data")],
         )
         assert _body(api.requests[0]) == {
             "name": "sbx",
@@ -165,7 +167,30 @@ class TestSandboxClient:
             "ports": [{"target": 80}],
             "network": {"subnet": "default"},
             "filesystem": {"max_memory_usage": "80%"},
+            "volumes": [{"name": "data", "mount_path": "/data", "read_only": False}],
         }
+
+    def test_maps_mounted_volumes(self) -> None:
+        api = _Api()
+        api.route(
+            "POST",
+            "/v1/sandboxes/instances",
+            _record(
+                volumes=[{"name": "data", "mount_path": "/data", "read_only": True}]
+            ),
+            status=201,
+        )
+        result = api.client().create(
+            volumes=[
+                SandboxVolumeMount(name="data", mount_path="/data", read_only=True)
+            ]
+        )
+        assert _body(api.requests[0]) == {
+            "volumes": [{"name": "data", "mount_path": "/data", "read_only": True}]
+        }
+        assert result.info.volumes == [
+            SandboxVolumeMount(name="data", mount_path="/data", read_only=True)
+        ]
 
     def test_sends_team_id_on_every_call_when_set(self) -> None:
         api = _Api()
@@ -462,6 +487,7 @@ def _info() -> SandboxInfo:
         ports=[],
         network=None,
         filesystem=None,
+        volumes=[],
         created_at=datetime(2026, 10, 6, tzinfo=UTC),
         updated_at=None,
         created_by=None,

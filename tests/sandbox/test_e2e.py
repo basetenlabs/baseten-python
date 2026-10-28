@@ -13,8 +13,10 @@ Skipped when BASETEN_E2E_TEST_API_KEY is empty or unset. If the API key is set
 but DOMAIN is missing, the tests error.
 
 Every test shares one sandbox, created once per run and always deleted. Each
-test runs on both the sync and the async client. One image is pushed per run,
-except on Python 3.11, and a sandbox created from it; both are always deleted.
+test runs on both the sync and the async client, except the volume tests, which
+split between them and create their own volumes and sandbox. One image is
+pushed per run, except on Python 3.11, and a sandbox created from it; both are
+always deleted.
 """
 
 from __future__ import annotations
@@ -55,6 +57,8 @@ from baseten.sandbox import (
     SandboxProcessExecEventExit,
     SandboxProcessExecEventOutput,
     SandboxProcessWaitTimeoutError,
+    SandboxVolumeMount,
+    VolumeInfo,
 )
 
 API_KEY = os.environ.get("BASETEN_E2E_TEST_API_KEY", "")
@@ -64,6 +68,10 @@ KEEP_SANDBOX = bool(os.environ.get("BASETEN_E2E_TEST_KEEP_SANDBOX"))
 
 # Labels on every sandbox the suite creates.
 _LABELS = {"created_by": "e2e"}
+
+# Region of everything the suite creates.
+# TODO: Temporary, while other regions' exec planes reject our tokens.
+_REGION = "us-was-1"
 
 # Env on the shared sandbox, by name.
 _SHARED_ENVS = {
@@ -101,9 +109,7 @@ def shared() -> Iterator[_Shared]:
     try:
         created = client.create(
             name=name,
-            # TODO: Temporary, while other regions' exec planes reject our
-            # tokens.
-            region="us-was-1",
+            region=_REGION,
             labels=_LABELS,
             envs=_SHARED_ENVS,
         )
@@ -1104,8 +1110,7 @@ def pushed_image() -> Iterator[_PushedImage]:
         created = client.create(
             name=sandbox_name,
             image=f"{image_name}:latest",
-            # TODO: Same temporary region pin as the shared sandbox.
-            region="us-was-1",
+            region=_REGION,
             labels=_LABELS,
         )
         assert created.info.status == "DEPLOYED"
@@ -1270,7 +1275,8 @@ async def test_previews(sandbox: Sandbox | AsyncSandbox) -> None:
 
         await _fetch_preview(created.url, "rejected without a token", _rejected)
 
-        expires_at = datetime.now(UTC) + timedelta(hours=1)
+        # A token cannot outlive its preview, which expires an hour after creation.
+        expires_at = datetime.now(UTC) + timedelta(minutes=45)
         if isinstance(sandbox, Sandbox):
             token = await asyncio.to_thread(
                 sandbox.previews.create_token, preview_name=name, expires_at=expires_at
@@ -1395,6 +1401,177 @@ async def _fetch_preview(
         if time.monotonic() > deadline:
             pytest.fail(f"preview {url}: want {want}, got {last}")
         await asyncio.sleep(0.2)
+
+
+# Bound on each volume state change the volume tests wait for: deploying,
+# resizing, becoming deletable once unmounted. Each has taken about 3s.
+_VOLUME_WAIT = 30
+_VOLUME_POLL = 0.2
+
+
+# The volume tests split the volume calls between the two clients rather than
+# each running on both, since every volume and sandbox they create takes time.
+# This one covers the volume calls without a sandbox, on the async client.
+@pytest.mark.asyncio
+async def test_volume_crud() -> None:
+    _require_env()
+    started = datetime.now(UTC)
+    name = _unique()
+    print(f"volume {name}")
+    labels = {**_LABELS, "step": "create"}
+    deleted: VolumeInfo | None = None
+    async with _async_client() as client:
+        volumes = client.volumes
+        # The name is known before creating, so even a partial create is
+        # removed.
+        try:
+            created = await volumes.create(
+                name=name, size=512, region=_REGION, labels=labels
+            )
+            assert (created.name, created.region) == (name, _REGION)
+            # The server normalizes either size form to a size string.
+            assert created.size == "512Mi"
+            assert created.attached_to is None
+            assert created.created_by
+            assert created.created_at is not None
+            _assert_within_run(started, created.created_at)
+            begun = time.monotonic()
+            while (info := await volumes.get_info(name=name)).status != "DEPLOYED":
+                assert info.status != "FAILED"
+                if time.monotonic() - begun > _VOLUME_WAIT:
+                    pytest.fail(f"volume still {info.status} after {_VOLUME_WAIT}s")
+                await asyncio.sleep(_VOLUME_POLL)
+            print(f"volume deployed {time.monotonic() - begun:.1f}s after create")
+            assert info.labels == labels
+
+            listed = [volume async for volume in volumes.list(query=name)]
+            # List omits labels.
+            assert [(v.name, v.labels) for v in listed if v.name == name] == [
+                (name, None)
+            ]
+            labels = {**_LABELS, "step": "update"}
+            updated = await volumes.update(name=name, labels=labels)
+            assert (updated.size, updated.labels) == ("512Mi", labels)
+            with pytest.raises(SandboxAPIError) as shrunk:
+                await volumes.update(name=name, size=256)
+            assert shrunk.value.status == 400
+
+            deleted = await volumes.delete(name=name)
+            assert deleted.status == "DELETING"
+        finally:
+            # Cleanup errors are printed rather than raised, so they never hide
+            # the test's own failure.
+            if deleted is None:
+                try:
+                    await volumes.delete(name=name)
+                except SandboxAPIError as err:
+                    if err.status != 404:
+                        print(f"cleanup of volume {name} failed: {err!r}")
+
+
+# Covers mounting a volume and the volume calls that interact with it, on the
+# sync client.
+def test_volume_mount() -> None:
+    _require_env()
+    volume_name, sandbox_name = _unique(), _unique()
+    print(f"volume {volume_name}, sandbox {sandbox_name}")
+    volume_live = sandbox_live = False
+    deleted: VolumeInfo | None = None
+    with _client() as client:
+        volumes = client.volumes
+
+        def deployed() -> bool:
+            info = volumes.get_info(name=volume_name)
+            assert info.status != "FAILED"
+            return info.status == "DEPLOYED"
+
+        def deletable() -> bool:
+            # Fails until the deleted sandbox has let go of the volume.
+            nonlocal deleted
+            try:
+                deleted = volumes.delete(name=volume_name)
+            except SandboxAPIError as err:
+                if err.status == 409:
+                    return False
+                raise
+            return True
+
+        # Each is marked live before creating, so even a partial create is
+        # removed.
+        try:
+            volume_live = True
+            volumes.create(name=volume_name, size=512, region=_REGION, labels=_LABELS)
+            elapsed = _volume_eventually("volume deployed", deployed)
+            print(f"volume deployed {elapsed:.1f}s after create")
+
+            mount = SandboxVolumeMount(name=volume_name, mount_path="/data")
+            sandbox_live = True
+            sandbox = client.create(
+                name=sandbox_name, region=_REGION, labels=_LABELS, volumes=[mount]
+            )
+            assert sandbox.info.status == "DEPLOYED"
+            assert sandbox.info.volumes == [mount]
+            assert volumes.get_info(name=volume_name).attached_to == sandbox_name
+            sandbox.fs.write(path="/data/written.txt", content="written")
+            assert sandbox.fs.read(path="/data/written.txt") == "written"
+            initial = _volume_megabytes(sandbox)
+            print(f"df reports {initial} MB for a 512 MB volume")
+
+            with pytest.raises(SandboxAPIError) as mounted:
+                volumes.delete(name=volume_name)
+            assert mounted.value.status == 409
+
+            assert volumes.update(name=volume_name, size="1Gi").size == "1Gi"
+            elapsed = _volume_eventually(
+                "sandbox sees the grown volume",
+                lambda: _volume_megabytes(sandbox) > initial,
+            )
+            print(f"sandbox saw the grown volume {elapsed:.1f}s after update")
+
+            client.delete(name=sandbox_name)
+            sandbox_live = False
+            elapsed = _volume_eventually("volume deletable", deletable)
+            volume_live = False
+            print(f"volume deletable {elapsed:.1f}s after sandbox delete")
+            assert deleted is not None
+            assert deleted.status == "DELETING"
+        finally:
+            # The sandbox goes first, since a mounted volume cannot be deleted.
+            # Cleanup errors are printed rather than raised, so they never hide
+            # the test's own failure.
+            if sandbox_live:
+                try:
+                    client.delete(name=sandbox_name)
+                except SandboxAPIError as err:
+                    if err.status != 404:
+                        print(f"cleanup of sandbox {sandbox_name} failed: {err!r}")
+            if volume_live:
+                try:
+                    _volume_eventually("volume deletable in cleanup", deletable)
+                except SandboxAPIError as err:
+                    if err.status != 404:
+                        print(f"cleanup of volume {volume_name} failed: {err!r}")
+                except pytest.fail.Exception as err:
+                    print(f"cleanup of volume {volume_name} failed: {err}")
+
+
+def _volume_eventually(what: str, check: Callable[[], bool]) -> float:
+    # Polls until check passes, within _VOLUME_WAIT; any error check raises ends
+    # the wait. Returns how long it took.
+    begun = time.monotonic()
+    while not check():
+        if time.monotonic() - begun > _VOLUME_WAIT:
+            pytest.fail(f"{what}: not within {_VOLUME_WAIT}s")
+        time.sleep(_VOLUME_POLL)
+    return time.monotonic() - begun
+
+
+def _volume_megabytes(sandbox: Sandbox) -> int:
+    process = sandbox.process.exec(
+        command="sh -c 'df -m /data | tail -n 1'", wait_for_completion=True
+    )
+    assert process.exit_code == 0
+    return int(process.stdout.split()[1])
 
 
 def test_uses_http2_by_default(shared: _Shared) -> None:

@@ -218,6 +218,20 @@ class SandboxFileSystemOptions:
 
 
 @dataclass(kw_only=True)
+class SandboxVolumeMount:
+    """A persistent volume mounted in a sandbox, fixed at creation."""
+
+    name: str
+    """Name of the volume."""
+
+    mount_path: str
+    """Absolute path the volume is mounted at."""
+
+    read_only: bool = False
+    """Whether the volume is mounted read-only."""
+
+
+@dataclass(kw_only=True)
 class SandboxInfo:
     """A sandbox as last reported by the control plane."""
 
@@ -257,6 +271,9 @@ class SandboxInfo:
 
     filesystem: SandboxFileSystemOptions | None
 
+    volumes: list[SandboxVolumeMount]
+    """Persistent volumes mounted in the sandbox."""
+
     created_at: datetime
 
     updated_at: datetime | None
@@ -293,6 +310,14 @@ def sandbox_info_from_api(sandbox: baseten.client.managementapi.Sandbox) -> Sand
         else SandboxFileSystemOptions(
             max_memory_usage=sandbox.filesystem.max_memory_usage
         ),
+        volumes=[
+            SandboxVolumeMount(
+                name=volume.name,
+                mount_path=volume.mount_path,
+                read_only=volume.read_only,
+            )
+            for volume in sandbox.volumes or []
+        ],
         created_at=sandbox.created_at,
         updated_at=sandbox.updated_at,
         created_by=sandbox.created_by,
@@ -395,6 +420,20 @@ def filesystem_to_api(
     return baseten.client.managementapi.SandboxFilesystem(
         **set_fields(max_memory_usage=filesystem.max_memory_usage)
     )
+
+
+def volumes_to_api(
+    volumes: Sequence[SandboxVolumeMount],
+) -> list[baseten.client.managementapi.SandboxVolumeAttachment]:
+    """Convert volume mounts to the control plane's form."""
+    return [
+        baseten.client.managementapi.SandboxVolumeAttachment(
+            name=volume.name,
+            mount_path=volume.mount_path,
+            read_only=volume.read_only,
+        )
+        for volume in volumes
+    ]
 
 
 def set_fields(**fields: Any) -> dict[str, Any]:

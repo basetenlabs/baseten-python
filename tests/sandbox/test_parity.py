@@ -19,6 +19,8 @@ from baseten.sandbox import (
     AsyncSandboxPreviews,
     AsyncSandboxProcess,
     AsyncSandboxStream,
+    AsyncVolumeClient,
+    ImageCleanupProgress,
     ImageCleanupResult,
     ImageClient,
     ImageInfo,
@@ -53,6 +55,9 @@ from baseten.sandbox import (
     SandboxProcessInfo,
     SandboxProcessLogs,
     SandboxStream,
+    SandboxVolumeMount,
+    VolumeClient,
+    VolumeInfo,
 )
 
 # Methods of an async class that are plain functions, since they make no call.
@@ -69,6 +74,7 @@ _SYNC_IN_ASYNC = {(AsyncSandboxClient, "sandbox_from_url")}
         (SandboxFileSystem, AsyncSandboxFileSystem),
         (SandboxPreviews, AsyncSandboxPreviews),
         (ImageClient, AsyncImageClient),
+        (VolumeClient, AsyncVolumeClient),
         (SandboxStream, AsyncSandboxStream),
     ],
 )
@@ -288,6 +294,15 @@ _PARITY = {
     "ImageCleanupResult": _Parity(
         ours=_dataclass_fields(ImageCleanupResult),
         generated=baseten.client.managementapi.CleanupSandboxImagesResponse,
+        generated_only={
+            "remaining": "reported to the progress callback",
+            "has_more": "called again until false",
+        },
+    ),
+    "ImageCleanupProgress": _Parity(
+        ours=_dataclass_fields(ImageCleanupProgress),
+        generated=baseten.client.managementapi.CleanupSandboxImagesResponse,
+        generated_only={"has_more": "always true between calls"},
     ),
     "ImageLibraryInfo": _Parity(
         ours=_dataclass_fields(ImageLibraryInfo),
@@ -306,6 +321,31 @@ _PARITY = {
         ours=_kwargs(ImageClient.list),
         generated=baseten.client.managementapi.ListImagesParams,
         renamed={"limit": "page_size", "q": "name_prefix"},
+        generated_only={
+            "team_id": "the client's team",
+            "cursor": "paged internally",
+        },
+    ),
+    "SandboxVolumeMount": _Parity(
+        ours=_dataclass_fields(SandboxVolumeMount),
+        generated=baseten.client.managementapi.SandboxVolumeAttachment,
+    ),
+    "VolumeInfo": _Parity(
+        ours=_dataclass_fields(VolumeInfo),
+        generated=baseten.client.managementapi.SandboxVolume,
+    ),
+    "VolumeClient.create": _Parity(
+        ours=_kwargs(VolumeClient.create),
+        generated=baseten.client.managementapi.CreateSandboxVolumeRequest,
+    ),
+    "VolumeClient.update": _Parity(
+        ours=_kwargs(VolumeClient.update) - {"name"},
+        generated=baseten.client.managementapi.UpdateSandboxVolumeRequest,
+    ),
+    "VolumeClient.list": _Parity(
+        ours=_kwargs(VolumeClient.list),
+        generated=baseten.client.managementapi.ListSandboxVolumesParams,
+        renamed={"limit": "page_size", "q": "query", "status": "statuses"},
         generated_only={
             "team_id": "the client's team",
             "cursor": "paged internally",

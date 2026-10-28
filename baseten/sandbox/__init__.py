@@ -55,6 +55,7 @@ from baseten.sandbox._fs import (
 )
 from baseten.sandbox._images import (
     AsyncImageClient,
+    ImageCleanupProgress,
     ImageCleanupResult,
     ImageClient,
     ImageInfo,
@@ -93,6 +94,7 @@ from baseten.sandbox._info import (
     SandboxPort,
     SandboxPortProtocol,
     SandboxStatus,
+    SandboxVolumeMount,
 )
 from baseten.sandbox._previews import (
     AsyncSandboxPreviews,
@@ -114,6 +116,12 @@ from baseten.sandbox._process import (
 )
 from baseten.sandbox._retry import SandboxRetryOptions
 from baseten.sandbox._sandbox import AsyncSandbox, Sandbox
+from baseten.sandbox._volumes import (
+    AsyncVolumeClient,
+    VolumeClient,
+    VolumeInfo,
+    VolumeStatus,
+)
 
 __all__ = [
     "AsyncImageClient",
@@ -127,8 +135,10 @@ __all__ = [
     "AsyncSandboxProcess",
     "AsyncSandboxStream",
     "AsyncSandboxTokenProvider",
+    "AsyncVolumeClient",
     "ImageBuildError",
     "ImageBuilder",
+    "ImageCleanupProgress",
     "ImageCleanupResult",
     "ImageClient",
     "ImageIgnoreFileFunc",
@@ -196,5 +206,9 @@ __all__ = [
     "SandboxStream",
     "SandboxTokenProvider",
     "SandboxTokenProviderContext",
+    "SandboxVolumeMount",
+    "VolumeClient",
+    "VolumeInfo",
+    "VolumeStatus",
     "default_image_ignore_file",
 ]

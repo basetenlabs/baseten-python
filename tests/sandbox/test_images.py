@@ -19,6 +19,7 @@ from baseten.sandbox import (
     AsyncSandboxClient,
     ImageBuilder,
     ImageBuildError,
+    ImageCleanupProgress,
     ImageCleanupResult,
     ImageIgnoreFileOptions,
     ImageIgnoreFileProcessorOptions,
@@ -648,6 +649,24 @@ class TestImageClientListing:
         assert images.delete(name="img").tag_count == 0
         assert images.cleanup() == ImageCleanupResult(deleted=3, message="done")
 
+    def test_cleanup_calls_again_while_more_remain(self) -> None:
+        api = _Api()
+        api.route(
+            "POST",
+            "/v1/sandboxes/cleanup_images",
+            {"deleted": 2, "message": "m1", "remaining": 5, "has_more": True},
+            {"deleted": 4, "message": "m2", "remaining": 1, "has_more": True},
+            {"deleted": 1, "message": "m3", "remaining": 0, "has_more": False},
+        )
+        reported: list[ImageCleanupProgress] = []
+        result = api.client().images.cleanup(progress=reported.append)
+        assert result == ImageCleanupResult(deleted=7, message="m3")
+        assert reported == [
+            ImageCleanupProgress(deleted=2, remaining=5, message="m1"),
+            ImageCleanupProgress(deleted=6, remaining=1, message="m2"),
+        ]
+        assert len(api.requests) == 3
+
     def test_lists_library_images(self) -> None:
         api = _Api()
         api.route(
@@ -690,7 +709,7 @@ class TestImageClientListing:
                         name="v",
                         mount_path="/data",
                         type=None,
-                        size_mb=None,
+                        size=None,
                         read_only=False,
                     )
                 ],
@@ -857,6 +876,24 @@ class TestAsyncImageClient:
             "volume": 8192,
         }
         assert api.paths()[1:] == ["GET /v1/sandboxes/images/img"]
+
+    @pytest.mark.asyncio
+    async def test_cleanup_awaits_an_async_progress(self) -> None:
+        api = _Api()
+        api.route(
+            "POST",
+            "/v1/sandboxes/cleanup_images",
+            {"deleted": 2, "message": "m1", "remaining": 1, "has_more": True},
+            {"deleted": 1, "message": "m2", "remaining": 0, "has_more": False},
+        )
+        reported: list[ImageCleanupProgress] = []
+
+        async def progress(update: ImageCleanupProgress) -> None:
+            reported.append(update)
+
+        result = await api.async_client().images.cleanup(progress=progress)
+        assert result == ImageCleanupResult(deleted=3, message="m2")
+        assert reported == [ImageCleanupProgress(deleted=2, remaining=1, message="m1")]
 
     @pytest.mark.asyncio
     async def test_times_out_waiting_as_an_image_build_error(self) -> None:
