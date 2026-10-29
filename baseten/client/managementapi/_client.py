@@ -55,6 +55,8 @@ from ._models import (
     CreateSandboxPreviewTokenParams,
     CreateSandboxPreviewTokenRequest,
     CreateSandboxRequest,
+    CreateSandboxVolumeParams,
+    CreateSandboxVolumeRequest,
     CreateTokenRequest,
     CreateTrainingJobRequest,
     CreateTrainingJobResponse,
@@ -70,6 +72,7 @@ from ._models import (
     DeleteSandboxParams,
     DeleteSandboxPreviewParams,
     DeleteSandboxPreviewTokenParams,
+    DeleteSandboxVolumeParams,
     DeleteVolumeRequest,
     DeleteVolumeResponse,
     DeleteVolumeTagRequest,
@@ -155,6 +158,7 @@ from ._models import (
     GetSandboxMetricsParams,
     GetSandboxParams,
     GetSandboxPreviewParams,
+    GetSandboxVolumeParams,
     GetTeamsLoopsRunsParams,
     GetTeamsLoopsSamplersParams,
     GetTeamsModelsParams,
@@ -215,6 +219,8 @@ from ._models import (
     ListSandboxPreviewsResponse,
     ListSandboxPreviewTokensParams,
     ListSandboxPreviewTokensResponse,
+    ListSandboxVolumesParams,
+    ListSandboxVolumesResponse,
     ListTrainingJobsResponse,
     ListTrainingProjectsResponse,
     ListVolumeNamespacesResponse,
@@ -263,6 +269,7 @@ from ._models import (
     SandboxMetrics,
     SandboxPreview,
     SandboxPreviewToken,
+    SandboxVolume,
     SearchTrainingJobsRequest,
     SearchTrainingJobsResponse,
     Secret,
@@ -311,6 +318,8 @@ from ._models import (
     UpdateSandboxPreviewParams,
     UpdateSandboxPreviewRequest,
     UpdateSandboxRequest,
+    UpdateSandboxVolumeParams,
+    UpdateSandboxVolumeRequest,
     UpdateTrainingJobRequest,
     UpdateTrainingJobResponse,
     UpsertSecretRequest,
@@ -461,6 +470,26 @@ class ApiClient:
                 method="POST",
                 path_fmt="/v1/sandboxes/instances/{}/previews/{}/tokens",
                 path_args=[sandbox_name, preview_name],
+                body=request,
+                query=params,
+                success_codes=[201],
+                error_codes=None,
+            ),
+        )
+
+    def create_sandbox_volume(
+        self,
+        *,
+        params: CreateSandboxVolumeParams | None = None,
+        request: CreateSandboxVolumeRequest,
+    ) -> SandboxVolume:
+        """Create a volume"""
+        return self._do_json(
+            SandboxVolume,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/sandboxes/volumes",
+                path_args=[],
                 body=request,
                 query=params,
                 success_codes=[201],
@@ -755,6 +784,23 @@ class ApiClient:
                 success_codes=[204],
                 error_codes=None,
             )
+        )
+
+    def delete_sandbox_volume(
+        self, *, volume_name: str, params: DeleteSandboxVolumeParams | None = None
+    ) -> SandboxVolume:
+        """Delete a volume"""
+        return self._do_json(
+            SandboxVolume,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/sandboxes/volumes/{}",
+                path_args=[volume_name],
+                body=None,
+                query=params,
+                success_codes=[202],
+                error_codes=None,
+            ),
         )
 
     def delete_secrets(self, *, secret_name: str) -> SecretTombstone:
@@ -2340,6 +2386,23 @@ class ApiClient:
             ),
         )
 
+    def get_sandbox_volume(
+        self, *, volume_name: str, params: GetSandboxVolumeParams | None = None
+    ) -> SandboxVolume:
+        """Get a volume"""
+        return self._do_json(
+            SandboxVolume,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/volumes/{}",
+                path_args=[volume_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     def get_secrets(self) -> Secrets:
         """Gets all secrets (metadata only, no plain text keys)"""
         return self._do_json(
@@ -2971,6 +3034,23 @@ class ApiClient:
                 method="GET",
                 path_fmt="/v1/sandboxes/instances/{}/previews",
                 path_args=[sandbox_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def list_sandbox_volumes(
+        self, *, params: ListSandboxVolumesParams | None = None
+    ) -> ListSandboxVolumesResponse:
+        """List volumes"""
+        return self._do_json(
+            ListSandboxVolumesResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/volumes",
+                path_args=[],
                 body=None,
                 query=params,
                 success_codes=[200],
@@ -4784,6 +4864,27 @@ class ApiClient:
             ),
         )
 
+    def update_sandbox_volume(
+        self,
+        *,
+        volume_name: str,
+        params: UpdateSandboxVolumeParams | None = None,
+        request: UpdateSandboxVolumeRequest,
+    ) -> SandboxVolume:
+        """Update a volume"""
+        return self._do_json(
+            SandboxVolume,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/sandboxes/volumes/{}",
+                path_args=[volume_name],
+                body=request,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     def _build_request(self, request: _ApiRequest) -> httpx.Request:
         path = request.path_fmt.format(
             *[urllib.parse.quote(a, safe="") for a in request.path_args]
@@ -4967,6 +5068,26 @@ class AsyncApiClient:
                 method="POST",
                 path_fmt="/v1/sandboxes/instances/{}/previews/{}/tokens",
                 path_args=[sandbox_name, preview_name],
+                body=request,
+                query=params,
+                success_codes=[201],
+                error_codes=None,
+            ),
+        )
+
+    async def create_sandbox_volume(
+        self,
+        *,
+        params: CreateSandboxVolumeParams | None = None,
+        request: CreateSandboxVolumeRequest,
+    ) -> SandboxVolume:
+        """Create a volume"""
+        return await self._do_json(
+            SandboxVolume,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/sandboxes/volumes",
+                path_args=[],
                 body=request,
                 query=params,
                 success_codes=[201],
@@ -5263,6 +5384,23 @@ class AsyncApiClient:
                 success_codes=[204],
                 error_codes=None,
             )
+        )
+
+    async def delete_sandbox_volume(
+        self, *, volume_name: str, params: DeleteSandboxVolumeParams | None = None
+    ) -> SandboxVolume:
+        """Delete a volume"""
+        return await self._do_json(
+            SandboxVolume,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/sandboxes/volumes/{}",
+                path_args=[volume_name],
+                body=None,
+                query=params,
+                success_codes=[202],
+                error_codes=None,
+            ),
         )
 
     async def delete_secrets(self, *, secret_name: str) -> SecretTombstone:
@@ -6852,6 +6990,23 @@ class AsyncApiClient:
             ),
         )
 
+    async def get_sandbox_volume(
+        self, *, volume_name: str, params: GetSandboxVolumeParams | None = None
+    ) -> SandboxVolume:
+        """Get a volume"""
+        return await self._do_json(
+            SandboxVolume,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/volumes/{}",
+                path_args=[volume_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     async def get_secrets(self) -> Secrets:
         """Gets all secrets (metadata only, no plain text keys)"""
         return await self._do_json(
@@ -7485,6 +7640,23 @@ class AsyncApiClient:
                 method="GET",
                 path_fmt="/v1/sandboxes/instances/{}/previews",
                 path_args=[sandbox_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def list_sandbox_volumes(
+        self, *, params: ListSandboxVolumesParams | None = None
+    ) -> ListSandboxVolumesResponse:
+        """List volumes"""
+        return await self._do_json(
+            ListSandboxVolumesResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/sandboxes/volumes",
+                path_args=[],
                 body=None,
                 query=params,
                 success_codes=[200],
@@ -9305,6 +9477,27 @@ class AsyncApiClient:
                 method="PATCH",
                 path_fmt="/v1/sandboxes/instances/{}/previews/{}",
                 path_args=[sandbox_name, preview_name],
+                body=request,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def update_sandbox_volume(
+        self,
+        *,
+        volume_name: str,
+        params: UpdateSandboxVolumeParams | None = None,
+        request: UpdateSandboxVolumeRequest,
+    ) -> SandboxVolume:
+        """Update a volume"""
+        return await self._do_json(
+            SandboxVolume,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/sandboxes/volumes/{}",
+                path_args=[volume_name],
                 body=request,
                 query=params,
                 success_codes=[200],

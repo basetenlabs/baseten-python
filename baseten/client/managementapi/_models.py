@@ -1241,6 +1241,46 @@ class DeleteSandboxPreviewTokenParams(BaseModel):
     ] = None
 
 
+class CreateSandboxVolumeParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
+class GetSandboxVolumeParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
+class UpdateSandboxVolumeParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
+class DeleteSandboxVolumeParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+
+
 class ListImagesParams(BaseModel):
     team_id: Annotated[
         str | None,
@@ -3221,6 +3261,7 @@ class AuditLogEventApiKeyDeleted(BaseModel):
         ),
     ]
     prefix: Annotated[str, Field(title="Prefix")]
+    revocation_reason: Literal["INACTIVITY"] | str | None = None
 
 
 class AuditLogEventAutoscalingScheduleSettings(BaseModel):
@@ -3747,6 +3788,35 @@ class AuditLogEventSshCertificateSigned(BaseModel):
     replica_id: Annotated[str, Field(title="Replica Id")]
     proxy_address: Annotated[str, Field(title="Proxy Address")]
     expires_at: Annotated[str, Field(title="Expires At")]
+
+
+class AuditLogEventTelemetryExportCreated(BaseModel):
+    telemetry_export_configuration_id: Annotated[
+        str, Field(title="Telemetry Export Configuration Id")
+    ]
+    event_type: Annotated[
+        Literal["TELEMETRY_EXPORT_CREATED"], Field(title="Event Type")
+    ]
+
+
+class AuditLogEventTelemetryExportDeleted(BaseModel):
+    telemetry_export_configuration_id: Annotated[
+        str, Field(title="Telemetry Export Configuration Id")
+    ]
+    event_type: Annotated[
+        Literal["TELEMETRY_EXPORT_DELETED"], Field(title="Event Type")
+    ]
+
+
+class AuditLogEventTelemetryExportUpdated(BaseModel):
+    telemetry_export_configuration_id: Annotated[
+        str, Field(title="Telemetry Export Configuration Id")
+    ]
+    event_type: Annotated[
+        Literal["TELEMETRY_EXPORT_UPDATED"], Field(title="Event Type")
+    ]
+    credential_rotated: Annotated[bool, Field(title="Credential Rotated")]
+    enabled: Annotated[bool | None, Field(title="Enabled")]
 
 
 class AuditLogEventUserInvited(BaseModel):
@@ -6248,6 +6318,13 @@ class LoopsSampler(BaseModel):
         int,
         Field(description="Number of nodes serving the sampler.", title="Node Count"),
     ] = 1
+    base_checkpoint: Annotated[
+        str | None,
+        Field(
+            description="The custom base checkpoint the sampler serves, pinned to a commit (hf://<org>/<repo>@<sha>). Null when it uses the base model's own weights.",
+            title="Base Checkpoint",
+        ),
+    ] = None
 
 
 class Name3(RootModel[str]):
@@ -6352,6 +6429,13 @@ class CreateLoopsRunRequest(BaseModel):
             title="Reuse From Session Id",
         ),
     ] = None
+    base_checkpoint: Annotated[
+        str | None,
+        Field(
+            description="Optional Hugging Face checkpoint to start training from instead of the base model's weights. Form: hf://<org>/<repo>[@<revision>]. It must be a complete, merged checkpoint in safetensors format with the same architecture as base_model, which still selects the hardware and training configuration. It must include its tokenizer files: the run's sampler and the SDK load the tokenizer and chat template from the checkpoint. A private or gated repository needs a Hugging Face token in the team secret hf_access_token. The revision is pinned to a commit when the run is created. Cannot be combined with path, reuse_from_run_id, or reuse_from_session_id.",
+            title="Base Checkpoint",
+        ),
+    ] = None
     sampler_num_replicas: Annotated[
         SamplerNumReplicas | None,
         Field(
@@ -6450,6 +6534,13 @@ class CreateLoopsTrainerRequest(BaseModel):
         Field(
             description="Optional ID of a prior Loops session whose trainer and/or sampler should be reused for this run. Deprecated in favor of reuse_from_run_id.",
             title="Reuse From Session Id",
+        ),
+    ] = None
+    base_checkpoint: Annotated[
+        str | None,
+        Field(
+            description="Optional Hugging Face checkpoint to start training from instead of the base model's weights. Form: hf://<org>/<repo>[@<revision>]. It must be a complete, merged checkpoint in safetensors format with the same architecture as base_model, which still selects the hardware and training configuration. It must include its tokenizer files: the run's sampler and the SDK load the tokenizer and chat template from the checkpoint. A private or gated repository needs a Hugging Face token in the team secret hf_access_token. The revision is pinned to a commit when the run is created. Cannot be combined with path, reuse_from_run_id, or reuse_from_session_id.",
+            title="Base Checkpoint",
         ),
     ] = None
 
@@ -6741,6 +6832,13 @@ class LoopsDeployment(BaseModel):
             title="Base Model",
         ),
     ]
+    base_checkpoint: Annotated[
+        str | None,
+        Field(
+            description="The custom base checkpoint the deployment's trainer loaded, pinned to a commit (hf://<org>/<repo>@<sha>). Null when it uses the base model's own weights.",
+            title="Base Checkpoint",
+        ),
+    ] = None
     base_url: Annotated[str, Field(description="The run's base URL.", title="Base Url")]
     status: Annotated[
         LoopsDeploymentStatus, Field(description="Latest deployment status.")
@@ -7492,11 +7590,21 @@ class LibraryListingMetadata(BaseModel):
     parameter_count: Annotated[int | None, Field(title="Parameter Count")] = None
     context_length: Annotated[int | None, Field(title="Context Length")] = None
     input_modalities: Annotated[
-        list[Literal["text", "image", "audio", "video", "embedding", "rerank"] | str],
+        list[
+            Literal[
+                "text", "image", "audio", "video", "embedding", "rerank", "decision"
+            ]
+            | str
+        ],
         Field(title="Input Modalities"),
     ] = ["text"]
     output_modalities: Annotated[
-        list[Literal["text", "image", "audio", "video", "embedding", "rerank"] | str],
+        list[
+            Literal[
+                "text", "image", "audio", "video", "embedding", "rerank", "decision"
+            ]
+            | str
+        ],
         Field(title="Output Modalities"),
     ] = ["text"]
     license: Annotated[str, Field(title="License")]
@@ -9937,8 +10045,8 @@ class SandboxLibraryImageVolume(BaseModel):
     name: Annotated[
         str,
         Field(
-            description="Volume name, or an internal identifier for ephemeral volumes.",
-            examples=["scratch"],
+            description="Volume name, used in volume_name path parameters and sandbox volumes.",
+            examples=["datasets"],
         ),
     ]
     mount_path: Annotated[
@@ -9948,19 +10056,6 @@ class SandboxLibraryImageVolume(BaseModel):
             examples=["/mnt/data"],
         ),
     ]
-    type: Annotated[
-        str | None,
-        Field(
-            description="Volume type, persistent when empty.", examples=["ephemeral"]
-        ),
-    ] = None
-    size_mb: Annotated[
-        int | None,
-        Field(
-            description="Storage capacity in megabytes for ephemeral volumes.",
-            examples=[10240],
-        ),
-    ] = None
     read_only: Annotated[
         bool | None,
         Field(description="Whether the volume is mounted read-only.", examples=[False]),
@@ -9989,6 +10084,21 @@ class CleanupSandboxImagesResponse(BaseModel):
             ],
         ),
     ]
+    remaining: Annotated[
+        int | None,
+        Field(
+            description="Number of unused image versions left for a next call.",
+            examples=[0],
+            ge=0,
+        ),
+    ] = None
+    has_more: Annotated[
+        bool | None,
+        Field(
+            description="True when the cleanup stopped on its time limit before every unused version was removed. Call it again to continue.",
+            examples=[False],
+        ),
+    ] = None
 
 
 class SandboxPreviewConfiguration(BaseModel):
@@ -10008,7 +10118,7 @@ class SandboxPreviewConfiguration(BaseModel):
     request_headers: Annotated[
         dict[str, str] | None,
         Field(
-            description='Headers added to every request forwarded to the sandbox, for example an Authorization header expected by the application. Responses return each name with the value "****", except a GET with show_secrets=true by a workspace administrator. Sending "****" back as a value returns 400. A PATCH replaces the whole set.',
+            description='Headers added to every request forwarded to the sandbox, for example an Authorization header expected by the application. Responses return each name with the value "****", except a GET with show_secrets=true by a workspace administrator. Sending "****" back as a value returns 400. A PATCH replaces the whole set. Some header names are reserved by the platform.',
             examples=[{"Authorization": "Bearer app-internal-token"}],
         ),
     ] = None
@@ -10156,6 +10266,135 @@ class ListSandboxPreviewTokensResponse(BaseModel):
     pagination: SandboxApiPagination
 
 
+class SandboxVolumeAttachment(BaseModel):
+    name: Annotated[
+        str,
+        Field(
+            description="Name of the volume to mount.",
+            examples=["datasets"],
+            min_length=1,
+        ),
+    ]
+    mount_path: Annotated[
+        str,
+        Field(
+            description="Absolute path where the volume is mounted in the sandbox.",
+            examples=["/data"],
+            pattern="^/",
+        ),
+    ]
+    read_only: Annotated[
+        bool,
+        Field(
+            description="Mount the volume read-only. Defaults to false.",
+            examples=[False],
+        ),
+    ] = False
+
+
+class CreateSandboxVolumeRequest(BaseModel):
+    name: Annotated[
+        str | None,
+        Field(
+            description="Volume name, unique in the team. Generated when omitted.",
+            examples=["datasets"],
+            max_length=49,
+            min_length=1,
+            pattern="^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+        ),
+    ] = None
+    size: Annotated[
+        str | int,
+        Field(
+            description='Capacity, as a size (e.g. "10Gi", "512Mi") or a number of Mi (e.g. 1024). Can grow later, never shrink.',
+            examples=["10Gi"],
+        ),
+    ]
+    region: Annotated[
+        str | None,
+        Field(
+            description="Region of the volume. Defaults to the default sandbox region. Sandboxes mounting it must be in the same region.",
+            examples=["us-pdx-1"],
+        ),
+    ] = None
+    labels: dict[str, str] | None = None
+
+
+class UpdateSandboxVolumeRequest(BaseModel):
+    size: Annotated[
+        str | int | None,
+        Field(
+            description='New capacity, as a size (e.g. "20Gi") or a number of Mi, greater than or equal to the current size.',
+            examples=["20Gi"],
+        ),
+    ] = None
+    labels: Annotated[
+        dict[str, str] | None,
+        Field(
+            description="Labels replacing all current labels, not merged with them. Omit to keep them."
+        ),
+    ] = None
+
+
+class SandboxVolume(BaseModel):
+    name: Annotated[
+        str,
+        Field(
+            description="Volume name, used in volume_name path parameters and sandbox volumes.",
+            examples=["datasets"],
+        ),
+    ]
+    size: Annotated[
+        str | int,
+        Field(
+            description='Capacity, as a size (e.g. "10Gi", "512Mi") or a number of Mi (e.g. 1024).',
+            examples=["10Gi"],
+        ),
+    ]
+    region: Annotated[
+        str, Field(description="Region of the volume.", examples=["us-pdx-1"])
+    ]
+    status: Annotated[
+        Literal["DEPLOYING", "DEPLOYED", "FAILED", "DELETING"] | str,
+        Field(description="Volume status, always uppercase.", examples=["DEPLOYED"]),
+    ]
+    attached_to: Annotated[
+        str | None,
+        Field(
+            description="Name of the sandbox the volume is mounted in. Absent when not mounted.",
+            examples=["baseten-api-review-0916"],
+        ),
+    ] = None
+    labels: Annotated[
+        dict[str, str] | None, Field(description="Labels. Omitted from list responses.")
+    ] = None
+    created_at: Annotated[
+        AwareDatetime | None, Field(examples=["2026-10-12T12:00:00Z"])
+    ] = None
+    updated_at: Annotated[
+        AwareDatetime | None, Field(examples=["2026-10-12T12:00:00Z"])
+    ] = None
+    created_by: Annotated[
+        str | None,
+        Field(
+            description="User or service account that created the volume.",
+            examples=["sandbox-automation"],
+        ),
+    ] = None
+    updated_by: Annotated[
+        str | None,
+        Field(
+            description="User or service account that last updated the volume.",
+            examples=["sandbox-automation"],
+        ),
+    ] = None
+
+
+class ListSandboxVolumesResponse(BaseModel):
+    items: Annotated[list[SandboxVolume], Field(description="Resources on this page.")]
+    pagination: SandboxApiPagination
+
+
 class LoadCheckpointConfig(BaseModel):
     enabled: Annotated[
         bool,
@@ -10238,6 +10477,7 @@ class GetAuditLogsParams(BaseModel):
                 "USER_MANAGEMENT",
                 "DIRECTORY_GROUP_MANAGEMENT",
                 "SSH",
+                "TELEMETRY_EXPORT",
             ]
             | str
         ]
@@ -10350,6 +10590,7 @@ class GetModelsAuditLogsParams(BaseModel):
                 "USER_MANAGEMENT",
                 "DIRECTORY_GROUP_MANAGEMENT",
                 "SSH",
+                "TELEMETRY_EXPORT",
             ]
             | str
         ]
@@ -10828,6 +11069,7 @@ class GetChainsAuditLogsParams(BaseModel):
                 "USER_MANAGEMENT",
                 "DIRECTORY_GROUP_MANAGEMENT",
                 "SSH",
+                "TELEMETRY_EXPORT",
             ]
             | str
         ]
@@ -11319,6 +11561,48 @@ class GetSandboxMetricsParams(BaseModel):
         Field(
             description="Metric names in response order. Omit to request all three signals.",
             max_length=3,
+            min_length=1,
+        ),
+    ] = None
+
+
+class ListSandboxVolumesParams(BaseModel):
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Optional team ID. Must match X-Team-Id when both are supplied. If neither selector is supplied, defaults to the caller's only accessible team. Callers with multiple accessible teams must select a team. Requests without access to any team are forbidden.",
+            min_length=1,
+        ),
+    ] = None
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor from the previous page; omit for the first page.",
+            examples=[
+                "eyJ2IjoxLCJsYXN0X2tleSI6ImJhc2V0ZW4tYXBpLXJldmlldy0wOTE2Iiwic29ydCI6ImRlc2MifQ"
+            ],
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of items to return.",
+            examples=[20],
+            ge=1,
+            le=100,
+        ),
+    ] = 20
+    q: Annotated[
+        str | None,
+        Field(
+            description="Search volume names. Search is applied before pagination.",
+            examples=["datasets"],
+        ),
+    ] = None
+    status: Annotated[
+        list[Literal["DEPLOYING", "DEPLOYED", "FAILED", "DELETING"] | str] | None,
+        Field(
+            description="Volume statuses. Repeat the query parameter for each status, for example status=DEPLOYED&status=FAILED. Unknown values are rejected.",
             min_length=1,
         ),
     ] = None
@@ -13108,6 +13392,13 @@ class LoopsRun(BaseModel):
             title="Lora Config Version",
         ),
     ] = None
+    base_checkpoint: Annotated[
+        str | None,
+        Field(
+            description="The custom base checkpoint the run started from, pinned to a commit (hf://<org>/<repo>@<sha>). Null when it uses the base model's own weights.",
+            title="Base Checkpoint",
+        ),
+    ] = None
     base_url: Annotated[str, Field(description="The run's base URL.", title="Base Url")]
     created_at: Annotated[
         AwareDatetime,
@@ -14879,6 +15170,9 @@ class AuditLogEntry(BaseModel):
             "VOLUME_TAG_SET",
             "VOLUME_TAG_DELETED",
             "VOLUME_UPDATED",
+            "TELEMETRY_EXPORT_CREATED",
+            "TELEMETRY_EXPORT_UPDATED",
+            "TELEMETRY_EXPORT_DELETED",
         ]
         | str,
         Field(
@@ -14939,7 +15233,10 @@ class AuditLogEntry(BaseModel):
             | AuditLogEventVolumeVersionRestored
             | AuditLogEventVolumeTagSet
             | AuditLogEventVolumeTagDeleted
-            | AuditLogEventVolumeUpdated,
+            | AuditLogEventVolumeUpdated
+            | AuditLogEventTelemetryExportCreated
+            | AuditLogEventTelemetryExportUpdated
+            | AuditLogEventTelemetryExportDeleted,
             Field(
                 description="Structured details of the action, discriminated by `event_type`.",
                 discriminator="event_type",
@@ -15578,7 +15875,7 @@ class SandboxConfiguration(BaseModel):
     region: Annotated[
         str | None,
         Field(
-            description="Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the closest region is selected.",
+            description="Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the default sandbox region is used.",
             examples=["us-pdx-1"],
         ),
     ] = None
@@ -15615,6 +15912,13 @@ class SandboxConfiguration(BaseModel):
         Field(
             description="Filesystem configuration. Set at creation only.",
             examples=[{"max_memory_usage": "80%"}],
+        ),
+    ] = None
+    volumes: Annotated[
+        list[SandboxVolumeAttachment] | None,
+        Field(
+            description="Volumes mounted in the sandbox. Set at creation only.",
+            max_length=1,
         ),
     ] = None
     ports: Annotated[
@@ -15715,7 +16019,7 @@ class CreateSandboxRequest(BaseModel):
     region: Annotated[
         str | None,
         Field(
-            description="Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the closest region is selected.",
+            description="Region where the sandbox runs (for example us-pdx-1 or eu-lon-1). When omitted at creation, the default sandbox region is used.",
             examples=["us-pdx-1"],
         ),
     ] = None
@@ -15752,6 +16056,13 @@ class CreateSandboxRequest(BaseModel):
         Field(
             description="Filesystem configuration. Set at creation only.",
             examples=[{"max_memory_usage": "80%"}],
+        ),
+    ] = None
+    volumes: Annotated[
+        list[SandboxVolumeAttachment] | None,
+        Field(
+            description="Volumes mounted in the sandbox. Set at creation only.",
+            max_length=1,
         ),
     ] = None
     ports: Annotated[

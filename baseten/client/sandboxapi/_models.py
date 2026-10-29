@@ -613,7 +613,7 @@ class GetWatchFilesystemParams(BaseModel):
     ignore: Annotated[
         str | None,
         Field(
-            description="Comma-separated substrings; events whose full path contains one are skipped"
+            description="Comma-separated substrings; events whose full path contains one are skipped, and matching directories are not watched at all"
         ),
     ] = None
 

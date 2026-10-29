@@ -7,7 +7,7 @@ import inspect
 import io
 import tempfile
 import time
-from collections.abc import AsyncIterator, Iterator, Mapping
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -129,10 +129,24 @@ class ImageCleanupResult:
     """Result of :meth:`ImageClient.cleanup`."""
 
     deleted: int
-    """Number of image versions removed."""
+    """Number of image versions removed, across calls."""
 
     message: str
-    """Human-readable description of the result."""
+    """Human-readable description of the last call, covering only its removals."""
+
+
+@dataclass(kw_only=True)
+class ImageCleanupProgress:
+    """A cleanup's state between two server calls, from :meth:`ImageClient.cleanup`."""
+
+    deleted: int
+    """Number of image versions removed so far, across calls."""
+
+    remaining: int
+    """Number of unused image versions left for the next call."""
+
+    message: str
+    """Human-readable description of the call that just finished, covering only its removals."""
 
 
 @dataclass(kw_only=True)
@@ -152,16 +166,10 @@ class ImageLibraryVolume:
     """A volume attachment a built-in image suggests, in :class:`ImageLibraryInfo`."""
 
     name: str
-    """Volume name, or an internal identifier for an ephemeral volume."""
+    """Volume name."""
 
     mount_path: str
     """Absolute path the volume is mounted at."""
-
-    type: str | None
-    """Volume type, persistent when empty or ``None``."""
-
-    size_mb: int | None
-    """Storage capacity in megabytes of an ephemeral volume."""
 
     read_only: bool
     """Whether the volume is mounted read-only."""
@@ -661,15 +669,38 @@ class ImageClient:
             )
         return _image_info(image)
 
-    def cleanup(self) -> ImageCleanupResult:
-        """Remove image versions that no sandbox uses."""
-        with self._context.api() as api:
-            result = api.cleanup_images(
-                params=baseten.client.managementapi.CleanupImagesParams(
-                    **set_fields(team_id=self._context.team_id)
+    def cleanup(
+        self, *, progress: Callable[[ImageCleanupProgress], None] | None = None
+    ) -> ImageCleanupResult:
+        """Remove image versions that no sandbox uses.
+
+        A server call runs for a limited time, so this calls again until none
+        remain.
+
+        Args:
+            progress: Called between the server calls: after each call that
+                stopped on its time limit, before the next one. Not called
+                after the last call, whose outcome is the result.
+        """
+        deleted = 0
+        while True:
+            with self._context.api() as api:
+                result = api.cleanup_images(
+                    params=baseten.client.managementapi.CleanupImagesParams(
+                        **set_fields(team_id=self._context.team_id)
+                    )
                 )
-            )
-        return ImageCleanupResult(deleted=result.deleted, message=result.message)
+            deleted += result.deleted
+            if not result.has_more:
+                return ImageCleanupResult(deleted=deleted, message=result.message)
+            if progress is not None:
+                progress(
+                    ImageCleanupProgress(
+                        deleted=deleted,
+                        remaining=result.remaining or 0,
+                        message=result.message,
+                    )
+                )
 
     def list_library(self) -> builtins.list[ImageLibraryInfo]:
         """List the built-in images available to every team."""
@@ -1058,15 +1089,37 @@ class AsyncImageClient:
             )
         return _image_info(image)
 
-    async def cleanup(self) -> ImageCleanupResult:
-        """Remove image versions that no sandbox uses. As :meth:`ImageClient.cleanup`."""
-        with self._context.api() as api:
-            result = await api.cleanup_images(
-                params=baseten.client.managementapi.CleanupImagesParams(
-                    **set_fields(team_id=self._context.team_id)
+    async def cleanup(
+        self,
+        *,
+        progress: Callable[[ImageCleanupProgress], None | Awaitable[None]]
+        | None = None,
+    ) -> ImageCleanupResult:
+        """Remove image versions that no sandbox uses. As :meth:`ImageClient.cleanup`.
+
+        *progress* may also be async.
+        """
+        deleted = 0
+        while True:
+            with self._context.api() as api:
+                result = await api.cleanup_images(
+                    params=baseten.client.managementapi.CleanupImagesParams(
+                        **set_fields(team_id=self._context.team_id)
+                    )
                 )
-            )
-        return ImageCleanupResult(deleted=result.deleted, message=result.message)
+            deleted += result.deleted
+            if not result.has_more:
+                return ImageCleanupResult(deleted=deleted, message=result.message)
+            if progress is not None:
+                reported = progress(
+                    ImageCleanupProgress(
+                        deleted=deleted,
+                        remaining=result.remaining or 0,
+                        message=result.message,
+                    )
+                )
+                if inspect.isawaitable(reported):
+                    await reported
 
     async def list_library(self) -> builtins.list[ImageLibraryInfo]:
         """List the built-in images. As :meth:`ImageClient.list_library`."""
@@ -1436,8 +1489,6 @@ def _library_info(
             ImageLibraryVolume(
                 name=volume.name,
                 mount_path=volume.mount_path,
-                type=volume.type,
-                size_mb=volume.size_mb,
                 read_only=bool(volume.read_only),
             )
             for volume in options.volumes or []
