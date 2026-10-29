@@ -27,6 +27,7 @@ dev = [
     "poethepoet>=0.48",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
+    "pytest-timeout>=2.4.0",
     "pyyaml>=6.0.3",
     "ruff>=0.16.7",
     # Floor stays low: newer sphinx requires Python >=3.12, we support >=3.11.
@@ -75,3 +76,7 @@ packages = ["baseten"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Fails any test, including the fixture setup it triggers, that runs over two
+# minutes, dumping every thread's stack. Thread mode works on Windows too.
+timeout = 120
+timeout_method = "thread"
