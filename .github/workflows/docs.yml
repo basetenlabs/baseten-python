@@ -30,9 +30,9 @@ jobs:
       - name: Generate docs
         run: uv run poe generate-docs
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: chainguard-actions/actions-upload-pages-artifact@e2c4c7670c215010f2d293cce333c0ec3e87f47a # v3.0.1
         with:
           path: _site
 
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: chainguard-actions/actions-deploy-pages@f4d5c29b63bb3df1e6eac647993dd0c3fe33651c # v4.0.5
