@@ -31,11 +31,15 @@ from ._models import (
     CreateChainEnvironmentRequest,
     CreateDeploymentPatchRequest,
     CreateDeploymentPatchResponse,
+    CreatedGridMachineUser,
     CreatedModelDeployment,
     CreateEndpointRequest,
     CreateEnvironmentRequest,
     CreateGridConnectionRequest,
+    CreateGridMachineUserAPIKeyRequest,
+    CreateGridMachineUserRequest,
     CreateGridRouteRequest,
+    CreateGridTokenRequest,
     CreateGroupRequest,
     CreateLibraryListingRequest,
     CreateLibraryListingVersionRequest,
@@ -114,6 +118,8 @@ from ._models import (
     GetGatewayEventsParams,
     GetGridClassifiersParams,
     GetGridConnectionsParams,
+    GetGridMachineUsersParams,
+    GetGridRouteClassifiersParams,
     GetGridRoutesParams,
     GetGridRoutesUsageParams,
     GetGridTeamSettingsParams,
@@ -138,9 +144,11 @@ from ._models import (
     GetLoopsSamplersParams,
     GetLoopsSessionResponse,
     GetLoopsUserConfigResponse,
+    GetMetricsResponse,
+    GetModelApisMetricsParams,
+    GetModelApisModelApiNameParams,
     GetModelApisParams,
     GetModelApisUsageParams,
-    GetModelMetricsResponse,
     GetModelsAuditLogsParams,
     GetModelsDeploymentsConfigParams,
     GetModelsDeploymentsLogsParams,
@@ -175,6 +183,7 @@ from ._models import (
     GetTrainingProjectsJobsCheckpointFilesParams,
     GetTrainingProjectsJobsLogsParams,
     GetTrainingProjectsJobsMetricsParams,
+    GetTrainingProjectsParams,
     GetUsersParams,
     GetVolumesNamespacesParams,
     GetVolumesParams,
@@ -185,13 +194,19 @@ from ._models import (
     GridConnection,
     GridConnectionsResponse,
     GridConnectionTombstone,
+    GridMachineUser,
+    GridMachineUsersResponse,
+    GridMachineUserTombstone,
     GridRoute,
+    GridRouteClassifier,
+    GridRouteClassifiersResponse,
     GridRoutesResponse,
     GridRouteTombstone,
     GridRouteUsageResponse,
     GridTeamSettings,
     GridTeamUserSettings,
     GridTeamUserSettingsList,
+    GridToken,
     Group,
     GroupsResponse,
     InstanceTypePrices,
@@ -306,6 +321,7 @@ from ._models import (
     UpdateEnvironmentRequest,
     UpdateEnvironmentResponse,
     UpdateGridConnectionRequest,
+    UpdateGridMachineUserRequest,
     UpdateGridRouteRequest,
     UpdateGridTeamSettingsRequest,
     UpdateGridUserSettingsRequest,
@@ -567,6 +583,40 @@ class ApiClient:
                 method="DELETE",
                 path_fmt="/v1/grid/connections/{}",
                 path_args=[connection_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def delete_grid_machine_users(
+        self, *, machine_user_id: str
+    ) -> GridMachineUserTombstone:
+        """Deletes a machine user"""
+        return self._do_json(
+            GridMachineUserTombstone,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/grid/machine_users/{}",
+                path_args=[machine_user_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def delete_grid_machine_users_api_keys(
+        self, *, machine_user_id: str, api_key_prefix: str
+    ) -> APIKeyTombstone:
+        """Revokes a machine user's API key"""
+        return self._do_json(
+            APIKeyTombstone,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/grid/machine_users/{}/api_keys/{}",
+                path_args=[machine_user_id, api_key_prefix],
                 body=None,
                 query=None,
                 success_codes=[200],
@@ -1383,6 +1433,106 @@ class ApiClient:
             ),
         )
 
+    def get_grid_connections_connection_id(
+        self, *, connection_id: str
+    ) -> GridConnection:
+        """Gets a connection"""
+        return self._do_json(
+            GridConnection,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/connections/{}",
+                path_args=[connection_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_grid_machine_users(
+        self, *, params: GetGridMachineUsersParams | None = None
+    ) -> GridMachineUsersResponse:
+        """Lists machine users"""
+        return self._do_json(
+            GridMachineUsersResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/machine_users",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_grid_machine_users_api_keys(self, *, machine_user_id: str) -> APIKeys:
+        """Lists a machine user's API keys"""
+        return self._do_json(
+            APIKeys,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/machine_users/{}/api_keys",
+                path_args=[machine_user_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_grid_machine_users_machine_user_id(
+        self, *, machine_user_id: str
+    ) -> GridMachineUser:
+        """Gets a machine user"""
+        return self._do_json(
+            GridMachineUser,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/machine_users/{}",
+                path_args=[machine_user_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_grid_route_classifiers(
+        self, *, params: GetGridRouteClassifiersParams | None = None
+    ) -> GridRouteClassifiersResponse:
+        """Lists route classifiers available for intelligent routes"""
+        return self._do_json(
+            GridRouteClassifiersResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/route_classifiers",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_grid_route_classifiers_route_classifier_id(
+        self, *, route_classifier_id: str
+    ) -> GridRouteClassifier:
+        """Gets a route classifier available for intelligent routes"""
+        return self._do_json(
+            GridRouteClassifier,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/route_classifiers/{}",
+                path_args=[route_classifier_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     def get_grid_routes(
         self, *, params: GetGridRoutesParams | None = None
     ) -> GridRoutesResponse:
@@ -1871,7 +2021,29 @@ class ApiClient:
             ),
         )
 
-    def get_model_apis_model_api_name(self, *, model_api_name: str) -> ModelAPI:
+    def get_model_apis_metrics(
+        self, *, model_api_name: str, params: GetModelApisMetricsParams | None = None
+    ) -> GetMetricsResponse:
+        """Gets the metrics for a Model API"""
+        return self._do_json(
+            GetMetricsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/model_apis/{}/metrics",
+                path_args=[model_api_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_model_apis_model_api_name(
+        self,
+        *,
+        model_api_name: str,
+        params: GetModelApisModelApiNameParams | None = None,
+    ) -> ModelAPI:
         """Gets a Model API"""
         return self._do_json(
             ModelAPI,
@@ -1880,7 +2052,7 @@ class ApiClient:
                 path_fmt="/v1/model_apis/{}",
                 path_args=[model_api_name],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -2049,10 +2221,10 @@ class ApiClient:
         model_id: str,
         deployment_id: str,
         params: GetModelsDeploymentsMetricsParams | None = None,
-    ) -> GetModelMetricsResponse:
+    ) -> GetMetricsResponse:
         """Gets the metrics for a model deployment"""
         return self._do_json(
-            GetModelMetricsResponse,
+            GetMetricsResponse,
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/models/{}/deployments/{}/metrics",
@@ -2197,10 +2369,10 @@ class ApiClient:
         model_id: str,
         env_name: str,
         params: GetModelsEnvironmentsMetricsParams | None = None,
-    ) -> GetModelMetricsResponse:
+    ) -> GetMetricsResponse:
         """Gets the metrics for a model environment."""
         return self._do_json(
-            GetModelMetricsResponse,
+            GetMetricsResponse,
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/models/{}/environments/{}/metrics",
@@ -2593,7 +2765,9 @@ class ApiClient:
             ),
         )
 
-    def get_training_projects(self) -> ListTrainingProjectsResponse:
+    def get_training_projects(
+        self, *, params: GetTrainingProjectsParams | None = None
+    ) -> ListTrainingProjectsResponse:
         """Lists training projects"""
         return self._do_json(
             ListTrainingProjectsResponse,
@@ -2602,7 +2776,7 @@ class ApiClient:
                 path_fmt="/v1/training_projects",
                 path_args=[],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -3181,6 +3355,23 @@ class ApiClient:
             ),
         )
 
+    def patch_grid_machine_users(
+        self, *, machine_user_id: str, request: UpdateGridMachineUserRequest
+    ) -> GridMachineUser:
+        """Updates a machine user"""
+        return self._do_json(
+            GridMachineUser,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/grid/machine_users/{}",
+                path_args=[machine_user_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     def patch_grid_routes(
         self, *, route_id: str, request: UpdateGridRouteRequest
     ) -> GridRoute:
@@ -3670,6 +3861,40 @@ class ApiClient:
             ),
         )
 
+    def post_grid_machine_users(
+        self, *, request: CreateGridMachineUserRequest
+    ) -> CreatedGridMachineUser:
+        """Creates a machine user"""
+        return self._do_json(
+            CreatedGridMachineUser,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/grid/machine_users",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def post_grid_machine_users_api_keys(
+        self, *, machine_user_id: str, request: CreateGridMachineUserAPIKeyRequest
+    ) -> APIKey:
+        """Creates an API key for a machine user"""
+        return self._do_json(
+            APIKey,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/grid/machine_users/{}/api_keys",
+                path_args=[machine_user_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     def post_grid_routes(self, *, request: CreateGridRouteRequest) -> GridRoute:
         """Creates a route"""
         return self._do_json(
@@ -3677,6 +3902,21 @@ class ApiClient:
             _ApiRequest(
                 method="POST",
                 path_fmt="/v1/grid/routes",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def post_grid_token(self, *, request: CreateGridTokenRequest) -> GridToken:
+        """Creates a Grid access token"""
+        return self._do_json(
+            GridToken,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/grid/token",
                 path_args=[],
                 body=request,
                 query=None,
@@ -5174,6 +5414,40 @@ class AsyncApiClient:
             ),
         )
 
+    async def delete_grid_machine_users(
+        self, *, machine_user_id: str
+    ) -> GridMachineUserTombstone:
+        """Deletes a machine user"""
+        return await self._do_json(
+            GridMachineUserTombstone,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/grid/machine_users/{}",
+                path_args=[machine_user_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def delete_grid_machine_users_api_keys(
+        self, *, machine_user_id: str, api_key_prefix: str
+    ) -> APIKeyTombstone:
+        """Revokes a machine user's API key"""
+        return await self._do_json(
+            APIKeyTombstone,
+            _ApiRequest(
+                method="DELETE",
+                path_fmt="/v1/grid/machine_users/{}/api_keys/{}",
+                path_args=[machine_user_id, api_key_prefix],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     async def delete_grid_routes(self, *, route_id: str) -> GridRouteTombstone:
         """Deletes a route"""
         return await self._do_json(
@@ -5987,6 +6261,106 @@ class AsyncApiClient:
             ),
         )
 
+    async def get_grid_connections_connection_id(
+        self, *, connection_id: str
+    ) -> GridConnection:
+        """Gets a connection"""
+        return await self._do_json(
+            GridConnection,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/connections/{}",
+                path_args=[connection_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_grid_machine_users(
+        self, *, params: GetGridMachineUsersParams | None = None
+    ) -> GridMachineUsersResponse:
+        """Lists machine users"""
+        return await self._do_json(
+            GridMachineUsersResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/machine_users",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_grid_machine_users_api_keys(self, *, machine_user_id: str) -> APIKeys:
+        """Lists a machine user's API keys"""
+        return await self._do_json(
+            APIKeys,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/machine_users/{}/api_keys",
+                path_args=[machine_user_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_grid_machine_users_machine_user_id(
+        self, *, machine_user_id: str
+    ) -> GridMachineUser:
+        """Gets a machine user"""
+        return await self._do_json(
+            GridMachineUser,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/machine_users/{}",
+                path_args=[machine_user_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_grid_route_classifiers(
+        self, *, params: GetGridRouteClassifiersParams | None = None
+    ) -> GridRouteClassifiersResponse:
+        """Lists route classifiers available for intelligent routes"""
+        return await self._do_json(
+            GridRouteClassifiersResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/route_classifiers",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_grid_route_classifiers_route_classifier_id(
+        self, *, route_classifier_id: str
+    ) -> GridRouteClassifier:
+        """Gets a route classifier available for intelligent routes"""
+        return await self._do_json(
+            GridRouteClassifier,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/route_classifiers/{}",
+                path_args=[route_classifier_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     async def get_grid_routes(
         self, *, params: GetGridRoutesParams | None = None
     ) -> GridRoutesResponse:
@@ -6475,7 +6849,29 @@ class AsyncApiClient:
             ),
         )
 
-    async def get_model_apis_model_api_name(self, *, model_api_name: str) -> ModelAPI:
+    async def get_model_apis_metrics(
+        self, *, model_api_name: str, params: GetModelApisMetricsParams | None = None
+    ) -> GetMetricsResponse:
+        """Gets the metrics for a Model API"""
+        return await self._do_json(
+            GetMetricsResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/model_apis/{}/metrics",
+                path_args=[model_api_name],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_model_apis_model_api_name(
+        self,
+        *,
+        model_api_name: str,
+        params: GetModelApisModelApiNameParams | None = None,
+    ) -> ModelAPI:
         """Gets a Model API"""
         return await self._do_json(
             ModelAPI,
@@ -6484,7 +6880,7 @@ class AsyncApiClient:
                 path_fmt="/v1/model_apis/{}",
                 path_args=[model_api_name],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -6653,10 +7049,10 @@ class AsyncApiClient:
         model_id: str,
         deployment_id: str,
         params: GetModelsDeploymentsMetricsParams | None = None,
-    ) -> GetModelMetricsResponse:
+    ) -> GetMetricsResponse:
         """Gets the metrics for a model deployment"""
         return await self._do_json(
-            GetModelMetricsResponse,
+            GetMetricsResponse,
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/models/{}/deployments/{}/metrics",
@@ -6801,10 +7197,10 @@ class AsyncApiClient:
         model_id: str,
         env_name: str,
         params: GetModelsEnvironmentsMetricsParams | None = None,
-    ) -> GetModelMetricsResponse:
+    ) -> GetMetricsResponse:
         """Gets the metrics for a model environment."""
         return await self._do_json(
-            GetModelMetricsResponse,
+            GetMetricsResponse,
             _ApiRequest(
                 method="GET",
                 path_fmt="/v1/models/{}/environments/{}/metrics",
@@ -7197,7 +7593,9 @@ class AsyncApiClient:
             ),
         )
 
-    async def get_training_projects(self) -> ListTrainingProjectsResponse:
+    async def get_training_projects(
+        self, *, params: GetTrainingProjectsParams | None = None
+    ) -> ListTrainingProjectsResponse:
         """Lists training projects"""
         return await self._do_json(
             ListTrainingProjectsResponse,
@@ -7206,7 +7604,7 @@ class AsyncApiClient:
                 path_fmt="/v1/training_projects",
                 path_args=[],
                 body=None,
-                query=None,
+                query=params,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -7787,6 +8185,23 @@ class AsyncApiClient:
             ),
         )
 
+    async def patch_grid_machine_users(
+        self, *, machine_user_id: str, request: UpdateGridMachineUserRequest
+    ) -> GridMachineUser:
+        """Updates a machine user"""
+        return await self._do_json(
+            GridMachineUser,
+            _ApiRequest(
+                method="PATCH",
+                path_fmt="/v1/grid/machine_users/{}",
+                path_args=[machine_user_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     async def patch_grid_routes(
         self, *, route_id: str, request: UpdateGridRouteRequest
     ) -> GridRoute:
@@ -8280,6 +8695,40 @@ class AsyncApiClient:
             ),
         )
 
+    async def post_grid_machine_users(
+        self, *, request: CreateGridMachineUserRequest
+    ) -> CreatedGridMachineUser:
+        """Creates a machine user"""
+        return await self._do_json(
+            CreatedGridMachineUser,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/grid/machine_users",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def post_grid_machine_users_api_keys(
+        self, *, machine_user_id: str, request: CreateGridMachineUserAPIKeyRequest
+    ) -> APIKey:
+        """Creates an API key for a machine user"""
+        return await self._do_json(
+            APIKey,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/grid/machine_users/{}/api_keys",
+                path_args=[machine_user_id],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
     async def post_grid_routes(self, *, request: CreateGridRouteRequest) -> GridRoute:
         """Creates a route"""
         return await self._do_json(
@@ -8287,6 +8736,21 @@ class AsyncApiClient:
             _ApiRequest(
                 method="POST",
                 path_fmt="/v1/grid/routes",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def post_grid_token(self, *, request: CreateGridTokenRequest) -> GridToken:
+        """Creates a Grid access token"""
+        return await self._do_json(
+            GridToken,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/v1/grid/token",
                 path_args=[],
                 body=request,
                 query=None,

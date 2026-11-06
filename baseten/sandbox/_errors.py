@@ -218,7 +218,7 @@ def api_error_from(
     """Convert an error a generated client raised for an error response."""
     body: Any
     if isinstance(err, baseten.client.sandboxapi.ResponseErrorResponse):
-        body = err.error_response.model_dump(mode="json")
+        body = err.error_response.model_dump(mode="json", exclude_unset=True)
     else:
         try:
             body = json.loads(err.body)

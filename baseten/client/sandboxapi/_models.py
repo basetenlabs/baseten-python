@@ -114,6 +114,18 @@ class ContentSearchResponse(BaseModel):
     total: Annotated[int, Field(examples=[5])]
 
 
+class CopyRequest(BaseModel):
+    destination: Annotated[str, Field(examples=["/app/destination"])]
+    noOverwrite: Annotated[bool, Field(examples=[False])] = False
+    source: Annotated[str, Field(examples=["/app/source"])]
+
+
+class CopyResponse(BaseModel):
+    destination: str
+    message: str
+    source: str
+
+
 class DriveMountInfo(BaseModel):
     driveName: str | None = None
     drivePath: str | None = None
@@ -168,6 +180,7 @@ class DriveUnmountResponse(BaseModel):
 
 
 class ErrorResponse(BaseModel):
+    code: Annotated[str | None, Field(examples=["FILE_ALREADY_EXISTS"])] = None
     error: Annotated[str, Field(examples=["Error message"])]
 
 
@@ -302,6 +315,20 @@ class ProcessLogs(BaseModel):
 
 
 class ProcessRequest(BaseModel):
+    callbackSecret: Annotated[
+        str | None,
+        Field(
+            description="Key the webhook is signed with (HMAC-SHA256, X-Blaxel-Signature header). At least 32 characters; required with callbackUrl. Never returned by the API.",
+            examples=["a-random-secret-of-at-least-32-chars"],
+        ),
+    ] = None
+    callbackUrl: Annotated[
+        str | None,
+        Field(
+            description="URL that receives a signed process.exited webhook when the process ends for good (not on auto-restart). Requires callbackSecret.",
+            examples=["https://example.com/hooks/process"],
+        ),
+    ] = None
     command: Annotated[str, Field(examples=["ls -la"])]
     env: Annotated[dict[str, str] | None, Field(examples=[{'{"PORT"': ' "3000"}'}])] = (
         None
@@ -431,15 +458,12 @@ class TunnelConfigRequest(BaseModel):
 class UpgradeRequest(BaseModel):
     baseUrl: Annotated[
         str | None,
-        Field(
-            description="Base URL for releases (useful for forks)",
-            examples=["https://github.com/blaxel-ai/sandbox/releases"],
-        ),
+        Field(description="Deprecated: custom binary sources are not accepted"),
     ] = None
     version: Annotated[
         str | None,
         Field(
-            description='Version to upgrade to: "latest" (default), "develop", "main", or specific tag like "v1.0.0"',
+            description='Version to upgrade to: "latest" (default), "develop", "main", or a release tag like "v1.0.0"',
             examples=["latest"],
         ),
     ] = None
@@ -605,6 +629,15 @@ class GetFilesystemTreeParams(BaseModel):
         int | None,
         Field(
             description="With content=true, fail with 422 when the matching files hold more bytes (default: 33554432, 32 MiB; at most 268435456, 256 MiB)"
+        ),
+    ] = None
+
+
+class GetProcessWaitParams(BaseModel):
+    timeout: Annotated[
+        int | None,
+        Field(
+            description="Seconds to wait (default and max 119; larger values are capped)"
         ),
     ] = None
 
