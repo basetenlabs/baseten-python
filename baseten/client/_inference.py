@@ -128,9 +128,11 @@ class InferenceClient:
             # Empty api_key is an advanced opt-out from sending Authorization.
             if api_key != "":
                 request_headers["Authorization"] = f"Bearer {api_key}"
+            # No read timeout, matching the JS and Go clients.
             self._http_client = httpx.Client(
                 base_url=self._options.base_url,
                 headers=with_user_agent(request_headers),
+                timeout=httpx.Timeout(5.0, read=None),
             )
             self.close_http_client_on_close = (
                 True
@@ -243,9 +245,11 @@ class AsyncInferenceClient:
             # Empty api_key is an advanced opt-out from sending Authorization.
             if api_key != "":
                 request_headers["Authorization"] = f"Bearer {api_key}"
+            # No read timeout, matching the JS and Go clients.
             self._http_client = httpx.AsyncClient(
                 base_url=self._options.base_url,
                 headers=with_user_agent(request_headers),
+                timeout=httpx.Timeout(5.0, read=None),
             )
             self.close_http_client_on_close = (
                 True

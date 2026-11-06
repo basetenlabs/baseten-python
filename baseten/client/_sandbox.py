@@ -69,9 +69,11 @@ class SandboxClient:
             # Empty token is an advanced opt-out from sending Authorization.
             if token != "":
                 request_headers["Authorization"] = f"Bearer {token}"
+            # No read timeout, matching the JS and Go clients.
             self._http_client = httpx.Client(
                 base_url=base_url,
                 headers=with_user_agent(request_headers),
+                timeout=httpx.Timeout(5.0, read=None),
             )
             self.close_http_client_on_close = (
                 True
@@ -156,9 +158,11 @@ class AsyncSandboxClient:
             # Empty token is an advanced opt-out from sending Authorization.
             if token != "":
                 request_headers["Authorization"] = f"Bearer {token}"
+            # No read timeout, matching the JS and Go clients.
             self._http_client = httpx.AsyncClient(
                 base_url=base_url,
                 headers=with_user_agent(request_headers),
+                timeout=httpx.Timeout(5.0, read=None),
             )
             self.close_http_client_on_close = (
                 True
