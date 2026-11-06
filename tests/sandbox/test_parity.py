@@ -44,9 +44,6 @@ from baseten.sandbox import (
     SandboxFileSystemSubdirectoryInfo,
     SandboxInfo,
     SandboxLifecycle,
-    SandboxNetwork,
-    SandboxNetworkProxy,
-    SandboxNetworkProxyRoute,
     SandboxPort,
     SandboxPreviewInfo,
     SandboxPreviews,
@@ -146,6 +143,7 @@ _PARITY = {
     "SandboxInfo": _Parity(
         ours=_dataclass_fields(SandboxInfo),
         generated=baseten.client.managementapi.Sandbox,
+        generated_only={"network": "removed upstream, pending a spec sync"},
     ),
     "SandboxEnvValue": _Parity(
         ours=_dataclass_fields(SandboxEnvValue),
@@ -178,21 +176,10 @@ _PARITY = {
         ours=_dataclass_fields(SandboxPort),
         generated=baseten.client.managementapi.SandboxPort,
     ),
-    "SandboxNetwork": _Parity(
-        ours=_dataclass_fields(SandboxNetwork),
-        generated=baseten.client.managementapi.SandboxNetwork,
-    ),
-    "SandboxNetworkProxy": _Parity(
-        ours=_dataclass_fields(SandboxNetworkProxy),
-        generated=baseten.client.managementapi.SandboxProxyConfig,
-    ),
-    "SandboxNetworkProxyRoute": _Parity(
-        ours=_dataclass_fields(SandboxNetworkProxyRoute),
-        generated=baseten.client.managementapi.SandboxProxyTarget,
-    ),
     "SandboxClient.create": _Parity(
         ours=_kwargs(SandboxClient.create),
         generated=baseten.client.managementapi.CreateSandboxRequest,
+        generated_only={"network": "removed upstream, pending a spec sync"},
     ),
     "SandboxClient.update": _Parity(
         ours=_kwargs(SandboxClient.update) - {"name"},
