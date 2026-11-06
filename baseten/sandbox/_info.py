@@ -247,7 +247,10 @@ class SandboxInfo:
     """Image reference, including its tag."""
 
     memory: int | None
-    """Memory in megabytes, which also sets the CPU allocation."""
+    """Memory in megabytes."""
+
+    cpu: int | None
+    """Number of vCPUs the sandbox runs with."""
 
     region: str | None
 
@@ -296,6 +299,7 @@ def sandbox_info_from_api(sandbox: baseten.client.managementapi.Sandbox) -> Sand
         status=sandbox.status,
         image=sandbox.image,
         memory=sandbox.memory,
+        cpu=sandbox.cpu,
         region=sandbox.region,
         envs=_envs_from_api(sandbox.envs),
         labels=dict(sandbox.labels or {}),

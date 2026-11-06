@@ -15,6 +15,8 @@ from ._models import (
     ApplyEditRequest,
     ApplyEditResponse,
     ContentSearchResponse,
+    CopyRequest,
+    CopyResponse,
     DeleteFilesystemParams,
     DeleteFilesystemTreeParams,
     DeleteNetworkProcessMonitorResponse,
@@ -39,6 +41,7 @@ from ._models import (
     GetFilesystemTreeParams,
     GetNetworkProcessPortsResponse,
     GetProcessResponse,
+    GetProcessWaitParams,
     GetWatchFilesystemParams,
     HandlerReloadResponse,
     HealthResponse,
@@ -628,6 +631,23 @@ class ApiClient:
             )
         )
 
+    def get_process_wait(
+        self, *, identifier: str, params: GetProcessWaitParams | None = None
+    ) -> ProcessResponse:
+        """Wait for a process to finish"""
+        return self._do_json(
+            ProcessResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/process/{}/wait",
+                path_args=[identifier],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes={400: "ErrorResponse", 404: "ErrorResponse"},
+            ),
+        )
+
     def get_watch_filesystem(
         self, *, path: str, params: GetWatchFilesystemParams | None = None
     ) -> httpx.Response:
@@ -728,6 +748,25 @@ class ApiClient:
                 query=None,
                 success_codes=[200],
                 error_codes={404: "ErrorResponse", 500: "ErrorResponse"},
+            ),
+        )
+
+    def post_filesystem_copy(self, *, request: CopyRequest) -> CopyResponse:
+        """Copy a file or directory"""
+        return self._do_json(
+            CopyResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/filesystem-copy",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes={
+                    400: "ErrorResponse",
+                    409: "ErrorResponse",
+                    422: "ErrorResponse",
+                },
             ),
         )
 
@@ -868,7 +907,7 @@ class ApiClient:
                 body=request,
                 query=None,
                 success_codes=[200],
-                error_codes={500: "ErrorResponse"},
+                error_codes={400: "ErrorResponse", 500: "ErrorResponse"},
             ),
         )
 
@@ -1632,6 +1671,23 @@ class AsyncApiClient:
             )
         )
 
+    async def get_process_wait(
+        self, *, identifier: str, params: GetProcessWaitParams | None = None
+    ) -> ProcessResponse:
+        """Wait for a process to finish"""
+        return await self._do_json(
+            ProcessResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/process/{}/wait",
+                path_args=[identifier],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes={400: "ErrorResponse", 404: "ErrorResponse"},
+            ),
+        )
+
     async def get_watch_filesystem(
         self, *, path: str, params: GetWatchFilesystemParams | None = None
     ) -> httpx.Response:
@@ -1734,6 +1790,25 @@ class AsyncApiClient:
                 query=None,
                 success_codes=[200],
                 error_codes={404: "ErrorResponse", 500: "ErrorResponse"},
+            ),
+        )
+
+    async def post_filesystem_copy(self, *, request: CopyRequest) -> CopyResponse:
+        """Copy a file or directory"""
+        return await self._do_json(
+            CopyResponse,
+            _ApiRequest(
+                method="POST",
+                path_fmt="/filesystem-copy",
+                path_args=[],
+                body=request,
+                query=None,
+                success_codes=[200],
+                error_codes={
+                    400: "ErrorResponse",
+                    409: "ErrorResponse",
+                    422: "ErrorResponse",
+                },
             ),
         )
 
@@ -1874,7 +1949,7 @@ class AsyncApiClient:
                 body=request,
                 query=None,
                 success_codes=[200],
-                error_codes={500: "ErrorResponse"},
+                error_codes={400: "ErrorResponse", 500: "ErrorResponse"},
             ),
         )
 

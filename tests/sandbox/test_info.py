@@ -32,6 +32,7 @@ _FULL_RECORD: dict[str, Any] = {
     "status": "DEPLOYED",
     "image": "baseten/base-image:latest",
     "memory": 4096,
+    "cpu": 2,
     "region": "us-was-1",
     "envs": [
         {"name": "PLAIN", "value": "shown", "secret": False},
@@ -74,9 +75,10 @@ def test_maps_sandbox_record() -> None:
     assert info.name == "sbx"
     assert info.url == "https://sbx.example.dev/"
     assert info.status == "DEPLOYED"
-    assert (info.image, info.memory, info.region) == (
+    assert (info.image, info.memory, info.cpu, info.region) == (
         "baseten/base-image:latest",
         4096,
+        2,
         "us-was-1",
     )
     # An env without a name is left out.

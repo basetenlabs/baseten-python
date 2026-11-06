@@ -296,6 +296,7 @@ class SandboxClient:
         create_if_not_exists: bool | None = None,
         image: str | None = None,
         memory: int | None = None,
+        cpu: int | None = None,
         region: str | None = None,
         envs: Mapping[str, SandboxEnvValue] | None = None,
         labels: Mapping[str, str] | None = None,
@@ -317,8 +318,11 @@ class SandboxClient:
                 preserved.
             image: Image reference including its tag. Defaults to
                 ``baseten/base-image:latest``.
-            memory: Memory in megabytes, which also sets the CPU allocation.
-                Defaults to 4096.
+            memory: Memory in megabytes. Defaults to 4096, or to 8192 per vCPU
+                when only *cpu* is set. When *cpu* is ``None``, it also sets
+                the CPU allocation.
+            cpu: Number of vCPUs, from 1 to 32. ``None`` derives the CPU
+                allocation from *memory*.
             region: Region to run in. ``None`` picks the closest one.
             envs: Environment variables, by name.
             labels: Labels, by key.
@@ -344,6 +348,7 @@ class SandboxClient:
                         create_if_not_exists=create_if_not_exists,
                         image=image,
                         memory=memory,
+                        cpu=cpu,
                         region=region,
                         envs=None if envs is None else envs_to_api(envs),
                         labels=None if labels is None else dict(labels),
@@ -700,6 +705,7 @@ class AsyncSandboxClient:
         create_if_not_exists: bool | None = None,
         image: str | None = None,
         memory: int | None = None,
+        cpu: int | None = None,
         region: str | None = None,
         envs: Mapping[str, SandboxEnvValue] | None = None,
         labels: Mapping[str, str] | None = None,
@@ -722,6 +728,7 @@ class AsyncSandboxClient:
                         create_if_not_exists=create_if_not_exists,
                         image=image,
                         memory=memory,
+                        cpu=cpu,
                         region=region,
                         envs=None if envs is None else envs_to_api(envs),
                         labels=None if labels is None else dict(labels),

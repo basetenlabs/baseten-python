@@ -133,6 +133,10 @@ _PROCESS_REQUEST_RENAMES = {
     "waitForCompletion": "wait_for_completion",
     "waitForPorts": "wait_for_ports",
 }
+_PROCESS_REQUEST_UNSUPPORTED = {
+    "callbackUrl": "process exit webhooks not supported yet",
+    "callbackSecret": "process exit webhooks not supported yet",
+}
 
 _POLICY_RENAMES = {"value": "after"}
 _POLICY_TYPE = {"type": "set by which policy class is used"}
@@ -233,12 +237,16 @@ _PARITY = {
         ours=_kwargs(SandboxProcess.exec),
         generated=baseten.client.sandboxapi.ProcessRequest,
         renamed=_PROCESS_REQUEST_RENAMES,
+        generated_only=_PROCESS_REQUEST_UNSUPPORTED,
     ),
     "SandboxProcess.exec_stream": _Parity(
         ours=_kwargs(SandboxProcess.exec_stream),
         generated=baseten.client.sandboxapi.ProcessRequest,
         renamed=_PROCESS_REQUEST_RENAMES,
-        generated_only={"waitForCompletion": "always sent true, to stream"},
+        generated_only={
+            **_PROCESS_REQUEST_UNSUPPORTED,
+            "waitForCompletion": "always sent true, to stream",
+        },
     ),
     "SandboxFileSystemDirectory": _Parity(
         ours=_dataclass_fields(SandboxFileSystemDirectory),
