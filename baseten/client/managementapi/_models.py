@@ -789,14 +789,14 @@ class GetBillingUsageSummaryParams(BaseModel):
     start_date: Annotated[
         AwareDatetime,
         Field(
-            description="Start date (ISO 8601, UTC). Earliest queryable: 2026-01-01.",
+            description="Inclusive start date (ISO 8601, normalized to midnight UTC). Earliest queryable: 2026-01-01.",
             title="Start Date",
         ),
     ]
     end_date: Annotated[
         AwareDatetime,
         Field(
-            description="End date in ISO 8601 format (UTC). Date range cannot exceed 31 days.",
+            description="Exclusive end date (ISO 8601, normalized to midnight UTC). Date range cannot exceed 31 days.",
             title="End Date",
         ),
     ]
@@ -9188,11 +9188,11 @@ class GridRouteUsageResult(BaseModel):
             description="Provider that served the requests. Null when not grouping by PROVIDER."
         ),
     ] = None
-    router_id: Annotated[
+    intelligent_route: Annotated[
         str | None,
         Field(
-            description="Slug of the intelligent router, matching its name in `GET /v1/grid/routes`. Null when not grouping by ROUTER.",
-            title="Router Id",
+            description="Name of the intelligent route, as in `GET /v1/grid/routes`. Null when not grouping by INTELLIGENT_ROUTE.",
+            title="Intelligent Route",
         ),
     ] = None
     harness: Annotated[
@@ -9236,7 +9236,7 @@ class GridRouteUsageResult(BaseModel):
     requests: Annotated[
         int,
         Field(
-            description="Number of requests; with ROUTER, the requests sent through that router. Usage recorded before requests were counted adds zero.",
+            description="Number of requests; with INTELLIGENT_ROUTE, the requests sent through that route. Usage recorded before requests were counted adds zero.",
             title="Requests",
         ),
     ]
@@ -9349,7 +9349,7 @@ class Background(RootModel[str]):
     ] = None
 
 
-class UpdateGridBackgroundHarnessModels(BaseModel):
+class UpdateGridHarnessModels(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -9367,36 +9367,6 @@ class UpdateGridBackgroundHarnessModels(BaseModel):
             description="Route ID for background tasks, such as session titles. Omit to keep the current route, or pass null to use the team's default.",
             examples=["def5678"],
             title="Background",
-        ),
-    ] = None
-
-
-class UpdateGridHarnessDefaults(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    claude_code: Annotated[
-        UpdateGridBackgroundHarnessModels | None,
-        Field(
-            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
-        ),
-    ] = None
-    opencode: Annotated[
-        UpdateGridBackgroundHarnessModels | None,
-        Field(
-            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
-        ),
-    ] = None
-    codex: Annotated[
-        UpdateGridBackgroundHarnessModels | None,
-        Field(
-            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
-        ),
-    ] = None
-    pi: Annotated[
-        UpdateGridBackgroundHarnessModels | None,
-        Field(
-            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
         ),
     ] = None
 
@@ -9419,32 +9389,6 @@ class UpdateGridTeamSpendLimitSetting(BaseModel):
             description="Spend limit in USD for each UTC calendar month on the Grid spend of all members in this team together. Send null to remove it; omit to leave it unchanged.",
             examples=["5000"],
             title="Team Wide Monthly Limit Usd",
-        ),
-    ] = None
-
-
-class UpdateGridTeamSettingsRequest(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    harness_defaults: Annotated[
-        UpdateGridHarnessDefaults | None,
-        Field(
-            description="Harnesses to change; harnesses left out are unchanged. Pass null to clear every harness, so each role uses the team's default."
-        ),
-    ] = None
-    spend_limit: Annotated[
-        UpdateGridTeamSpendLimitSetting | None,
-        Field(
-            description="Spend limit fields to change. Pass null to remove the team's limits; omit to leave them unchanged."
-        ),
-    ] = None
-    team_id: Annotated[
-        str | None,
-        Field(
-            description="ID of the team. When omitted, the team you belong to; required when you belong to several.",
-            examples=["abc1234"],
-            title="Team Id",
         ),
     ] = None
 
@@ -10771,37 +10715,6 @@ class SandboxDateExpirationPolicy(BaseModel):
     action: Literal["DELETE"] | str
     type: Literal["DATE"]
     value: Annotated[AwareDatetime, Field(examples=["2026-09-23T21:26:58Z"])]
-
-
-class SandboxProxyTarget(BaseModel):
-    body: Annotated[
-        dict[str, str] | None,
-        Field(
-            description="Body fields to inject into matching requests. Values may contain {{SECRET:name}} references resolved from this rule's secrets.",
-            examples=[{"user": "baseten-api-review-0916"}],
-        ),
-    ] = None
-    destinations: Annotated[
-        list[str] | None,
-        Field(
-            description='Destination domains this rule applies to. Use ["*"] for a global rule that matches all destinations.',
-            examples=[["api.openai.com"]],
-        ),
-    ] = None
-    headers: Annotated[
-        dict[str, str] | None,
-        Field(
-            description="Headers to inject into matching requests. Values may contain {{SECRET:name}} references resolved from this rule's secrets.",
-            examples=[{"Authorization": "Bearer {{SECRET:openai-key}}"}],
-        ),
-    ] = None
-    secrets: Annotated[
-        dict[str, str] | None,
-        Field(
-            description="Named secret values for this routing rule, referenced in headers/body via {{SECRET:name}}. Stored encrypted at rest. Write-only: never returned in API responses.",
-            examples=[{"openai-key": "sk-proj-demo-not-a-valid-api-key"}],
-        ),
-    ] = None
 
 
 class SandboxEnv(BaseModel):
@@ -12536,10 +12449,13 @@ class GetGridRoutesUsageParams(BaseModel):
         ),
     ] = None
     group_by: Annotated[
-        list[Literal["USER", "TEAM", "MODEL", "PROVIDER", "ROUTER", "HARNESS"] | str]
+        list[
+            Literal["USER", "TEAM", "MODEL", "PROVIDER", "INTELLIGENT_ROUTE", "HARNESS"]
+            | str
+        ]
         | None,
         Field(
-            description="Dimensions to break usage down by, repeated once per dimension: USER, TEAM, MODEL, PROVIDER, ROUTER, or HARNESS. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. ROUTER returns only usage sent through an intelligent router, one row per router, or per router and model with MODEL. Router rows repeat usage already counted in other groupings, so don't add them to model totals. HARNESS includes usage with no recorded harness as a null group. Defaults to MODEL.",
+            description="Dimensions to break usage down by, repeated once per dimension: USER, TEAM, MODEL, PROVIDER, INTELLIGENT_ROUTE, or HARNESS. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. INTELLIGENT_ROUTE returns only usage sent through an intelligent route, one row per intelligent route, or per intelligent route and model with MODEL. These rows repeat usage already counted in other groupings, so don't add them to model totals. HARNESS includes usage with no recorded harness as a null group. Defaults to MODEL.",
             title="Group By",
         ),
     ] = None
@@ -15747,6 +15663,77 @@ class GridHarnessModel(BaseModel):
     route: Annotated[GridRoute, Field(description="Route to use for this role.")]
 
 
+class GridHarnessModels(BaseModel):
+    primary: Annotated[
+        GridHarnessModel | None,
+        Field(
+            description="Route for the primary model, which new sessions use. Null when the team has no route to use."
+        ),
+    ]
+    background: Annotated[
+        GridHarnessModel | None,
+        Field(
+            description="Route for background tasks, such as session titles. Null when the team has no route to use."
+        ),
+    ]
+
+
+class UpdateGridHarnessDefaults(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    claude_code: Annotated[
+        UpdateGridHarnessModels | None,
+        Field(
+            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
+        ),
+    ] = None
+    opencode: Annotated[
+        UpdateGridHarnessModels | None,
+        Field(
+            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
+        ),
+    ] = None
+    codex: Annotated[
+        UpdateGridHarnessModels | None,
+        Field(
+            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
+        ),
+    ] = None
+    pi: Annotated[
+        UpdateGridHarnessModels | None,
+        Field(
+            description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
+        ),
+    ] = None
+
+
+class UpdateGridTeamSettingsRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    harness_defaults: Annotated[
+        UpdateGridHarnessDefaults | None,
+        Field(
+            description="Harnesses to change; harnesses left out are unchanged. Pass null to clear every harness, so each role uses the team's default."
+        ),
+    ] = None
+    spend_limit: Annotated[
+        UpdateGridTeamSpendLimitSetting | None,
+        Field(
+            description="Spend limit fields to change. Pass null to remove the team's limits; omit to leave them unchanged."
+        ),
+    ] = None
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="ID of the team. When omitted, the team you belong to; required when you belong to several.",
+            examples=["abc1234"],
+            title="Team Id",
+        ),
+    ] = None
+
+
 class GridSpendLimitSetting(BaseModel):
     user_monthly_limit_usd: Annotated[
         str | None,
@@ -16072,53 +16059,6 @@ class GetSandboxConfigurationResponse(BaseModel):
             description="Available Carbon-compatible regions, sorted by name. Empty when none are available."
         ),
     ]
-
-
-class SandboxProxyConfig(BaseModel):
-    allowed_domains: Annotated[
-        list[str] | None,
-        Field(
-            description="List of allowed external domains (allowlist). When set, only these domains are reachable. Supports wildcards (e.g. *.storage.example.com).",
-            examples=[
-                [
-                    "api.openai.com",
-                    "pypi.org",
-                    "files.pythonhosted.org",
-                    "registry.npmjs.org",
-                ]
-            ],
-        ),
-    ] = None
-    bypass: Annotated[
-        list[str] | None,
-        Field(
-            description="Domains that bypass the proxy entirely via the NO_PROXY directive. Traffic to these destinations goes direct, not through the CONNECT tunnel. Supports wildcards. Note that localhost, private ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), 169.254.169.254, .local and .internal are always bypassed by default.",
-            examples=[["registry.npmjs.org"]],
-        ),
-    ] = None
-    forbidden_domains: Annotated[
-        list[str] | None,
-        Field(
-            description="List of forbidden external domains (denylist). When set, all domains except these are reachable. Supports wildcards (e.g. *.malware.com). If both allowed_domains and forbidden_domains are set, allowed_domains takes precedence.",
-            examples=[["facebook.com", "*.facebook.com"]],
-        ),
-    ] = None
-    routing: Annotated[
-        list[SandboxProxyTarget] | None,
-        Field(
-            description='Per-destination routing rules with header/body injection and secrets. Use destinations ["*"] for global rules that apply to all destinations.',
-            examples=[
-                [
-                    {
-                        "destinations": ["api.openai.com"],
-                        "headers": {"Authorization": "Bearer {{SECRET:openai-key}}"},
-                        "body": {"user": "baseten-api-review-0916"},
-                        "secrets": {"openai-key": "sk-proj-demo-not-a-valid-api-key"},
-                    }
-                ]
-            ],
-        ),
-    ] = None
 
 
 class ListSandboxImagesResponse(BaseModel):
@@ -16971,35 +16911,15 @@ class UsageSummary(BaseModel):
     ] = None
 
 
-class GridBackgroundHarnessDefaults(BaseModel):
-    primary: Annotated[
-        GridHarnessModel | None,
-        Field(
-            description="Route for the primary model, which new sessions use. Null when the team has no route to use."
-        ),
-    ]
-    background: Annotated[
-        GridHarnessModel | None,
-        Field(
-            description="Route for background tasks, such as session titles. Null when the team has no route to use."
-        ),
-    ]
-
-
 class GridHarnessDefaults(BaseModel):
     claude_code: Annotated[
-        GridBackgroundHarnessDefaults,
-        Field(description="Default models for Claude Code."),
+        GridHarnessModels, Field(description="Default models for Claude Code.")
     ]
     opencode: Annotated[
-        GridBackgroundHarnessDefaults, Field(description="Default models for OpenCode.")
+        GridHarnessModels, Field(description="Default models for OpenCode.")
     ]
-    codex: Annotated[
-        GridBackgroundHarnessDefaults, Field(description="Default models for Codex.")
-    ]
-    pi: Annotated[
-        GridBackgroundHarnessDefaults, Field(description="Default models for Pi.")
-    ]
+    codex: Annotated[GridHarnessModels, Field(description="Default models for Codex.")]
+    pi: Annotated[GridHarnessModels, Field(description="Default models for Pi.")]
 
 
 class GridTeamSettings(BaseModel):
@@ -17108,46 +17028,6 @@ class SandboxLifecycle(BaseModel):
     ] = None
 
 
-class SandboxNetwork(BaseModel):
-    proxy: Annotated[
-        SandboxProxyConfig | None,
-        Field(
-            description="Proxy configuration for routing sandbox HTTP traffic through the platform proxy with MITM inspection and per-destination header/body injection",
-            examples=[
-                {
-                    "allowed_domains": [
-                        "api.openai.com",
-                        "pypi.org",
-                        "files.pythonhosted.org",
-                        "registry.npmjs.org",
-                    ],
-                    "bypass": ["registry.npmjs.org"],
-                    "forbidden_domains": ["facebook.com", "*.facebook.com"],
-                    "routing": [
-                        {
-                            "destinations": ["api.openai.com"],
-                            "headers": {
-                                "Authorization": "Bearer {{SECRET:openai-key}}"
-                            },
-                            "body": {"user": "baseten-api-review-0916"},
-                            "secrets": {
-                                "openai-key": "sk-proj-demo-not-a-valid-api-key"
-                            },
-                        }
-                    ],
-                }
-            ],
-        ),
-    ] = None
-    subnet: Annotated[
-        str | None,
-        Field(
-            description='Subnet name for the sandbox. Defaults to "default" at creation.',
-            examples=["default"],
-        ),
-    ] = None
-
-
 class SandboxConfiguration(BaseModel):
     lifecycle: Annotated[
         SandboxLifecycle | None,
@@ -17165,39 +17045,6 @@ class SandboxConfiguration(BaseModel):
                         },
                     ],
                     "terminated_retention": "24h",
-                }
-            ],
-        ),
-    ] = None
-    network: Annotated[
-        SandboxNetwork | None,
-        Field(
-            description="Network configuration for a sandbox including subnet, domain filtering, and proxy settings",
-            examples=[
-                {
-                    "proxy": {
-                        "allowed_domains": [
-                            "api.openai.com",
-                            "pypi.org",
-                            "files.pythonhosted.org",
-                            "registry.npmjs.org",
-                        ],
-                        "bypass": ["registry.npmjs.org"],
-                        "forbidden_domains": ["facebook.com", "*.facebook.com"],
-                        "routing": [
-                            {
-                                "destinations": ["api.openai.com"],
-                                "headers": {
-                                    "Authorization": "Bearer {{SECRET:openai-key}}"
-                                },
-                                "body": {"user": "baseten-api-review-0916"},
-                                "secrets": {
-                                    "openai-key": "sk-proj-demo-not-a-valid-api-key"
-                                },
-                            }
-                        ],
-                    },
-                    "subnet": "default",
                 }
             ],
         ),
@@ -17318,39 +17165,6 @@ class CreateSandboxRequest(BaseModel):
                         },
                     ],
                     "terminated_retention": "24h",
-                }
-            ],
-        ),
-    ] = None
-    network: Annotated[
-        SandboxNetwork | None,
-        Field(
-            description="Network configuration for a sandbox including subnet, domain filtering, and proxy settings",
-            examples=[
-                {
-                    "proxy": {
-                        "allowed_domains": [
-                            "api.openai.com",
-                            "pypi.org",
-                            "files.pythonhosted.org",
-                            "registry.npmjs.org",
-                        ],
-                        "bypass": ["registry.npmjs.org"],
-                        "forbidden_domains": ["facebook.com", "*.facebook.com"],
-                        "routing": [
-                            {
-                                "destinations": ["api.openai.com"],
-                                "headers": {
-                                    "Authorization": "Bearer {{SECRET:openai-key}}"
-                                },
-                                "body": {"user": "baseten-api-review-0916"},
-                                "secrets": {
-                                    "openai-key": "sk-proj-demo-not-a-valid-api-key"
-                                },
-                            }
-                        ],
-                    },
-                    "subnet": "default",
                 }
             ],
         ),
@@ -17603,28 +17417,6 @@ class ListSandboxesResponse(BaseModel):
                                 },
                             ],
                             "terminated_retention": "24h",
-                        },
-                        "network": {
-                            "proxy": {
-                                "allowed_domains": [
-                                    "api.openai.com",
-                                    "pypi.org",
-                                    "files.pythonhosted.org",
-                                    "registry.npmjs.org",
-                                ],
-                                "bypass": ["registry.npmjs.org"],
-                                "forbidden_domains": ["facebook.com", "*.facebook.com"],
-                                "routing": [
-                                    {
-                                        "destinations": ["api.openai.com"],
-                                        "headers": {
-                                            "Authorization": "Bearer {{SECRET:openai-key}}"
-                                        },
-                                        "body": {"user": "baseten-api-review-0916"},
-                                    }
-                                ],
-                            },
-                            "subnet": "default",
                         },
                         "region": "us-pdx-1",
                         "envs": [
