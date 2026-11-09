@@ -46,7 +46,47 @@ def postprocess_models(src: str) -> str:
     src = _allow_population_by_field_name(src)
     src = _validate_literal_model_defaults(src)
     src = _open_literals(src)
+    src = _send_defaulted_tags(src)
     return _open_tagged_unions(src)
+
+
+def _send_defaulted_tags(src: str) -> str:
+    # A union member's tag field defaults to its only value, so callers need
+    # not pass it. Request bodies are dumped with exclude_unset, which would
+    # then drop the tag and leave the server unable to pick the member, so each
+    # such tag is marked set on every instance.
+    tree = ast.parse(src)
+    discriminators = _discriminator_fields(tree)
+    lines = src.splitlines(keepends=True)
+
+    for cls in reversed(tree.body):
+        if not isinstance(cls, ast.ClassDef):
+            continue
+        tags = [
+            stmt.target.id
+            for stmt in cls.body
+            if isinstance(stmt, ast.AnnAssign)
+            and isinstance(stmt.target, ast.Name)
+            and stmt.value is not None
+            and (cls.name, stmt.target.id) in discriminators
+        ]
+        if not tags:
+            continue
+        if any(
+            isinstance(stmt, ast.FunctionDef) and stmt.name == "model_post_init"
+            for stmt in cls.body
+        ):
+            raise ValueError(f"{cls.name} already defines model_post_init")
+        assert cls.end_lineno is not None
+        indent = " " * cls.body[0].col_offset
+        added = ", ".join(repr(tag) for tag in tags)
+        lines.insert(
+            cls.end_lineno,
+            f"\n{indent}def model_post_init(self, context: Any, /) -> None:\n"
+            f"{indent}    self.__pydantic_fields_set__.update(({added},))\n",
+        )
+
+    return _ensure_import("".join(lines), "typing", ["Any"])
 
 
 def _open_tagged_unions(src: str) -> str:
