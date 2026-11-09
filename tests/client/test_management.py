@@ -207,6 +207,39 @@ async def test_post_with_body() -> None:
     await client.close()
 
 
+def test_defaulted_union_tag_sent() -> None:
+    # The server needs the tag to pick the union member, so it is sent though
+    # the caller left it at its default.
+    fake = FakeTransport(400, {"detail": "stop here"})
+    client = make_sync_client(fake)
+
+    with pytest.raises(baseten.client.managementapi.ResponseError):
+        client.api.post_models(
+            request=baseten.client.managementapi.CreateModelRequest(
+                source=baseten.client.managementapi.ModelArchiveSource(
+                    name="my-model",
+                    deployment=baseten.client.managementapi.DeploymentArchivePayload(
+                        config={}
+                    ),
+                ),
+            ),
+        )
+
+    body = json.loads(fake.capture.body)
+    assert body["source"]["kind"] == "model_archive"
+    # Other defaulted fields are still left to the server.
+    assert body["source"]["deployment"] == {"config": {}}
+    client.close()
+
+
+def test_defaulted_union_tag_set_on_validated_response() -> None:
+    source = baseten.client.managementapi.ModelArchiveSource.model_validate(
+        {"name": "my-model", "deployment": {"config": {}}}
+    )
+
+    assert "kind" in source.model_fields_set
+
+
 @pytest.mark.asyncio
 async def test_response_error() -> None:
     fake = FakeTransport(500, {"detail": "boom"})
