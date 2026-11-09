@@ -20,7 +20,6 @@ from baseten.sandbox import (
     SandboxFileSystemOptions,
     SandboxInfo,
     SandboxLifecycle,
-    SandboxNetwork,
     SandboxPort,
     SandboxVolumeMount,
 )
@@ -147,7 +146,6 @@ class TestSandboxClient:
                 ]
             ),
             ports=[SandboxPort(target=80)],
-            network=SandboxNetwork(subnet="default"),
             filesystem=SandboxFileSystemOptions(max_memory_usage="80%"),
             volumes=[SandboxVolumeMount(name="data", mount_path="/data")],
         )
@@ -167,7 +165,6 @@ class TestSandboxClient:
                 ]
             },
             "ports": [{"target": 80}],
-            "network": {"subnet": "default"},
             "filesystem": {"max_memory_usage": "80%"},
             "volumes": [{"name": "data", "mount_path": "/data", "read_only": False}],
         }
@@ -488,7 +485,6 @@ def _info() -> SandboxInfo:
         external_id=None,
         lifecycle=None,
         ports=[],
-        network=None,
         filesystem=None,
         volumes=[],
         created_at=datetime(2026, 10, 6, tzinfo=UTC),

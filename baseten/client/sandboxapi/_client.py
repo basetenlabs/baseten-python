@@ -15,8 +15,6 @@ from ._models import (
     ApplyEditRequest,
     ApplyEditResponse,
     ContentSearchResponse,
-    CopyRequest,
-    CopyResponse,
     DeleteFilesystemParams,
     DeleteFilesystemTreeParams,
     DeleteNetworkProcessMonitorResponse,
@@ -38,10 +36,8 @@ from ._models import (
     GetFilesystemParams,
     GetFilesystemResponse,
     GetFilesystemSearchParams,
-    GetFilesystemTreeParams,
     GetNetworkProcessPortsResponse,
     GetProcessResponse,
-    GetProcessWaitParams,
     GetWatchFilesystemParams,
     HandlerReloadResponse,
     HealthResponse,
@@ -151,11 +147,7 @@ class ApiClient:
                 body=None,
                 query=None,
                 success_codes=[200],
-                error_codes={
-                    400: "ErrorResponse",
-                    404: "ErrorResponse",
-                    500: "ErrorResponse",
-                },
+                error_codes={400: "ErrorResponse", 500: "ErrorResponse"},
             ),
         )
 
@@ -505,9 +497,7 @@ class ApiClient:
             ),
         )
 
-    def get_filesystem_tree(
-        self, *, path: str, params: GetFilesystemTreeParams | None = None
-    ) -> Directory:
+    def get_filesystem_tree(self, *, path: str) -> Directory:
         """Get directory tree"""
         return self._do_json(
             Directory,
@@ -516,7 +506,7 @@ class ApiClient:
                 path_fmt="/filesystem/tree/{}",
                 path_args=[path],
                 body=None,
-                query=params,
+                query=None,
                 success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
@@ -631,23 +621,6 @@ class ApiClient:
             )
         )
 
-    def get_process_wait(
-        self, *, identifier: str, params: GetProcessWaitParams | None = None
-    ) -> ProcessResponse:
-        """Wait for a process to finish"""
-        return self._do_json(
-            ProcessResponse,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/process/{}/wait",
-                path_args=[identifier],
-                body=None,
-                query=params,
-                success_codes=[200],
-                error_codes={400: "ErrorResponse", 404: "ErrorResponse"},
-            ),
-        )
-
     def get_watch_filesystem(
         self, *, path: str, params: GetWatchFilesystemParams | None = None
     ) -> httpx.Response:
@@ -731,7 +704,6 @@ class ApiClient:
                     403: "ErrorResponse",
                     409: "ErrorResponse",
                     500: "ErrorResponse",
-                    507: "ErrorResponse",
                 },
             ),
         )
@@ -748,25 +720,6 @@ class ApiClient:
                 query=None,
                 success_codes=[200],
                 error_codes={404: "ErrorResponse", 500: "ErrorResponse"},
-            ),
-        )
-
-    def post_filesystem_copy(self, *, request: CopyRequest) -> CopyResponse:
-        """Copy a file or directory"""
-        return self._do_json(
-            CopyResponse,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/filesystem-copy",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes={
-                    400: "ErrorResponse",
-                    409: "ErrorResponse",
-                    422: "ErrorResponse",
-                },
             ),
         )
 
@@ -907,7 +860,7 @@ class ApiClient:
                 body=request,
                 query=None,
                 success_codes=[200],
-                error_codes={400: "ErrorResponse", 500: "ErrorResponse"},
+                error_codes={500: "ErrorResponse"},
             ),
         )
 
@@ -1187,11 +1140,7 @@ class AsyncApiClient:
                 body=None,
                 query=None,
                 success_codes=[200],
-                error_codes={
-                    400: "ErrorResponse",
-                    404: "ErrorResponse",
-                    500: "ErrorResponse",
-                },
+                error_codes={400: "ErrorResponse", 500: "ErrorResponse"},
             ),
         )
 
@@ -1543,9 +1492,7 @@ class AsyncApiClient:
             ),
         )
 
-    async def get_filesystem_tree(
-        self, *, path: str, params: GetFilesystemTreeParams | None = None
-    ) -> Directory:
+    async def get_filesystem_tree(self, *, path: str) -> Directory:
         """Get directory tree"""
         return await self._do_json(
             Directory,
@@ -1554,7 +1501,7 @@ class AsyncApiClient:
                 path_fmt="/filesystem/tree/{}",
                 path_args=[path],
                 body=None,
-                query=params,
+                query=None,
                 success_codes=[200],
                 error_codes={
                     400: "ErrorResponse",
@@ -1671,23 +1618,6 @@ class AsyncApiClient:
             )
         )
 
-    async def get_process_wait(
-        self, *, identifier: str, params: GetProcessWaitParams | None = None
-    ) -> ProcessResponse:
-        """Wait for a process to finish"""
-        return await self._do_json(
-            ProcessResponse,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/process/{}/wait",
-                path_args=[identifier],
-                body=None,
-                query=params,
-                success_codes=[200],
-                error_codes={400: "ErrorResponse", 404: "ErrorResponse"},
-            ),
-        )
-
     async def get_watch_filesystem(
         self, *, path: str, params: GetWatchFilesystemParams | None = None
     ) -> httpx.Response:
@@ -1773,7 +1703,6 @@ class AsyncApiClient:
                     403: "ErrorResponse",
                     409: "ErrorResponse",
                     500: "ErrorResponse",
-                    507: "ErrorResponse",
                 },
             ),
         )
@@ -1790,25 +1719,6 @@ class AsyncApiClient:
                 query=None,
                 success_codes=[200],
                 error_codes={404: "ErrorResponse", 500: "ErrorResponse"},
-            ),
-        )
-
-    async def post_filesystem_copy(self, *, request: CopyRequest) -> CopyResponse:
-        """Copy a file or directory"""
-        return await self._do_json(
-            CopyResponse,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/filesystem-copy",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes={
-                    400: "ErrorResponse",
-                    409: "ErrorResponse",
-                    422: "ErrorResponse",
-                },
             ),
         )
 
@@ -1949,7 +1859,7 @@ class AsyncApiClient:
                 body=request,
                 query=None,
                 success_codes=[200],
-                error_codes={400: "ErrorResponse", 500: "ErrorResponse"},
+                error_codes={500: "ErrorResponse"},
             ),
         )
 
