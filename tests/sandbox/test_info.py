@@ -12,16 +12,12 @@ from baseten.sandbox import (
     SandboxExpirationPolicyUnknown,
     SandboxFileSystemOptions,
     SandboxLifecycle,
-    SandboxNetwork,
-    SandboxNetworkProxy,
-    SandboxNetworkProxyRoute,
     SandboxPort,
 )
 from baseten.sandbox._info import (
     envs_to_api,
     filesystem_to_api,
     lifecycle_to_api,
-    network_to_api,
     ports_to_api,
     sandbox_info_from_api,
 )
@@ -32,6 +28,7 @@ _FULL_RECORD: dict[str, Any] = {
     "status": "DEPLOYED",
     "image": "baseten/base-image:latest",
     "memory": 4096,
+    "cpu": 2,
     "region": "us-was-1",
     "envs": [
         {"name": "PLAIN", "value": "shown", "secret": False},
@@ -50,13 +47,6 @@ _FULL_RECORD: dict[str, Any] = {
         "terminated_retention": "24h",
     },
     "ports": [{"target": 8080, "name": "http", "protocol": "HTTP"}],
-    "network": {
-        "subnet": "default",
-        "proxy": {
-            "allowed_domains": ["pypi.org"],
-            "routing": [{"destinations": ["*"], "headers": {"X-A": "b"}}],
-        },
-    },
     "filesystem": {"max_memory_usage": 2048},
     "created_at": "2026-10-06T12:00:00Z",
     "updated_at": "2026-10-06T13:00:00Z",
@@ -74,9 +64,10 @@ def test_maps_sandbox_record() -> None:
     assert info.name == "sbx"
     assert info.url == "https://sbx.example.dev/"
     assert info.status == "DEPLOYED"
-    assert (info.image, info.memory, info.region) == (
+    assert (info.image, info.memory, info.cpu, info.region) == (
         "baseten/base-image:latest",
         4096,
+        2,
         "us-was-1",
     )
     # An env without a name is left out.
@@ -103,15 +94,6 @@ def test_maps_sandbox_record() -> None:
         terminated_retention=timedelta(hours=24),
     )
     assert info.ports == [SandboxPort(target=8080, name="http", protocol="HTTP")]
-    assert info.network == SandboxNetwork(
-        subnet="default",
-        proxy=SandboxNetworkProxy(
-            allowed_domains=["pypi.org"],
-            routing=[
-                SandboxNetworkProxyRoute(destinations=["*"], headers={"X-A": "b"})
-            ],
-        ),
-    )
     assert info.filesystem == SandboxFileSystemOptions(max_memory_usage=2048)
     assert info.created_at == datetime(2026, 10, 6, 12, tzinfo=UTC)
     assert info.updated_at == datetime(2026, 10, 6, 13, tzinfo=UTC)
@@ -136,7 +118,6 @@ def test_maps_sandbox_record_without_optional_fields() -> None:
     assert info.labels == {}
     assert info.lifecycle is None
     assert info.ports == []
-    assert info.network is None
     assert info.filesystem is None
     assert info.expires_in is None
 
@@ -177,16 +158,6 @@ def test_inputs_send_only_set_fields() -> None:
     assert [_dump(port) for port in ports_to_api([SandboxPort(target=80)])] == [
         {"target": 80}
     ]
-    assert _dump(
-        network_to_api(
-            SandboxNetwork(
-                proxy=SandboxNetworkProxy(
-                    bypass=("example.com",),
-                    routing=[SandboxNetworkProxyRoute(secrets={"k": "v"})],
-                )
-            )
-        )
-    ) == {"proxy": {"bypass": ["example.com"], "routing": [{"secrets": {"k": "v"}}]}}
     assert _dump(filesystem_to_api(SandboxFileSystemOptions())) == {}
 
 

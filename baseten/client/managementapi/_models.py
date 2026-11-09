@@ -82,6 +82,14 @@ class CreateTrainingJobCacheConfig(BaseModel):
             title="Mount Base Path",
         ),
     ] = "/root/.cache"
+    persistent_home: Annotated[
+        bool,
+        Field(
+            description="Whether to keep `$HOME` in a per-job directory on the project cache, so its contents outlive the job. Requires `enabled`.",
+            examples=[True, False],
+            title="Persistent Home",
+        ),
+    ] = False
 
 
 class CreateTrainingJobCheckpointingConfig(BaseModel):
@@ -440,6 +448,53 @@ class GetModelsEnvironmentsStartupsSummaryParams(BaseModel):
     ] = None
 
 
+class Limit3(RootModel[int]):
+    root: Annotated[
+        int | None,
+        Field(
+            description="Maximum number of projects to return, up to 1000.",
+            ge=1,
+            le=1000,
+            title="Limit",
+        ),
+    ] = None
+
+
+class GetTrainingProjectsParams(BaseModel):
+    name: Annotated[
+        str | None,
+        Field(
+            description="Return only the project with this exact name.", title="Name"
+        ),
+    ] = None
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor from the pagination.cursor field of a previous response. Omit both cursor and limit to get every project in one response.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        Limit3 | None,
+        Field(
+            description="Maximum number of projects to return, up to 1000.",
+            title="Limit",
+        ),
+    ] = None
+
+
+class Limit4(RootModel[int]):
+    root: Annotated[
+        int,
+        Field(
+            description="Limit of logs to fetch in a single request",
+            ge=1,
+            le=1000,
+            title="Limit",
+        ),
+    ] = 500
+
+
 class GetTrainingProjectsJobsMetricsParams(BaseModel):
     end_epoch_millis: Annotated[
         int | None,
@@ -506,6 +561,14 @@ class GetLoopsRunsParams(BaseModel):
             title="Base Model",
         ),
     ] = None
+    session_id: Annotated[
+        str | None,
+        Field(
+            description="Filter runs by the session that created them. An unknown or inaccessible session returns an empty list.",
+            examples=["k4q95w5"],
+            title="Session Id",
+        ),
+    ] = None
     scope: Annotated[
         str | None,
         Field(
@@ -517,6 +580,14 @@ class GetLoopsRunsParams(BaseModel):
 
 
 class GetLoopsSamplersParams(BaseModel):
+    session_id: Annotated[
+        str | None,
+        Field(
+            description="Filter samplers by the session that created them. An unknown or inaccessible session returns an empty list.",
+            examples=["k4q95w5"],
+            title="Session Id",
+        ),
+    ] = None
     scope: Annotated[
         str | None,
         Field(
@@ -611,6 +682,14 @@ class GetTeamsLoopsRunsParams(BaseModel):
             title="Base Model",
         ),
     ] = None
+    session_id: Annotated[
+        str | None,
+        Field(
+            description="Filter runs by the session that created them. An unknown or inaccessible session returns an empty list.",
+            examples=["k4q95w5"],
+            title="Session Id",
+        ),
+    ] = None
     scope: Annotated[
         str | None,
         Field(
@@ -622,6 +701,14 @@ class GetTeamsLoopsRunsParams(BaseModel):
 
 
 class GetTeamsLoopsSamplersParams(BaseModel):
+    session_id: Annotated[
+        str | None,
+        Field(
+            description="Filter samplers by the session that created them. An unknown or inaccessible session returns an empty list.",
+            examples=["k4q95w5"],
+            title="Session Id",
+        ),
+    ] = None
     scope: Annotated[
         str | None,
         Field(
@@ -636,7 +723,7 @@ class GetApiKeysParams(BaseModel):
     type: Annotated[
         Literal[
             "PERSONAL",
-            "ROUTES",
+            "GRID",
             "WORKSPACE_MANAGE_ALL",
             "WORKSPACE_EXPORT_METRICS",
             "WORKSPACE_INVOKE",
@@ -672,47 +759,47 @@ class GetModelApisParams(BaseModel):
             title="Limit",
         ),
     ] = 100
+    team_ids: Annotated[
+        list[str] | None,
+        Field(
+            description="Select teams for added-model details, filtering, and ordering, repeated once per team. Defaults to all teams where you can invoke Model APIs. Any unauthorized team causes a 403.",
+            title="Team Ids",
+        ),
+    ] = None
     added_only: Annotated[
         bool,
         Field(
-            description="When true, restrict the result to Model APIs the workspace has added. Defaults to the full visible catalog.",
+            description="When true, restrict the result to Model APIs added by any team where you can invoke Model APIs. Explicit team_ids narrow this to the selected teams. Defaults to the full visible catalog.",
             title="Added Only",
         ),
     ] = False
+
+
+class GetModelApisModelApiNameParams(BaseModel):
+    team_ids: Annotated[
+        list[str] | None,
+        Field(
+            description="Select teams for added-model details, repeated once per team. Defaults to all teams where you can invoke Model APIs. Any unauthorized team causes a 403.",
+            title="Team Ids",
+        ),
+    ] = None
 
 
 class GetBillingUsageSummaryParams(BaseModel):
     start_date: Annotated[
         AwareDatetime,
         Field(
-            description="Start date (ISO 8601, UTC). Earliest queryable: 2026-01-01.",
+            description="Inclusive start date (ISO 8601, normalized to midnight UTC). Earliest queryable: 2026-01-01.",
             title="Start Date",
         ),
     ]
     end_date: Annotated[
         AwareDatetime,
         Field(
-            description="End date in ISO 8601 format (UTC). Date range cannot exceed 31 days.",
+            description="Exclusive end date (ISO 8601, normalized to midnight UTC). Date range cannot exceed 31 days.",
             title="End Date",
         ),
     ]
-
-
-class GetBillingToolCallUsageParams(BaseModel):
-    start_date: Annotated[
-        date_aliased,
-        Field(
-            description="Inclusive UTC calendar day at the start of the query range.",
-            title="Start Date",
-        ),
-    ]
-    end_date: Annotated[
-        date_aliased | None,
-        Field(
-            description="Exclusive UTC calendar day at the end of the query range. Defaults to the day after the current UTC date so current-day usage is included. The date range cannot exceed 90 days.",
-            title="End Date",
-        ),
-    ] = None
 
 
 class GetUsersParams(BaseModel):
@@ -741,7 +828,7 @@ class GetUsersParams(BaseModel):
     ] = None
 
 
-class Limit5(RootModel[int]):
+class Limit6(RootModel[int]):
     root: Annotated[
         int | None,
         Field(
@@ -769,7 +856,7 @@ class GetGatewayEventsParams(BaseModel):
         ),
     ] = None
     limit: Annotated[
-        Limit5 | None,
+        Limit6 | None,
         Field(description="Max events. Default 100, max 1000.", title="Limit"),
     ] = None
     api_keys: Annotated[
@@ -996,6 +1083,51 @@ class GetGridClassifiersParams(BaseModel):
             title="Limit",
         ),
     ] = 100
+
+
+class GetGridRouteClassifiersParams(BaseModel):
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor returned by a previous page. Omit to fetch the first page.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of items to return.",
+            ge=1,
+            le=1000,
+            title="Limit",
+        ),
+    ] = 100
+
+
+class GetGridMachineUsersParams(BaseModel):
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor returned by a previous page. Omit to fetch the first page.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of items to return.",
+            ge=1,
+            le=1000,
+            title="Limit",
+        ),
+    ] = 100
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Limit machine users to this team. Without it, every team you administer.",
+            title="Team Id",
+        ),
+    ] = None
 
 
 class GetSandboxLogsParams(BaseModel):
@@ -1661,6 +1793,18 @@ class VolumeSyncAuthenticationGCPOIDC(BaseModel):
     ]
 
 
+class VolumeSyncAuthenticationHuggingFaceOIDC(BaseModel):
+    resource: Annotated[
+        str,
+        Field(
+            description="Hugging Face username for an account CI/CD identity, or namespace/repository for a repository trusted publisher. Configure trust in Hugging Face before starting the sync.",
+            examples=["hf-user", "organization/private-model"],
+            pattern="^[A-Za-z0-9][A-Za-z0-9_.-]*(/[A-Za-z0-9_][A-Za-z0-9_.-]*)?$",
+            title="Resource",
+        ),
+    ]
+
+
 class VolumeSyncDestination(BaseModel):
     ref: Annotated[
         str,
@@ -1836,6 +1980,12 @@ class VolumeSyncSourceHuggingFace(BaseModel):
         Literal["HUGGING_FACE"],
         Field(description="Hugging Face source type.", title="Type"),
     ]
+    hf_oidc: Annotated[
+        VolumeSyncAuthenticationHuggingFaceOIDC | None,
+        Field(
+            description="Hugging Face OIDC authentication for this source. Cannot be combined with auth_secret_name."
+        ),
+    ] = None
 
 
 class VolumeSyncSourceR2(BaseModel):
@@ -3264,6 +3414,23 @@ class AuditLogEventApiKeyDeleted(BaseModel):
     revocation_reason: Literal["INACTIVITY"] | str | None = None
 
 
+class AuditLogEventApiKeyLifetimeLimitsUpdated(BaseModel):
+    event_type: Annotated[
+        Literal["API_KEY_LIFETIME_LIMITS_UPDATED"], Field(title="Event Type")
+    ]
+    organization_id: Annotated[str, Field(title="Organization Id")]
+    previous_personal_limit_days: Annotated[
+        int | None, Field(title="Previous Personal Limit Days")
+    ]
+    new_personal_limit_days: Annotated[
+        int | None, Field(title="New Personal Limit Days")
+    ]
+    previous_team_limit_days: Annotated[
+        int | None, Field(title="Previous Team Limit Days")
+    ]
+    new_team_limit_days: Annotated[int | None, Field(title="New Team Limit Days")]
+
+
 class AuditLogEventAutoscalingScheduleSettings(BaseModel):
     min_replica: Annotated[int, Field(title="Min Replica")]
     max_replica: Annotated[int, Field(title="Max Replica")]
@@ -3610,22 +3777,43 @@ class AuditLogEventGatewayEndpointUpdated(BaseModel):
     previous_slug: Annotated[str | None, Field(title="Previous Slug")]
 
 
+class AuditLogEventGridMachineUserCreated(BaseModel):
+    event_type: Annotated[
+        Literal["GRID_MACHINE_USER_CREATED"], Field(title="Event Type")
+    ]
+    machine_user_id: Annotated[str, Field(title="Machine User Id")]
+    machine_user_name: Annotated[str, Field(title="Machine User Name")]
+    team_id: Annotated[str, Field(title="Team Id")]
+    team_name: Annotated[str, Field(title="Team Name")]
+
+
+class AuditLogEventGridMachineUserDeleted(BaseModel):
+    event_type: Annotated[
+        Literal["GRID_MACHINE_USER_DELETED"], Field(title="Event Type")
+    ]
+    machine_user_id: Annotated[str, Field(title="Machine User Id")]
+    machine_user_name: Annotated[str, Field(title="Machine User Name")]
+    team_id: Annotated[str, Field(title="Team Id")]
+    team_name: Annotated[str, Field(title="Team Name")]
+
+
+class AuditLogEventGridMachineUserUpdated(BaseModel):
+    event_type: Annotated[
+        Literal["GRID_MACHINE_USER_UPDATED"], Field(title="Event Type")
+    ]
+    machine_user_id: Annotated[str, Field(title="Machine User Id")]
+    machine_user_name: Annotated[str, Field(title="Machine User Name")]
+    previous_machine_user_name: Annotated[
+        str, Field(title="Previous Machine User Name")
+    ]
+    team_id: Annotated[str, Field(title="Team Id")]
+    team_name: Annotated[str, Field(title="Team Name")]
+
+
 class AuditLogEventModelDeleted(BaseModel):
     event_type: Annotated[Literal["MODEL_DELETED"], Field(title="Event Type")]
     model_id: Annotated[str, Field(title="Model Id")]
     model_name: Annotated[str, Field(title="Model Name")]
-
-
-class AuditLogEventModelDeployed(BaseModel):
-    event_type: Annotated[Literal["MODEL_DEPLOYED"], Field(title="Event Type")]
-    model_id: Annotated[str, Field(title="Model Id")]
-    model_name: Annotated[str, Field(title="Model Name")]
-    deployment_id: Annotated[str, Field(title="Deployment Id")]
-    deployment_name: Annotated[str, Field(title="Deployment Name")]
-    scale_previous_to_zero: Annotated[bool, Field(title="Scale Previous To Zero")]
-    trusted: Annotated[bool, Field(title="Trusted")]
-    publish: Annotated[bool, Field(title="Publish")]
-    environment_name: Annotated[str | None, Field(title="Environment Name")]
 
 
 class AuditLogEventModelDeploymentActivated(BaseModel):
@@ -4256,7 +4444,7 @@ class GetLogsResponse(BaseModel):
     ]
 
 
-class Limit6(RootModel[int]):
+class Limit7(RootModel[int]):
     root: Annotated[
         int,
         Field(
@@ -4287,13 +4475,13 @@ class GetDeploymentLogsRequest(BaseModel):
         Literal["asc", "desc"] | str | None, Field(description="Sort order for logs")
     ] = None
     limit: Annotated[
-        Limit6 | None,
+        Limit7 | None,
         Field(
             description="Limit of logs to fetch in a single request",
             title="Limit",
             validate_default=True,
         ),
-    ] = Limit6.model_validate(500)
+    ] = Limit7.model_validate(500)
     min_level: Annotated[
         Literal["DEBUG", "INFO", "WARNING", "ERROR"] | str | None,
         Field(
@@ -4609,7 +4797,7 @@ class SyncDeploymentPatchesResponse(BaseModel):
     ] = None
 
 
-class ModelMetricValueSet(BaseModel):
+class MetricValueSet(BaseModel):
     start_epoch_millis: Annotated[
         int,
         Field(
@@ -5484,6 +5672,14 @@ class UpsertTrainingProject(BaseModel):
             title="Name",
         ),
     ]
+    project_accelerator: Annotated[
+        str | None,
+        Field(
+            description="Optional default GPU type for cache-enabled CPU job placement, such as H100. GPU jobs use their requested GPU type; uncached CPU jobs use normal CPU routing. Omitting this field preserves the stored default; providing a value updates it. Existing cache-affinity requirements still apply.",
+            examples=["H100"],
+            title="Project Accelerator",
+        ),
+    ] = None
 
 
 class UpsertTrainingProjectRequest(BaseModel):
@@ -5578,13 +5774,13 @@ class CreateTrainingJobCompute(BaseModel):
         ),
     ] = None
     availability_model: Annotated[
-        Literal["dedicated", "spot"] | str,
+        Literal["standard", "spot"] | str,
         Field(
-            description="Capacity guarantee for the job. 'dedicated' (the default) runs on on-demand capacity that is not preempted. 'spot' runs on interruptible capacity that may be preempted; the user is responsible for checkpointing their own progress.",
+            description="Capacity guarantee for the job. Defaults to 'standard'. 'standard' runs on capacity that is not preempted. 'spot' runs on interruptible capacity that may be preempted; you are responsible for checkpointing your own progress.",
             examples=["spot"],
-            title="V1AvailabilityModel",
+            title="AvailabilityModelV1",
         ),
-    ] = "dedicated"
+    ] = "standard"
 
 
 class GcpOidcDockerAuth(BaseModel):
@@ -5649,7 +5845,14 @@ class SecretReference(BaseModel):
 
 class TrainingWeightAuth(BaseModel):
     auth_method: Annotated[
-        Literal["CUSTOM_SECRET", "AWS_OIDC", "GCP_OIDC", "AWS_ASSUME_ROLE"] | str,
+        Literal[
+            "CUSTOM_SECRET",
+            "AWS_OIDC",
+            "GCP_OIDC",
+            "HUGGING_FACE_OIDC",
+            "AWS_ASSUME_ROLE",
+        ]
+        | str,
         Field(
             description="Method used to authenticate the weight source.",
             title="AuthMethod",
@@ -5732,9 +5935,9 @@ class UpdateTrainingJobRequest(BaseModel):
         ),
     ] = None
     availability_model: Annotated[
-        Literal["dedicated", "spot"] | str | None,
+        Literal["standard", "spot"] | str | None,
         Field(
-            description="New capacity guarantee for a PENDING training job. 'dedicated' runs on on-demand capacity that is not preempted. 'spot' runs on interruptible capacity that may be preempted; the user is responsible for checkpointing their own progress. Only jobs in the PENDING state can have their availability model changed.",
+            description="New capacity guarantee for a PENDING training job. 'standard' runs on capacity that is not preempted. 'spot' runs on interruptible capacity that may be preempted; you are responsible for checkpointing your own progress. Only jobs in the PENDING state can have their availability model changed.",
             examples=["spot"],
         ),
     ] = None
@@ -5769,13 +5972,13 @@ class GetTrainingJobLogsRequest(BaseModel):
         Literal["asc", "desc"] | str | None, Field(description="Sort order for logs")
     ] = None
     limit: Annotated[
-        Limit6 | None,
+        Limit7 | None,
         Field(
             description="Limit of logs to fetch in a single request",
             title="Limit",
             validate_default=True,
         ),
-    ] = Limit6.model_validate(500)
+    ] = Limit7.model_validate(500)
     min_level: Annotated[
         Literal["DEBUG", "INFO", "WARNING", "ERROR"] | str | None,
         Field(
@@ -6104,6 +6307,22 @@ class OrderBy(BaseModel):
 
 
 class SearchTrainingJobsRequest(BaseModel):
+    cursor: Annotated[
+        str | None,
+        Field(
+            description="Opaque cursor returned by a previous page. Omit to fetch the first page.",
+            title="Cursor",
+        ),
+    ] = None
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of items to return.",
+            ge=1,
+            le=1000,
+            title="Limit",
+        ),
+    ] = 1000
     project_id: Annotated[
         str | None,
         Field(
@@ -6222,7 +6441,7 @@ class GetLoopsCapabilitiesResponse(BaseModel):
     supported_models: Annotated[
         list[SupportedModel],
         Field(
-            description="Models Baseten supports for this use case, each carrying an 'enabled' flag saying whether this workspace can run it now, and 'enablement_details' when it cannot. Filter on 'enabled' to get the models you can use.",
+            description="Models Baseten supports for this use case, each carrying an 'enabled' flag saying whether this workspace can run it now, and 'enablement_details' when it cannot. Models this workspace can run come first, then the rest, each group sorted by name.",
             title="Supported Models",
         ),
     ]
@@ -6278,6 +6497,12 @@ class LoopsSamplerStatus(BaseModel):
 
 class LoopsSampler(BaseModel):
     id: Annotated[str, Field(title="Id")]
+    session_id: Annotated[
+        str,
+        Field(
+            description="The session ID this sampler belongs to.", title="Session Id"
+        ),
+    ]
     base_url: Annotated[str, Field(title="Base Url")]
     base_model: Annotated[
         str,
@@ -6392,13 +6617,13 @@ class CreateLoopsRunRequest(BaseModel):
         ),
     ] = 900
     availability_model: Annotated[
-        Literal["dedicated", "spot"] | str,
+        Literal["standard", "spot"] | str,
         Field(
-            description="Capacity the trainer runs on. 'dedicated' is not preempted. 'spot' runs below inference and reaches idle reserved capacity, but the run is stopped if its GPUs are reclaimed and cannot be resumed.",
+            description="Capacity the trainer runs on. 'standard' is not preempted. 'spot' runs below inference and reaches idle reserved capacity, but the run is stopped if its GPUs are reclaimed and cannot be resumed.",
             examples=["spot"],
-            title="V1AvailabilityModel",
+            title="AvailabilityModelV1",
         ),
-    ] = "dedicated"
+    ] = "standard"
     replicas: Annotated[
         int,
         Field(
@@ -6499,13 +6724,13 @@ class CreateLoopsTrainerRequest(BaseModel):
         ),
     ] = 900
     availability_model: Annotated[
-        Literal["dedicated", "spot"] | str,
+        Literal["standard", "spot"] | str,
         Field(
-            description="Capacity the trainer runs on. 'dedicated' is not preempted. 'spot' runs below inference and reaches idle reserved capacity, but the run is stopped if its GPUs are reclaimed and cannot be resumed.",
+            description="Capacity the trainer runs on. 'standard' is not preempted. 'spot' runs below inference and reaches idle reserved capacity, but the run is stopped if its GPUs are reclaimed and cannot be resumed.",
             examples=["spot"],
-            title="V1AvailabilityModel",
+            title="AvailabilityModelV1",
         ),
-    ] = "dedicated"
+    ] = "standard"
     replicas: Annotated[
         int,
         Field(
@@ -6543,6 +6768,13 @@ class CreateLoopsTrainerRequest(BaseModel):
             title="Base Checkpoint",
         ),
     ] = None
+    scope: Annotated[
+        Literal["default", "serverless", "dedicated"] | str,
+        Field(
+            description="Choose where this runs. 'default' lets Baseten choose. 'serverless' runs on Baseten's shared capacity, and fails instead of falling back when shared capacity can't serve the request. 'dedicated' gives it its own deployment, which you size and pay for.",
+            title="LoopsPlacementScopeV1",
+        ),
+    ] = "default"
 
 
 class ListLoopsSamplersResponse(BaseModel):
@@ -6564,9 +6796,9 @@ class NumReplicas(RootModel[int]):
 
 class CreateLoopsSamplerRequest(BaseModel):
     availability_model: Annotated[
-        Literal["dedicated", "spot"] | str | None,
+        Literal["standard", "spot"] | str | None,
         Field(
-            description="Capacity the sampler runs on. 'spot' allows preemption when its GPUs are reclaimed. Defaults to 'dedicated' for standalone samplers. Paired samplers inherit their run's availability model; an explicit value must match it."
+            description="Capacity the sampler runs on. 'spot' allows preemption when its GPUs are reclaimed. Defaults to 'standard' for standalone samplers. Paired samplers inherit their run's availability model; an explicit value must match it."
         ),
     ] = None
     session_id: Annotated[
@@ -6619,6 +6851,13 @@ class CreateLoopsSamplerRequest(BaseModel):
             title="Num Replicas",
         ),
     ] = None
+    scope: Annotated[
+        Literal["default", "serverless", "dedicated"] | str,
+        Field(
+            description="Choose where this runs. 'default' lets Baseten choose. 'serverless' runs on Baseten's shared capacity, and fails instead of falling back when shared capacity can't serve the request. 'dedicated' gives it its own deployment, which you size and pay for. Standalone samplers only: a run's sampler runs where its run does.",
+            title="LoopsPlacementScopeV1",
+        ),
+    ] = "default"
 
 
 class CreateLoopsSamplerResponse(BaseModel):
@@ -6769,7 +7008,7 @@ class LoopsCheckpointVolumeSource(BaseModel):
     path: Annotated[
         str,
         Field(
-            description="Directory inside that version holding the checkpoint's files.",
+            description="Directory inside that version holding the checkpoint's files. Empty when the checkpoint is the whole version.",
             title="Path",
         ),
     ]
@@ -6852,12 +7091,12 @@ class LoopsDeployment(BaseModel):
         ),
     ]
     availability_model: Annotated[
-        Literal["dedicated", "spot"] | str,
+        Literal["standard", "spot"] | str,
         Field(
             description="Capacity the trainer was scheduled on.",
-            title="V1AvailabilityModel",
+            title="AvailabilityModelV1",
         ),
-    ] = "dedicated"
+    ] = "standard"
     instance_type: Annotated[
         InstanceType, Field(description="Instance type backing the trainer.")
     ]
@@ -7003,7 +7242,7 @@ class TeamTrainingGpuCapacityItem(BaseModel):
     dedicated_usage_count: Annotated[
         int,
         Field(
-            description="Portion of usage_count from dedicated (on-demand) jobs.",
+            description="Portion of usage_count from standard (non-spot) jobs.",
             title="Dedicated Usage Count",
         ),
     ] = 0
@@ -7047,7 +7286,7 @@ class TrainingGpuCapacityItem(BaseModel):
     dedicated_usage_count: Annotated[
         int,
         Field(
-            description="Portion of usage_count from dedicated (on-demand) jobs, which run against the baseline.",
+            description="Portion of usage_count from standard (non-spot) jobs, which run against the baseline.",
             title="Dedicated Usage Count",
         ),
     ] = 0
@@ -7338,7 +7577,7 @@ class CreateAPIKeyRequest(BaseModel):
     type: Annotated[
         Literal[
             "PERSONAL",
-            "ROUTES",
+            "GRID",
             "WORKSPACE_MANAGE_ALL",
             "WORKSPACE_EXPORT_METRICS",
             "WORKSPACE_INVOKE",
@@ -7349,7 +7588,7 @@ class CreateAPIKeyRequest(BaseModel):
             description="Type of the API key.",
             examples=[
                 "PERSONAL",
-                "ROUTES",
+                "GRID",
                 "WORKSPACE_MANAGE_API_KEYS",
                 "WORKSPACE_EXPORT_METRICS",
                 "WORKSPACE_INVOKE",
@@ -7364,6 +7603,14 @@ class CreateAPIKeyRequest(BaseModel):
             description="List of model IDs to scope the API key to, only present if type is 'WORKSPACE_EXPORT_METRICS' or 'WORKSPACE_INVOKE'",
             examples=[["aaaaaaaa"]],
             title="Model Ids",
+        ),
+    ] = None
+    expires_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Expiration time in UTC. Must be in the future. Personal keys must expire within 90 days, or sooner if your organization sets a lower limit. Team and organization keys require an expiration within your organization's limit when one is set; otherwise they may omit it or use null. Organization lifetime limits do not apply to Grid keys.",
+            examples=["2027-01-01T00:00:00Z"],
+            title="Expires At",
         ),
     ] = None
     team_id: Annotated[
@@ -7401,14 +7648,13 @@ class ModelAPIOrgDetails(BaseModel):
     added_at: Annotated[
         AwareDatetime,
         Field(
-            description="When the workspace first added this Model API.",
-            title="Added At",
+            description="When the team first added this Model API.", title="Added At"
         ),
     ]
     last_used_at: Annotated[
         AwareDatetime | None,
         Field(
-            description="When the workspace last invoked this Model API. Null if the workspace has never invoked it.",
+            description="When the team last invoked this Model API. Null if the team has never invoked it.",
             title="Last Used At",
         ),
     ] = None
@@ -7421,8 +7667,7 @@ class CostPerMillionInputTokens(RootModel[str]):
     root: Annotated[
         str,
         Field(
-            description="Effective cost per million input tokens, in dollars. Null when pricing is unavailable.",
-            examples=["0.13"],
+            description="Effective cost per million input tokens, in dollars. Null if unavailable.",
             pattern="^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             title="Cost Per Million Input Tokens",
         ),
@@ -7436,45 +7681,56 @@ class CostPerMillionOutputTokens(RootModel[str]):
     root: Annotated[
         str,
         Field(
-            description="Effective cost per million output tokens, in dollars. Null when pricing is unavailable.",
-            examples=["0.50"],
+            description="Effective cost per million output tokens, in dollars. Null if unavailable.",
             pattern="^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             title="Cost Per Million Output Tokens",
         ),
     ]
 
 
-class RateLimit(BaseModel):
-    type: Annotated[
-        Literal[
-            "REQUEST",
-            "TOKEN",
-            "CONCURRENT_REQUEST",
-            "UNCACHED_INPUT_TOKEN",
-            "OUTPUT_TOKEN",
-        ]
-        | str,
+class CostPerMillionInputTokens1(RootModel[str]):
+    model_config = ConfigDict(
+        regex_engine="python-re",
+    )
+    root: Annotated[
+        str,
         Field(
-            description="The type of the rate limit",
-            examples=["TOKEN", "REQUEST"],
-            title="LimitTypeV1",
+            deprecated=True,
+            description="Deprecated and will be removed in a future version. Legacy effective input-token price. Use team_details pricing instead. Retained during migration; null when pricing is unavailable.",
+            examples=["0.13"],
+            pattern="^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            title="Cost Per Million Input Tokens",
         ),
     ]
-    unit: Annotated[
-        Literal["SECOND", "MINUTE"] | str,
+
+
+class CostPerMillionCachedInputTokens(RootModel[str]):
+    model_config = ConfigDict(
+        regex_engine="python-re",
+    )
+    root: Annotated[
+        str,
         Field(
-            description="The unit of the rate limit",
-            examples=["SECOND", "MINUTE"],
-            title="RateLimitUnitV1",
+            description="Effective cost per million cached input tokens, in dollars. Null when pricing is unavailable or the Model API has no cached input price.",
+            examples=["0.03"],
+            pattern="^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            title="Cost Per Million Cached Input Tokens",
         ),
     ]
-    threshold: Annotated[
-        int,
+
+
+class CostPerMillionOutputTokens1(RootModel[str]):
+    model_config = ConfigDict(
+        regex_engine="python-re",
+    )
+    root: Annotated[
+        str,
         Field(
-            description="The threshold for the rate limit",
-            examples=[1000, 50000],
-            ge=0,
-            title="Threshold",
+            deprecated=True,
+            description="Deprecated and will be removed in a future version. Legacy effective output-token price. Use team_details pricing instead. Retained during migration; null when pricing is unavailable.",
+            examples=["0.50"],
+            pattern="^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            title="Cost Per Million Output Tokens",
         ),
     ]
 
@@ -7564,6 +7820,13 @@ class RuntimeOidc(BaseModel):
             title="Enabled",
         ),
     ] = None
+    byok: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="BYOK configuration for envelope-encrypted BDN weights in BIS-LLM deployments. Requires runtime.oidc.enabled to be true.",
+            title="Byok",
+        ),
+    ] = None
 
 
 class LLMModelHandle(BaseModel):
@@ -7609,6 +7872,7 @@ class LibraryListingMetadata(BaseModel):
     ] = ["text"]
     license: Annotated[str, Field(title="License")]
     variant: Annotated[str | None, Field(title="Variant")] = None
+    base_model: Annotated[str | None, Field(title="Base Model")] = None
     publisher: Annotated[str | None, Field(title="Publisher")] = None
     model_api_slug: Annotated[str | None, Field(title="Model Api Slug")] = None
     release_date: Annotated[date_aliased | None, Field(title="Release Date")] = None
@@ -7897,6 +8161,13 @@ class ModelApisCostResult(BaseModel):
             title="Service Tier",
         ),
     ] = None
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Team the cost is attributed to. Null when not grouping by team or when team attribution is unavailable.",
+            title="Team Id",
+        ),
+    ] = None
     subtotal: Annotated[
         str,
         Field(
@@ -8000,10 +8271,38 @@ class DailyDedicatedUsage(BaseModel):
     ]
 
 
+class Subtotal1(RootModel[str]):
+    model_config = ConfigDict(
+        regex_engine="python-re",
+    )
+    root: Annotated[
+        str,
+        Field(
+            description="Cost in dollars across all four meters",
+            pattern="^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            title="Subtotal",
+        ),
+    ]
+
+
+class Subtotal2(RootModel[str]):
+    model_config = ConfigDict(
+        regex_engine="python-re",
+    )
+    root: Annotated[
+        str,
+        Field(
+            description="Subtotal cost incurred on this date in dollars",
+            pattern="^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            title="Subtotal",
+        ),
+    ]
+
+
 class DailyModelApiUsage(BaseModel):
     date: Annotated[date_aliased, Field(description="Date of the usage", title="Date")]
     subtotal: Annotated[
-        float | Subtotal,
+        float | Subtotal2,
         Field(
             description="Subtotal cost incurred on this date in dollars",
             title="Subtotal",
@@ -8031,7 +8330,7 @@ class DailyModelApiUsage(BaseModel):
 class DailyTrainingUsage(BaseModel):
     date: Annotated[date_aliased, Field(description="Date of the usage", title="Date")]
     subtotal: Annotated[
-        float | Subtotal,
+        float | Subtotal2,
         Field(
             description="Subtotal cost incurred on this date in dollars",
             title="Subtotal",
@@ -8042,7 +8341,7 @@ class DailyTrainingUsage(BaseModel):
     ]
 
 
-class Subtotal3(RootModel[str]):
+class Subtotal4(RootModel[str]):
     model_config = ConfigDict(
         regex_engine="python-re",
     )
@@ -8084,7 +8383,7 @@ class SurchargeCost1(RootModel[str]):
     ]
 
 
-class Subtotal4(RootModel[str]):
+class Subtotal5(RootModel[str]):
     model_config = ConfigDict(
         regex_engine="python-re",
     )
@@ -8126,7 +8425,73 @@ class Total(RootModel[str]):
     ]
 
 
-class Subtotal5(RootModel[str]):
+class Subtotal6(RootModel[str]):
+    model_config = ConfigDict(
+        regex_engine="python-re",
+    )
+    root: Annotated[
+        str,
+        Field(
+            description="Cost in dollars across all four meters",
+            pattern="^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            title="Subtotal",
+        ),
+    ]
+
+
+class Subtotal7(RootModel[str]):
+    model_config = ConfigDict(
+        regex_engine="python-re",
+    )
+    root: Annotated[
+        str,
+        Field(
+            description="Cost of those tokens in dollars",
+            pattern="^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            title="Subtotal",
+        ),
+    ]
+
+
+class LoopsMeterUsage(BaseModel):
+    tokens: Annotated[
+        int, Field(description="Tokens billed on this meter", title="Tokens")
+    ]
+    subtotal: Annotated[
+        float | Subtotal7,
+        Field(description="Cost of those tokens in dollars", title="Subtotal"),
+    ]
+
+
+class Subtotal8(RootModel[str]):
+    model_config = ConfigDict(
+        regex_engine="python-re",
+    )
+    root: Annotated[
+        str,
+        Field(
+            description="Cost in dollars across all four meters",
+            pattern="^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            title="Subtotal",
+        ),
+    ]
+
+
+class Subtotal9(RootModel[str]):
+    model_config = ConfigDict(
+        regex_engine="python-re",
+    )
+    root: Annotated[
+        str,
+        Field(
+            description="Cost in dollars before credits",
+            pattern="^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            title="Subtotal",
+        ),
+    ]
+
+
+class Subtotal10(RootModel[str]):
     model_config = ConfigDict(
         regex_engine="python-re",
     )
@@ -8147,7 +8512,7 @@ class ModelApiItem(BaseModel):
         Field(description="Model family (e.g., Meta, DeepSeek)", title="Model Family"),
     ] = None
     subtotal: Annotated[
-        float | Subtotal5,
+        float | Subtotal10,
         Field(description="Subtotal cost in dollars for this model", title="Subtotal"),
     ]
     input_tokens: Annotated[
@@ -8171,7 +8536,7 @@ class ModelApiItem(BaseModel):
     ] = None
 
 
-class Subtotal6(RootModel[str]):
+class Subtotal11(RootModel[str]):
     model_config = ConfigDict(
         regex_engine="python-re",
     )
@@ -8187,7 +8552,7 @@ class Subtotal6(RootModel[str]):
 
 class ModelApisUsage(BaseModel):
     subtotal: Annotated[
-        float | Subtotal6,
+        float | Subtotal11,
         Field(
             description="Subtotal cost in dollars after applying credits used",
             title="Subtotal",
@@ -8206,7 +8571,7 @@ class ModelApisUsage(BaseModel):
     ] = None
 
 
-class Subtotal7(RootModel[str]):
+class Subtotal12(RootModel[str]):
     model_config = ConfigDict(
         regex_engine="python-re",
     )
@@ -8220,7 +8585,7 @@ class Subtotal7(RootModel[str]):
     ]
 
 
-class Subtotal8(RootModel[str]):
+class Subtotal13(RootModel[str]):
     model_config = ConfigDict(
         regex_engine="python-re",
     )
@@ -8261,6 +8626,13 @@ class ToolCallUsageBucket(BaseModel):
             title="Quantity",
         ),
     ]
+    team_id: Annotated[
+        str | None,
+        Field(
+            description="Team attributed to the usage. Null when not grouping by team or when historical team attribution is unavailable.",
+            title="Team Id",
+        ),
+    ] = None
 
 
 class ToolCallUsageResponse(BaseModel):
@@ -8415,6 +8787,62 @@ class ExploreMetadataAPIFormats(BaseModel):
     ] = False
 
 
+class TeamId4(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="ID of the team. When omitted, the team you belong to; required when you belong to several.",
+            examples=["abc1234"],
+            min_length=1,
+            title="Team Id",
+        ),
+    ] = None
+
+
+class CreateGridTokenRequest(BaseModel):
+    team_id: Annotated[
+        TeamId4 | None,
+        Field(
+            description="ID of the team. When omitted, the team you belong to; required when you belong to several.",
+            examples=["abc1234"],
+            title="Team Id",
+        ),
+    ] = None
+
+
+class GridToken(BaseModel):
+    token: Annotated[
+        str,
+        Field(
+            description="Short-lived bearer token for the Grid gateway, scoped to you and the team. Send it as Authorization: Bearer <token>.",
+            title="Token",
+        ),
+    ]
+    expires_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="Token expiry in ISO 8601 format. Tokens cannot be renewed; request a new one.",
+            title="Expires At",
+        ),
+    ]
+    team_id: Annotated[
+        str,
+        Field(
+            description="ID of the team the token invokes Grid routes in.",
+            examples=["abc1234"],
+            title="Team Id",
+        ),
+    ]
+    team_name: Annotated[
+        str,
+        Field(
+            description="Name of that team.",
+            examples=["Engineering"],
+            title="Team Name",
+        ),
+    ]
+
+
 class GridClassifier(BaseModel):
     id: Annotated[
         str,
@@ -8430,6 +8858,40 @@ class GridClassifier(BaseModel):
             description="Display name of the classifier.",
             examples=["General"],
             title="Name",
+        ),
+    ]
+
+
+class GridRouteClassifier(BaseModel):
+    id: Annotated[
+        str,
+        Field(
+            description="Stable route classifier identifier.",
+            examples=["general-v1"],
+            title="Id",
+        ),
+    ]
+    name: Annotated[
+        str,
+        Field(
+            description="Display name of the route classifier.",
+            examples=["General"],
+            title="Name",
+        ),
+    ]
+    supported_tradeoffs: Annotated[
+        list[Literal["cost", "balanced", "intelligence"] | str],
+        Field(
+            description="Tradeoffs the route classifier supports. Empty when it supports all of them.",
+            title="Supported Tradeoffs",
+        ),
+    ]
+    decidable_models: Annotated[
+        list[str],
+        Field(
+            description="Model identities the route classifier picks from.",
+            examples=[["zai-org/GLM-5.3", "anthropic/claude-opus-5-5"]],
+            title="Decidable Models",
         ),
     ]
 
@@ -8498,6 +8960,26 @@ class GridRouteTargetConnection(BaseModel):
         Field(
             description="Identifier of the team connection authenticating with the provider.",
             title="Connection Id",
+        ),
+    ]
+
+
+class GridRouteTargetIntelligent(BaseModel):
+    type: Annotated[
+        Literal["INTELLIGENT"],
+        Field(
+            description="Target kind for an intelligent route: Baseten picks the model per request.",
+            title="Type",
+        ),
+    ]
+    route_classifier: Annotated[
+        GridRouteClassifier, Field(description="Route classifier that picks the model.")
+    ]
+    tradeoff: Annotated[
+        Literal["cost", "balanced", "intelligence"] | str,
+        Field(
+            description="How the classifier weighs cost against quality.",
+            title="GridRouteTradeoffV1",
         ),
     ]
 
@@ -8579,7 +9061,7 @@ class UpsertGridRouteTargetConnection(BaseModel):
     ]
 
 
-class TeamId4(RootModel[str]):
+class TeamId5(RootModel[str]):
     root: Annotated[
         str | None,
         Field(
@@ -8621,7 +9103,7 @@ class CreateGridRouteRequest(BaseModel):
         extra="forbid",
     )
     team_id: Annotated[
-        TeamId4 | None,
+        TeamId5 | None,
         Field(
             description="Identifier of the team that owns the route.",
             examples=["abc1234"],
@@ -8698,6 +9180,7 @@ class GridRouteUsageResult(BaseModel):
             "XAI",
             "VERTEX",
             "OPENAI_COMPATIBLE",
+            "BEDROCK",
         ]
         | str
         | None,
@@ -8705,11 +9188,17 @@ class GridRouteUsageResult(BaseModel):
             description="Provider that served the requests. Null when not grouping by PROVIDER."
         ),
     ] = None
-    router_id: Annotated[
+    intelligent_route: Annotated[
         str | None,
         Field(
-            description="Slug of the intelligent router, matching its name in `GET /v1/grid/routes`. Null when not grouping by ROUTER.",
-            title="Router Id",
+            description="Name of the intelligent route, as in `GET /v1/grid/routes`. Null when not grouping by INTELLIGENT_ROUTE.",
+            title="Intelligent Route",
+        ),
+    ] = None
+    harness: Annotated[
+        Literal["CLAUDE_CODE", "OPENCODE", "CODEX", "PI"] | str | None,
+        Field(
+            description="Coding harness. Null when not grouping by HARNESS, when no harness was recorded (including usage from before harness tracking), or when the recorded harness is not recognized by this API version."
         ),
     ] = None
     cost_usd: Annotated[
@@ -8747,7 +9236,7 @@ class GridRouteUsageResult(BaseModel):
     requests: Annotated[
         int,
         Field(
-            description="Number of requests; with ROUTER, the requests sent through that router. Usage recorded before requests were counted adds zero.",
+            description="Number of requests; with INTELLIGENT_ROUTE, the requests sent through that route. Usage recorded before requests were counted adds zero.",
             title="Requests",
         ),
     ]
@@ -8860,7 +9349,7 @@ class Background(RootModel[str]):
     ] = None
 
 
-class UpdateGridBackgroundHarnessModels(BaseModel):
+class UpdateGridHarnessModels(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -8878,20 +9367,6 @@ class UpdateGridBackgroundHarnessModels(BaseModel):
             description="Route ID for background tasks, such as session titles. Omit to keep the current route, or pass null to use the team's default.",
             examples=["def5678"],
             title="Background",
-        ),
-    ] = None
-
-
-class UpdateGridPrimaryHarnessModels(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    primary: Annotated[
-        Primary | None,
-        Field(
-            description="Route ID for the primary model, which new sessions use. Omit to keep the current route, or pass null to use the team's default.",
-            examples=["abc1234"],
-            title="Primary",
         ),
     ] = None
 
@@ -9002,6 +9477,26 @@ class UpdateGridUserSettingsRequest(BaseModel):
     ] = None
 
 
+class GridConnectionBedrockAccessKeysAuth(BaseModel):
+    method: Annotated[
+        Literal["access_keys"],
+        Field(
+            description='The secret holds the access keys of an IAM user, as the base64-encoded JSON object `{"AccessKeyId": "...", "SecretAccessKey": "..."}`',
+            title="Method",
+        ),
+    ]
+
+
+class GridConnectionBedrockApiKeyAuth(BaseModel):
+    method: Annotated[
+        Literal["api_key"],
+        Field(
+            description="The secret holds a long-term Amazon Bedrock API key.",
+            title="Method",
+        ),
+    ]
+
+
 class GridConnectionConfigAnthropic(BaseModel):
     provider: Annotated[
         Literal["ANTHROPIC"],
@@ -9023,6 +9518,43 @@ class GridConnectionConfigAnthropic(BaseModel):
     ]
 
 
+class GridConnectionConfigBedrock(BaseModel):
+    provider: Annotated[
+        Literal["BEDROCK"],
+        Field(description="Provider kind for Amazon Bedrock.", title="Provider"),
+    ]
+    secret_id: Annotated[
+        str,
+        Field(
+            description="Identifier of the team secret holding the provider API key.",
+            title="Secret Id",
+        ),
+    ]
+    secret_name: Annotated[
+        str,
+        Field(
+            description="Name of the team secret holding the provider API key.",
+            title="Secret Name",
+        ),
+    ]
+    region: Annotated[
+        str,
+        Field(description="AWS Region of the Amazon Bedrock endpoint.", title="Region"),
+    ]
+    auth: Annotated[
+        Annotated[
+            GridConnectionBedrockApiKeyAuth | GridConnectionBedrockAccessKeysAuth,
+            Field(
+                description="How the connection's secret authenticates with Amazon Bedrock.",
+                discriminator="method",
+                title="Auth",
+            ),
+        ]
+        | dict[str, Any],
+        Field(union_mode="left_to_right"),
+    ]
+
+
 class GridConnectionConfigOpenAI(BaseModel):
     provider: Annotated[
         Literal["OPENAI"],
@@ -9040,6 +9572,41 @@ class GridConnectionConfigOpenAI(BaseModel):
         Field(
             description="Name of the team secret holding the provider API key.",
             title="Secret Name",
+        ),
+    ]
+
+
+class GridConnectionConfigVertex(BaseModel):
+    provider: Annotated[
+        Literal["VERTEX"],
+        Field(description="Provider kind for Google Vertex.", title="Provider"),
+    ]
+    secret_id: Annotated[
+        str,
+        Field(
+            description="Identifier of the team secret holding the provider API key.",
+            title="Secret Id",
+        ),
+    ]
+    secret_name: Annotated[
+        str,
+        Field(
+            description="Name of the team secret holding the provider API key.",
+            title="Secret Name",
+        ),
+    ]
+    project_id: Annotated[
+        str,
+        Field(
+            description="Google Cloud project ID or number of a project with Vertex AI enabled.",
+            title="Project Id",
+        ),
+    ]
+    location: Annotated[
+        str,
+        Field(
+            description="Google Cloud region that serves the Vertex AI models, for example `us-central1`.",
+            title="Location",
         ),
     ]
 
@@ -9083,7 +9650,9 @@ class GridConnection(BaseModel):
         Annotated[
             GridConnectionConfigAnthropic
             | GridConnectionConfigOpenAI
-            | GridConnectionConfigXAI,
+            | GridConnectionConfigXAI
+            | GridConnectionConfigVertex
+            | GridConnectionConfigBedrock,
             Field(
                 description="Provider the connection authenticates with, and the team secret holding its API key.",
                 discriminator="provider",
@@ -9111,6 +9680,32 @@ class GridConnectionsResponse(BaseModel):
     ]
 
 
+class UpsertGridConnectionBedrockAccessKeysAuth(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    method: Annotated[
+        Literal["access_keys"],
+        Field(
+            description='The secret holds the access keys of an IAM user, as the base64-encoded JSON object `{"AccessKeyId": "...", "SecretAccessKey": "..."}`',
+            title="Method",
+        ),
+    ]
+
+
+class UpsertGridConnectionBedrockApiKeyAuth(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    method: Annotated[
+        Literal["api_key"],
+        Field(
+            description="The secret holds a long-term Amazon Bedrock API key.",
+            title="Method",
+        ),
+    ]
+
+
 class UpsertGridConnectionConfigAnthropic(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -9127,6 +9722,50 @@ class UpsertGridConnectionConfigAnthropic(BaseModel):
             min_length=1,
             title="Secret Name",
         ),
+    ]
+
+
+class UpsertGridConnectionConfigBedrock(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    provider: Annotated[
+        Literal["BEDROCK"],
+        Field(
+            description="Provider kind for Amazon Bedrock. Claude models (`anthropic.*`) use the Anthropic Messages API, and other models use the OpenAI-compatible APIs.",
+            title="Provider",
+        ),
+    ]
+    secret_name: Annotated[
+        str,
+        Field(
+            description="Name of an existing secret, owned by the same team, that holds the provider API key.",
+            examples=["anthropic-key"],
+            min_length=1,
+            title="Secret Name",
+        ),
+    ]
+    region: Annotated[
+        str,
+        Field(
+            description="AWS Region of the Amazon Bedrock endpoint, for example `us-east-1`.",
+            examples=["us-east-1"],
+            min_length=1,
+            title="Region",
+        ),
+    ]
+    auth: Annotated[
+        Annotated[
+            UpsertGridConnectionBedrockApiKeyAuth
+            | UpsertGridConnectionBedrockAccessKeysAuth,
+            Field(
+                description="How the connection's secret authenticates with Amazon Bedrock.",
+                discriminator="method",
+                title="Auth",
+            ),
+        ]
+        | dict[str, Any],
+        Field(union_mode="left_to_right"),
     ]
 
 
@@ -9149,6 +9788,43 @@ class UpsertGridConnectionConfigOpenAI(BaseModel):
     ]
 
 
+class UpsertGridConnectionConfigVertex(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    provider: Annotated[
+        Literal["VERTEX"],
+        Field(description="Provider kind for Google Vertex.", title="Provider"),
+    ]
+    secret_name: Annotated[
+        str,
+        Field(
+            description="Name of an existing secret, owned by the same team, that holds the provider API key.",
+            examples=["anthropic-key"],
+            min_length=1,
+            title="Secret Name",
+        ),
+    ]
+    project_id: Annotated[
+        str,
+        Field(
+            description="Google Cloud project ID or number of a project with Vertex AI enabled.",
+            examples=["my-gcp-project"],
+            min_length=1,
+            title="Project Id",
+        ),
+    ]
+    location: Annotated[
+        str,
+        Field(
+            description="Google Cloud region that serves the Vertex AI models, for example `us-central1`.",
+            examples=["us-central1"],
+            min_length=1,
+            title="Location",
+        ),
+    ]
+
+
 class UpsertGridConnectionConfigXAI(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -9167,7 +9843,7 @@ class UpsertGridConnectionConfigXAI(BaseModel):
     ]
 
 
-class TeamId5(RootModel[str]):
+class TeamId6(RootModel[str]):
     root: Annotated[
         str | None,
         Field(
@@ -9184,7 +9860,7 @@ class CreateGridConnectionRequest(BaseModel):
         extra="forbid",
     )
     team_id: Annotated[
-        TeamId5 | None,
+        TeamId6 | None,
         Field(
             description="Identifier of the team that owns the connection.",
             examples=["abc1234"],
@@ -9195,7 +9871,9 @@ class CreateGridConnectionRequest(BaseModel):
         Annotated[
             UpsertGridConnectionConfigAnthropic
             | UpsertGridConnectionConfigOpenAI
-            | UpsertGridConnectionConfigXAI,
+            | UpsertGridConnectionConfigXAI
+            | UpsertGridConnectionConfigVertex
+            | UpsertGridConnectionConfigBedrock,
             Field(
                 description="Provider the connection authenticates with, and the team secret holding its API key.",
                 discriminator="provider",
@@ -9223,7 +9901,9 @@ class UpdateGridConnectionRequest(BaseModel):
         Annotated[
             UpsertGridConnectionConfigAnthropic
             | UpsertGridConnectionConfigOpenAI
-            | UpsertGridConnectionConfigXAI,
+            | UpsertGridConnectionConfigXAI
+            | UpsertGridConnectionConfigVertex
+            | UpsertGridConnectionConfigBedrock,
             Field(
                 description="Complete new connection configuration, replacing the current one. The provider must match the connection and is immutable.",
                 discriminator="provider",
@@ -9243,6 +9923,213 @@ class GridClassifiersResponse(BaseModel):
     pagination: Annotated[
         PaginationResponse, Field(description="Pagination metadata for the page.")
     ]
+
+
+class GridRouteClassifiersResponse(BaseModel):
+    items: Annotated[
+        list[GridRouteClassifier],
+        Field(description="Items in this page.", title="Items"),
+    ]
+    pagination: Annotated[
+        PaginationResponse, Field(description="Pagination metadata for the page.")
+    ]
+
+
+class GridMachineUser(BaseModel):
+    id: Annotated[
+        str,
+        Field(
+            description="Stable machine user identifier. Grid usage and settings identify the machine user by this ID as its `user_id`.",
+            title="Id",
+        ),
+    ]
+    name: Annotated[
+        str,
+        Field(
+            description="Name of the machine user, unique within its team.",
+            title="Name",
+        ),
+    ]
+    team_id: Annotated[
+        str,
+        Field(
+            description="Identifier of the team that owns the machine user.",
+            title="Team Id",
+        ),
+    ]
+    team_name: Annotated[
+        str,
+        Field(
+            description="Name of the team that owns the machine user.",
+            title="Team Name",
+        ),
+    ]
+    created_by: Annotated[
+        str | None,
+        Field(
+            description="ID of the user who created the machine user. Null when unknown.",
+            title="Created By",
+        ),
+    ] = None
+    created_at: Annotated[
+        AwareDatetime, Field(description="Creation time, ISO 8601.", title="Created At")
+    ]
+
+
+class GridMachineUsersResponse(BaseModel):
+    items: Annotated[
+        list[GridMachineUser], Field(description="Items in this page.", title="Items")
+    ]
+    pagination: Annotated[
+        PaginationResponse, Field(description="Pagination metadata for the page.")
+    ]
+
+
+class Name5(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="Name of the API key: lowercase letters, numbers, and hyphens, at most 255 characters, and unique among the machine user's active keys. Defaults to a name derived from the machine user's.",
+            examples=["production"],
+            max_length=255,
+            min_length=1,
+            title="Name",
+        ),
+    ] = None
+
+
+class CreateGridMachineUserAPIKeyRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    name: Annotated[
+        Name5 | None,
+        Field(
+            description="Name of the API key: lowercase letters, numbers, and hyphens, at most 255 characters, and unique among the machine user's active keys. Defaults to a name derived from the machine user's.",
+            examples=["production"],
+            title="Name",
+        ),
+    ] = None
+
+
+class TeamId7(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="Identifier of the team that owns the machine user. Defaults to your only team, if you belong to exactly one.",
+            examples=["abc1234"],
+            min_length=1,
+            title="Team Id",
+        ),
+    ] = None
+
+
+class CreateGridMachineUserRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    team_id: Annotated[
+        TeamId7 | None,
+        Field(
+            description="Identifier of the team that owns the machine user. Defaults to your only team, if you belong to exactly one.",
+            examples=["abc1234"],
+            title="Team Id",
+        ),
+    ] = None
+    name: Annotated[
+        str,
+        Field(
+            description="Name of the machine user, unique within the team. At most 255 characters.",
+            examples=["night-shift"],
+            max_length=255,
+            min_length=1,
+            title="Name",
+        ),
+    ]
+    api_key: Annotated[
+        CreateGridMachineUserAPIKeyRequest | None,
+        Field(description="When set, also creates the machine user's first API key."),
+    ] = None
+
+
+class CreatedGridMachineUser(BaseModel):
+    id: Annotated[
+        str,
+        Field(
+            description="Stable machine user identifier. Grid usage and settings identify the machine user by this ID as its `user_id`.",
+            title="Id",
+        ),
+    ]
+    name: Annotated[
+        str,
+        Field(
+            description="Name of the machine user, unique within its team.",
+            title="Name",
+        ),
+    ]
+    team_id: Annotated[
+        str,
+        Field(
+            description="Identifier of the team that owns the machine user.",
+            title="Team Id",
+        ),
+    ]
+    team_name: Annotated[
+        str,
+        Field(
+            description="Name of the team that owns the machine user.",
+            title="Team Name",
+        ),
+    ]
+    created_by: Annotated[
+        str | None,
+        Field(
+            description="ID of the user who created the machine user. Null when unknown.",
+            title="Created By",
+        ),
+    ] = None
+    created_at: Annotated[
+        AwareDatetime, Field(description="Creation time, ISO 8601.", title="Created At")
+    ]
+    api_key: Annotated[
+        str | None,
+        Field(
+            description="The first API key, returned only once. Null unless the request set `api_key`.",
+            title="Api Key",
+        ),
+    ] = None
+
+
+class GridMachineUserTombstone(BaseModel):
+    id: Annotated[
+        str,
+        Field(description="Stable identifier of the deleted machine user.", title="Id"),
+    ]
+
+
+class Name6(RootModel[str]):
+    root: Annotated[
+        str | None,
+        Field(
+            description="Name of the machine user, unique within its team. At most 255 characters. Omit to keep it.",
+            max_length=255,
+            min_length=1,
+            title="Name",
+        ),
+    ] = None
+
+
+class UpdateGridMachineUserRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    name: Annotated[
+        Name6 | None,
+        Field(
+            description="Name of the machine user, unique within its team. At most 255 characters. Omit to keep it.",
+            title="Name",
+        ),
+    ] = None
 
 
 class VertexTargetConfig(BaseModel):
@@ -9277,7 +10164,7 @@ class EndpointTargetRequest(BaseModel):
         Field(
             description="Upstream provider for this target.",
             examples=["ANTHROPIC", "OPENAI", "OPENAI_COMPATIBLE", "BASETEN"],
-            title="GatewayProvider",
+            title="GatewayEndpointProviderV1",
         ),
     ]
     secret_id: Annotated[
@@ -9503,7 +10390,7 @@ class EffectiveRateLimit(BaseModel):
     ]
 
 
-class Name5(RootModel[str]):
+class Name7(RootModel[str]):
     root: Annotated[
         str | None,
         Field(
@@ -9517,7 +10404,7 @@ class Name5(RootModel[str]):
 
 class GroupMetadata(BaseModel):
     name: Annotated[
-        Name5 | None,
+        Name7 | None,
         Field(
             description="Optional display name for the group.",
             examples=["Acme prod"],
@@ -9532,6 +10419,41 @@ class GroupMetadata(BaseModel):
             max_length=255,
             min_length=1,
             title="External Entity Id",
+        ),
+    ]
+
+
+class RateLimit(BaseModel):
+    type: Annotated[
+        Literal[
+            "REQUEST",
+            "TOKEN",
+            "CONCURRENT_REQUEST",
+            "UNCACHED_INPUT_TOKEN",
+            "OUTPUT_TOKEN",
+        ]
+        | str,
+        Field(
+            description="The type of the rate limit",
+            examples=["TOKEN", "REQUEST"],
+            title="LimitTypeV1",
+        ),
+    ]
+    unit: Annotated[
+        Literal["SECOND", "MINUTE"] | str,
+        Field(
+            description="The unit of the rate limit",
+            examples=["SECOND", "MINUTE"],
+            title="RateLimitUnitV1",
+        ),
+    ]
+    threshold: Annotated[
+        int,
+        Field(
+            description="The threshold for the rate limit",
+            examples=[1000, 50000],
+            ge=0,
+            title="Threshold",
         ),
     ]
 
@@ -9586,7 +10508,7 @@ class CreateGroupHierarchy(BaseModel):
 
 class UpdateGroupMetadata(BaseModel):
     name: Annotated[
-        Name5 | None,
+        Name7 | None,
         Field(
             description="Optional display name for the group.",
             examples=["Acme prod"],
@@ -9793,37 +10715,6 @@ class SandboxDateExpirationPolicy(BaseModel):
     action: Literal["DELETE"] | str
     type: Literal["DATE"]
     value: Annotated[AwareDatetime, Field(examples=["2026-09-23T21:26:58Z"])]
-
-
-class SandboxProxyTarget(BaseModel):
-    body: Annotated[
-        dict[str, str] | None,
-        Field(
-            description="Body fields to inject into matching requests. Values may contain {{SECRET:name}} references resolved from this rule's secrets.",
-            examples=[{"user": "baseten-api-review-0916"}],
-        ),
-    ] = None
-    destinations: Annotated[
-        list[str] | None,
-        Field(
-            description='Destination domains this rule applies to. Use ["*"] for a global rule that matches all destinations.',
-            examples=[["api.openai.com"]],
-        ),
-    ] = None
-    headers: Annotated[
-        dict[str, str] | None,
-        Field(
-            description="Headers to inject into matching requests. Values may contain {{SECRET:name}} references resolved from this rule's secrets.",
-            examples=[{"Authorization": "Bearer {{SECRET:openai-key}}"}],
-        ),
-    ] = None
-    secrets: Annotated[
-        dict[str, str] | None,
-        Field(
-            description="Named secret values for this routing rule, referenced in headers/body via {{SECRET:name}}. Stored encrypted at rest. Write-only: never returned in API responses.",
-            examples=[{"openai-key": "sk-proj-demo-not-a-valid-api-key"}],
-        ),
-    ] = None
 
 
 class SandboxEnv(BaseModel):
@@ -10472,7 +11363,7 @@ class GetAuditLogsParams(BaseModel):
                 "SECRETS",
                 "API_KEYS",
                 "GATEWAY",
-                "CODE",
+                "GRID",
                 "WEBHOOK_SIGNING_SECRETS",
                 "USER_MANAGEMENT",
                 "DIRECTORY_GROUP_MANAGEMENT",
@@ -10585,7 +11476,7 @@ class GetModelsAuditLogsParams(BaseModel):
                 "SECRETS",
                 "API_KEYS",
                 "GATEWAY",
-                "CODE",
+                "GRID",
                 "WEBHOOK_SIGNING_SECRETS",
                 "USER_MANAGEMENT",
                 "DIRECTORY_GROUP_MANAGEMENT",
@@ -10731,7 +11622,7 @@ class GetModelsDeploymentsMetricsParams(BaseModel):
         Literal["CURRENT", "SUMMARY", "SERIES"] | str,
         Field(
             description="'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration.",
-            title="ModelMetricModeV1",
+            title="MetricModeV1",
         ),
     ] = "CURRENT"
     start_epoch_millis: Annotated[
@@ -10914,7 +11805,7 @@ class GetModelsEnvironmentsMetricsParams(BaseModel):
         Literal["CURRENT", "SUMMARY", "SERIES"] | str,
         Field(
             description="'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration.",
-            title="ModelMetricModeV1",
+            title="MetricModeV1",
         ),
     ] = "CURRENT"
     start_epoch_millis: Annotated[
@@ -11064,7 +11955,7 @@ class GetChainsAuditLogsParams(BaseModel):
                 "SECRETS",
                 "API_KEYS",
                 "GATEWAY",
-                "CODE",
+                "GRID",
                 "WEBHOOK_SIGNING_SECRETS",
                 "USER_MANAGEMENT",
                 "DIRECTORY_GROUP_MANAGEMENT",
@@ -11224,13 +12115,13 @@ class GetTrainingProjectsJobsLogsParams(BaseModel):
         Literal["asc", "desc"] | str | None, Field(description="Sort order for logs")
     ] = None
     limit: Annotated[
-        Limit | None,
+        Limit4 | None,
         Field(
             description="Limit of logs to fetch in a single request",
             title="Limit",
             validate_default=True,
         ),
-    ] = Limit.model_validate(500)
+    ] = Limit4.model_validate(500)
     min_level: Annotated[
         Literal["DEBUG", "INFO", "WARNING", "ERROR"] | str | None,
         Field(
@@ -11243,7 +12134,7 @@ class GetLoopsCapabilitiesParams(BaseModel):
     model: Annotated[
         str | None,
         Field(
-            description="Restrict the response to one model, identified by its HuggingFace repo id. A supported model comes back with its 'enabled' flag and, when false, its 'enablement_details'. An empty list means Baseten does not support that model. Omit to list every supported model.",
+            description="Restrict the response to one model, identified by its HuggingFace repo id. A supported model comes back with its 'enabled' flag and, when false, its 'enablement_details'. Without 'enabled', an empty list means Baseten does not support that model. Omit to list every supported model.",
             examples=["Qwen/Qwen3-8B"],
             title="Model",
         ),
@@ -11262,6 +12153,14 @@ class GetLoopsCapabilitiesParams(BaseModel):
             description="The sequence length the caller intends to train at — the same value they would pass as 'max_seq_len' when creating the run. Models that cannot serve it are reported as not enabled rather than returned with a ceiling the caller cannot use. Omit for the model's highest enabled sequence length.",
             examples=[32768],
             title="Max Seq Len",
+        ),
+    ] = None
+    enabled: Annotated[
+        bool | None,
+        Field(
+            description="Pass true to list only the models this workspace can run now, or false for only the ones it cannot. Omit to list both. With 'model', an empty list can also mean the model is supported but filtered out.",
+            examples=[True],
+            title="Enabled",
         ),
     ] = None
 
@@ -11285,13 +12184,13 @@ class GetLoopsDeploymentsLogsParams(BaseModel):
         Literal["asc", "desc"] | str | None, Field(description="Sort order for logs")
     ] = None
     limit: Annotated[
-        Limit | None,
+        Limit4 | None,
         Field(
             description="Limit of logs to fetch in a single request",
             title="Limit",
             validate_default=True,
         ),
-    ] = Limit.model_validate(500)
+    ] = Limit4.model_validate(500)
     min_level: Annotated[
         Literal["DEBUG", "INFO", "WARNING", "ERROR"] | str | None,
         Field(
@@ -11373,6 +12272,37 @@ class GetModelApisUsageParams(BaseModel):
     ] = None
 
 
+class GetModelApisMetricsParams(BaseModel):
+    mode: Annotated[
+        Literal["CURRENT", "SUMMARY", "SERIES"] | str,
+        Field(
+            description="'CURRENT': a single instantaneous snapshot at now; start/end must be omitted. 'SUMMARY': a single value set aggregating the whole window. 'SERIES': evenly-spaced value sets across the window, with the step derived from the window duration.",
+            title="MetricModeV1",
+        ),
+    ] = "CURRENT"
+    start_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch millis timestamp to start fetching metrics. Defaults to one hour before the end.",
+            title="Start Epoch Millis",
+        ),
+    ] = None
+    end_epoch_millis: Annotated[
+        int | None,
+        Field(
+            description="Epoch millis timestamp to end fetching metrics. Defaults to the current time. The window between start and end must not exceed 7 days.",
+            title="End Epoch Millis",
+        ),
+    ] = None
+    metrics: Annotated[
+        list[str] | None,
+        Field(
+            description="Names of the metrics to return; see https://docs.baseten.co/observability/export-metrics/supported-metrics for the available names. When omitted, a default set is returned: baseten_model_api_inference_requests_total, baseten_model_api_incoming_inference_requests_total, and baseten_model_api_tokens_total. Unknown names are rejected; valid names that are not enabled for your organization are omitted from the response.",
+            title="Metrics",
+        ),
+    ] = None
+
+
 class GetBillingModelApisParams(BaseModel):
     cursor: Annotated[
         str | None,
@@ -11405,9 +12335,10 @@ class GetBillingModelApisParams(BaseModel):
         ),
     ] = None
     group_by: Annotated[
-        list[Literal["api_key_prefix", "user", "model", "service_tier"] | str] | None,
+        list[Literal["api_key_prefix", "user", "model", "service_tier", "team"] | str]
+        | None,
         Field(
-            description="Dimensions to break costs down by, repeated once per dimension: api_key_prefix, user, model, or service_tier. Each result represents one observed combination of the requested dimensions within that day. For example, grouping by api_key_prefix and user returns each API-key and user pair that had usage. Combinations without usage are omitted, so result counts can differ between days. Omit for daily organization totals.",
+            description="Dimensions to break costs down by, repeated once per dimension: api_key_prefix, user, model, service_tier, or team. Each result represents one observed combination of the requested dimensions within that day. For example, grouping by api_key_prefix and user returns each API-key and user pair that had usage. Combinations without usage are omitted, so result counts can differ between days. Omit for daily totals across all teams you can manage.",
             title="Group By",
         ),
     ] = None
@@ -11437,6 +12368,44 @@ class GetBillingModelApisParams(BaseModel):
         Field(
             description="Return only costs for these exact service tiers, repeated once per tier.",
             title="Service Tiers",
+        ),
+    ] = None
+    team_ids: Annotated[
+        list[str] | None,
+        Field(
+            description="Return only costs attributed to these teams, repeated once per team. Defaults to all teams you can manage.",
+            title="Team Ids",
+        ),
+    ] = None
+
+
+class GetBillingToolCallUsageParams(BaseModel):
+    start_date: Annotated[
+        date_aliased,
+        Field(
+            description="Inclusive UTC calendar day at the start of the query range.",
+            title="Start Date",
+        ),
+    ]
+    end_date: Annotated[
+        date_aliased | None,
+        Field(
+            description="Exclusive UTC calendar day at the end of the query range. Defaults to the day after the current UTC date so current-day usage is included. The date range cannot exceed 90 days.",
+            title="End Date",
+        ),
+    ] = None
+    team_ids: Annotated[
+        list[str] | None,
+        Field(
+            description="Return only usage for these teams, repeated once per team. Defaults to all teams you can manage. An unauthorized team ID causes a 403 response.",
+            title="Team Ids",
+        ),
+    ] = None
+    group_by: Annotated[
+        list[Literal["TEAM"] | str] | None,
+        Field(
+            description="Pass TEAM to split daily rows by team. Defaults to aggregating across teams.",
+            title="Group By",
         ),
     ] = None
 
@@ -11480,9 +12449,13 @@ class GetGridRoutesUsageParams(BaseModel):
         ),
     ] = None
     group_by: Annotated[
-        list[Literal["USER", "TEAM", "MODEL", "PROVIDER", "ROUTER"] | str] | None,
+        list[
+            Literal["USER", "TEAM", "MODEL", "PROVIDER", "INTELLIGENT_ROUTE", "HARNESS"]
+            | str
+        ]
+        | None,
         Field(
-            description="Dimensions to break usage down by, repeated once per dimension: USER, TEAM, MODEL, PROVIDER, or ROUTER. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. ROUTER returns only usage sent through an intelligent router, one row per router, or per router and model with MODEL. Router rows repeat usage already counted in other groupings, so don't add them to model totals. Defaults to MODEL.",
+            description="Dimensions to break usage down by, repeated once per dimension: USER, TEAM, MODEL, PROVIDER, INTELLIGENT_ROUTE, or HARNESS. Each result represents one observed combination of the requested dimensions within that day, and results are sorted by those values. Combinations without usage are omitted, so result counts can differ between days. INTELLIGENT_ROUTE returns only usage sent through an intelligent route, one row per intelligent route, or per intelligent route and model with MODEL. These rows repeat usage already counted in other groupings, so don't add them to model totals. HARNESS includes usage with no recorded harness as a null group. Defaults to MODEL.",
             title="Group By",
         ),
     ] = None
@@ -11509,6 +12482,7 @@ class GetGridRoutesUsageParams(BaseModel):
                 "XAI",
                 "VERTEX",
                 "OPENAI_COMPATIBLE",
+                "BEDROCK",
             ]
             | str
         ]
@@ -11516,6 +12490,13 @@ class GetGridRoutesUsageParams(BaseModel):
         Field(
             description="Return only usage for these providers, repeated once per provider.",
             title="Providers",
+        ),
+    ] = None
+    harnesses: Annotated[
+        list[Literal["CLAUDE_CODE", "OPENCODE", "CODEX", "PI"] | str] | None,
+        Field(
+            description="Return only usage for these harnesses, repeated once per harness. Omit to include all usage, including usage with no recorded harness.",
+            title="Harnesses",
         ),
     ] = None
 
@@ -11989,6 +12970,30 @@ class AuditLogEventEnvironmentUpdated(BaseModel):
     previous_settings: AuditLogEventEnvironmentSettings | None
 
 
+class AuditLogEventModelDeployed(BaseModel):
+    event_type: Annotated[Literal["MODEL_DEPLOYED"], Field(title="Event Type")]
+    model_id: Annotated[str, Field(title="Model Id")]
+    model_name: Annotated[str, Field(title="Model Name")]
+    deployment_id: Annotated[str, Field(title="Deployment Id")]
+    deployment_name: Annotated[str, Field(title="Deployment Name")]
+    scale_previous_to_zero: Annotated[bool, Field(title="Scale Previous To Zero")]
+    trusted: Annotated[bool, Field(title="Trusted")]
+    publish: Annotated[bool, Field(title="Publish")]
+    environment_name: Annotated[str | None, Field(title="Environment Name")]
+    region_update: Annotated[str | None, Field(title="Region Update")]
+    instance_type_id_update: Annotated[
+        str | None, Field(title="Instance Type Id Update")
+    ]
+    promotion_settings_override: AuditLogEventPromotionSettingsOverride | None
+    autoscaling_settings_update: AuditLogEventAutoscalingSettingsUpdate | None
+    request_backpressure_settings_update: (
+        AuditLogEventRequestBackpressureSettingsUpdate | None
+    )
+    autoscaling_schedule_settings_update: (
+        AuditLogEventAutoscalingScheduleOperations | None
+    )
+
+
 class AuditLogEventModelDeploymentAutoscalingSettingsChanged(BaseModel):
     schedules: Annotated[
         list[AuditLogEventAutoscalingScheduleChange] | None, Field(title="Schedules")
@@ -12265,7 +13270,7 @@ class RetryDeploymentResponse(BaseModel):
     ]
 
 
-class ModelMetricDescriptor(BaseModel):
+class MetricDescriptor(BaseModel):
     name: Annotated[str, Field(description="Canonical metric name.", title="Name")]
     unit_hint: Annotated[
         Literal[
@@ -12281,26 +13286,26 @@ class ModelMetricDescriptor(BaseModel):
         | str,
         Field(
             description="Advisory unit of the metric's values.",
-            title="ModelMetricUnitHintV1",
+            title="MetricUnitHintV1",
         ),
     ]
     kind: Annotated[
         Literal["GAUGE", "COUNTER", "HISTOGRAM"] | str,
         Field(
             description="Semantic hint for how the metric behaves (GAUGE, COUNTER, HISTOGRAM).",
-            title="ModelMetricKindV1",
+            title="MetricKindV1",
         ),
     ]
     label_sets: Annotated[
         list[dict[str, str]],
         Field(
-            description="The metric's series, in order. Each entry is the set of labels identifying one series; the value at the same index in each value set's ``values`` is that series' value. A plain metric has a single entry with no labels (`{}`). A histogram has one entry per quantile plus an average, e.g. {'quantile': '0.5'} … {'quantile': '0.99'}, {'stat': 'avg'}. A by-status metric has one entry per status, e.g. {'status': '2xx'}.",
+            description="The metric's series, in order. Each entry is the set of labels identifying one series; the value at the same index in each value set's ``values`` is that series' value. A plain metric has a single entry with no labels (`{}`). A histogram has one entry per quantile plus an average, e.g. {'quantile': '0.5'} … {'quantile': '0.99'}, {'stat': 'avg'}.",
             title="Label Sets",
         ),
     ]
 
 
-class GetModelMetricsResponse(BaseModel):
+class GetMetricsResponse(BaseModel):
     start_epoch_millis: Annotated[
         int,
         Field(description="Start of the returned window.", title="Start Epoch Millis"),
@@ -12310,7 +13315,7 @@ class GetModelMetricsResponse(BaseModel):
     ]
     mode: Annotated[
         Literal["CURRENT", "SUMMARY", "SERIES"] | str,
-        Field(description="The aggregation mode used.", title="ModelMetricModeV1"),
+        Field(description="The aggregation mode used.", title="MetricModeV1"),
     ]
     step_seconds: Annotated[
         int | None,
@@ -12320,14 +13325,14 @@ class GetModelMetricsResponse(BaseModel):
         ),
     ]
     metric_descriptors: Annotated[
-        list[ModelMetricDescriptor],
+        list[MetricDescriptor],
         Field(
             description="Descriptors for each metric; position defines the values index.",
             title="Metric Descriptors",
         ),
     ]
     metric_values: Annotated[
-        list[ModelMetricValueSet],
+        list[MetricValueSet],
         Field(
             description="Metric values per time step covering the window. In summary mode this always contains exactly one value set spanning the whole window.",
             title="Metric Values",
@@ -12980,12 +13985,12 @@ class TrainingJob(BaseModel):
         ),
     ] = 0
     availability_model: Annotated[
-        Literal["dedicated", "spot"] | str,
+        Literal["standard", "spot"] | str,
         Field(
-            description="Capacity guarantee for the job. 'dedicated' is non-preemptible on-demand capacity; 'spot' is interruptible.",
-            title="V1AvailabilityModel",
+            description="Capacity guarantee for the job. 'standard' runs on capacity that is not preempted. 'spot' runs on interruptible capacity that may be preempted; you are responsible for checkpointing your own progress.",
+            title="AvailabilityModelV1",
         ),
-    ] = "dedicated"
+    ] = "standard"
     user: Annotated[
         User | None, Field(description="The user who created the training job.")
     ] = None
@@ -12998,6 +14003,13 @@ class TrainingProject(BaseModel):
     name: Annotated[
         str, Field(description="Name of the training project.", title="Name")
     ]
+    project_accelerator: Annotated[
+        str | None,
+        Field(
+            description="Default GPU type for cache-enabled CPU job placement.",
+            title="Project Accelerator",
+        ),
+    ] = None
     created_at: Annotated[
         AwareDatetime,
         Field(
@@ -13037,6 +14049,9 @@ class ListTrainingProjectsResponse(BaseModel):
     training_projects: Annotated[
         list[TrainingProject],
         Field(description="List of training projects.", title="Training Projects"),
+    ]
+    pagination: Annotated[
+        PaginationResponse, Field(description="Pagination metadata for the page.")
     ]
 
 
@@ -13171,6 +14186,7 @@ class CreateTrainingJobRuntime(BaseModel):
                     "enable_legacy_hf_mount": True,
                     "enabled": True,
                     "mount_base_path": "/root/.cache",
+                    "persistent_home": False,
                     "require_cache_affinity": True,
                 }
             ],
@@ -13362,6 +14378,9 @@ class SearchTrainingJobsResponse(BaseModel):
         list[TrainingJob],
         Field(description="List of training jobs.", title="Training Jobs"),
     ]
+    pagination: Annotated[
+        PaginationResponse, Field(description="Pagination metadata for the page.")
+    ]
 
 
 class LoopsRun(BaseModel):
@@ -13543,7 +14562,7 @@ class APIKeyInfo(BaseModel):
     type: Annotated[
         Literal[
             "PERSONAL",
-            "ROUTES",
+            "GRID",
             "WORKSPACE_MANAGE_ALL",
             "WORKSPACE_EXPORT_METRICS",
             "WORKSPACE_INVOKE",
@@ -13554,7 +14573,7 @@ class APIKeyInfo(BaseModel):
             description="Type of the API key.",
             examples=[
                 "PERSONAL",
-                "ROUTES",
+                "GRID",
                 "WORKSPACE_MANAGE_API_KEYS",
                 "WORKSPACE_EXPORT_METRICS",
                 "WORKSPACE_INVOKE",
@@ -13582,6 +14601,13 @@ class APIKeyInfo(BaseModel):
         AwareDatetime,
         Field(description="Creation time in ISO 8601 format", title="Created At"),
     ]
+    expires_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="Expiry time in ISO 8601 format, or null if the key never expires.",
+            title="Expires At",
+        ),
+    ] = None
     last_used_at: Annotated[
         AwareDatetime | None,
         Field(
@@ -13601,6 +14627,115 @@ class APIKeys(BaseModel):
     keys: Annotated[
         list[APIKeyInfo],
         Field(description="A list of API key information", title="Keys"),
+    ]
+
+
+class ModelAPIRateLimit(BaseModel):
+    type: Annotated[
+        Literal[
+            "REQUEST",
+            "TOKEN",
+            "CONCURRENT_REQUEST",
+            "UNCACHED_INPUT_TOKEN",
+            "OUTPUT_TOKEN",
+        ]
+        | str,
+        Field(
+            description="The type of the rate limit",
+            examples=["TOKEN", "REQUEST"],
+            title="LimitTypeV1",
+        ),
+    ]
+    unit: Annotated[
+        Literal["SECOND", "MINUTE"] | str,
+        Field(
+            description="The unit of the rate limit",
+            examples=["SECOND", "MINUTE"],
+            title="RateLimitUnitV1",
+        ),
+    ]
+    threshold: Annotated[
+        int,
+        Field(
+            description="The threshold for the rate limit",
+            examples=[1000, 50000],
+            ge=0,
+            title="Threshold",
+        ),
+    ]
+    is_pooled: Annotated[
+        bool,
+        Field(
+            description="Whether this limit uses the organization-wide pool. The threshold is the effective limit, including any adaptive grant.",
+            title="Is Pooled",
+        ),
+    ]
+    service_tier: Annotated[
+        Literal["DEFAULT", "FLEX", "PRIORITY"] | str,
+        Field(
+            description="Service tier the rate limit applies to.",
+            examples=["DEFAULT", "FLEX"],
+            title="ModelAPIServiceTierV1",
+        ),
+    ]
+    baseline_threshold: Annotated[
+        int,
+        Field(
+            description="Configured baseline threshold for the rate limit, before any adaptive increase. Equal to `threshold` when no adaptive increase is in effect.",
+            examples=[1000, 50000],
+            ge=0,
+            title="Baseline Threshold",
+        ),
+    ]
+
+
+class ModelAPITeamDetails(BaseModel):
+    id: Annotated[
+        str, Field(description="Organization Shared Endpoint ID.", title="Id")
+    ]
+    team_id: Annotated[
+        str, Field(description="Team that has added this Model API.", title="Team Id")
+    ]
+    team_name: Annotated[
+        str,
+        Field(
+            description="Name of the team that has added this Model API.",
+            title="Team Name",
+        ),
+    ]
+    added_at: Annotated[
+        AwareDatetime,
+        Field(
+            description="When the team first added this Model API.", title="Added At"
+        ),
+    ]
+    last_used_at: Annotated[
+        AwareDatetime | None,
+        Field(
+            description="When the team last invoked this Model API. Null if never invoked.",
+            title="Last Used At",
+        ),
+    ]
+    rate_limits: Annotated[
+        list[ModelAPIRateLimit],
+        Field(
+            description="Effective rate limits for this team's Model API, at most one per type, unit, and service tier.",
+            title="Rate Limits",
+        ),
+    ]
+    cost_per_million_input_tokens: Annotated[
+        float | CostPerMillionInputTokens | None,
+        Field(
+            description="Effective cost per million input tokens, in dollars. Null if unavailable.",
+            title="Cost Per Million Input Tokens",
+        ),
+    ]
+    cost_per_million_output_tokens: Annotated[
+        float | CostPerMillionOutputTokens | None,
+        Field(
+            description="Effective cost per million output tokens, in dollars. Null if unavailable.",
+            title="Cost Per Million Output Tokens",
+        ),
     ]
 
 
@@ -13655,32 +14790,51 @@ class ModelAPI(BaseModel):
         ),
     ]
     cost_per_million_input_tokens: Annotated[
-        float | CostPerMillionInputTokens | None,
+        float | CostPerMillionInputTokens1 | None,
         Field(
-            description="Effective cost per million input tokens, in dollars. Null when pricing is unavailable.",
+            deprecated=True,
+            description="Deprecated and will be removed in a future version. Legacy effective input-token price. Use team_details pricing instead. Retained during migration; null when pricing is unavailable.",
             examples=["0.13"],
             title="Cost Per Million Input Tokens",
         ),
     ]
-    cost_per_million_output_tokens: Annotated[
-        float | CostPerMillionOutputTokens | None,
+    cost_per_million_cached_input_tokens: Annotated[
+        float | CostPerMillionCachedInputTokens | None,
         Field(
-            description="Effective cost per million output tokens, in dollars. Null when pricing is unavailable.",
+            description="Effective cost per million cached input tokens, in dollars. Null when pricing is unavailable or the Model API has no cached input price.",
+            examples=["0.03"],
+            title="Cost Per Million Cached Input Tokens",
+        ),
+    ]
+    cost_per_million_output_tokens: Annotated[
+        float | CostPerMillionOutputTokens1 | None,
+        Field(
+            deprecated=True,
+            description="Deprecated and will be removed in a future version. Legacy effective output-token price. Use team_details pricing instead. Retained during migration; null when pricing is unavailable.",
             examples=["0.50"],
             title="Cost Per Million Output Tokens",
         ),
     ]
     rate_limits: Annotated[
-        list[RateLimit],
+        list[ModelAPIRateLimit],
         Field(
-            description="Rate limits in effect for the workspace. Workspace-specific overrides are returned when the workspace has added this Model API and configured them; otherwise the catalog default rate limits are returned.",
+            deprecated=True,
+            description="Deprecated and will be removed in a future version. Legacy Default Team effective limits, independent of team_ids, or catalog defaults when not added or unauthorized. Use team_details for team limits; this field is not the org-pool limit view.",
             title="Rate Limits",
         ),
     ]
     org_details: Annotated[
         ModelAPIOrgDetails | None,
         Field(
-            description="Workspace-specific state. Null when the workspace has not added this Model API."
+            deprecated=True,
+            description="Deprecated and will be removed in a future version. Legacy Default Team state, independent of team_ids. Use team_details instead. Null when not added or unauthorized.",
+        ),
+    ] = None
+    team_details: Annotated[
+        list[ModelAPITeamDetails] | None,
+        Field(
+            description="Added Model API details for authorized teams, ordered by team ID. Empty when no team in the selected scope has added this Model API.",
+            title="Team Details",
         ),
     ] = None
 
@@ -13734,6 +14888,13 @@ class CreateLLMModelRequest(BaseModel):
         dict[str, Any],
         Field(description="Resources allocated to the model", title="Resources"),
     ]
+    deployment_name: Annotated[
+        str | None,
+        Field(
+            description="Name of the deployment, unique within the model. Use only A-Z, a-z, 0-9, '-', '_', and '.'. The name 'development' is reserved. If omitted or empty, a name is generated automatically.",
+            title="Deployment Name",
+        ),
+    ] = None
     region: Annotated[
         str | None,
         Field(description="Region in which to deploy the model", title="Region"),
@@ -13809,6 +14970,13 @@ class CreateLLMModelRequest(BaseModel):
                 ]
             ],
             title="Weights",
+        ),
+    ] = None
+    bdn: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="BDN configuration for read-only sealed volume mounts; supports mounts only",
+            title="Bdn",
         ),
     ] = None
     egress_restrictions: Annotated[
@@ -13828,6 +14996,13 @@ class CreateLLMModelVersionRequest(BaseModel):
         dict[str, Any],
         Field(description="Resources allocated to the model", title="Resources"),
     ]
+    deployment_name: Annotated[
+        str | None,
+        Field(
+            description="Name of the deployment, unique within the model. Use only A-Z, a-z, 0-9, '-', '_', and '.'. The name 'development' is reserved. If omitted or empty, a name is generated automatically.",
+            title="Deployment Name",
+        ),
+    ] = None
     region: Annotated[
         str | None,
         Field(description="Region in which to deploy the model", title="Region"),
@@ -13903,6 +15078,13 @@ class CreateLLMModelVersionRequest(BaseModel):
                 ]
             ],
             title="Weights",
+        ),
+    ] = None
+    bdn: Annotated[
+        dict[str, Any] | None,
+        Field(
+            description="BDN configuration for read-only sealed volume mounts; supports mounts only",
+            title="Bdn",
         ),
     ] = None
     egress_restrictions: Annotated[
@@ -14025,6 +15207,7 @@ class BillableResource(BaseModel):
     ]
     kind: Annotated[
         Literal[
+            "LOOPS_RUN",
             "LOOPS_SAMPLER",
             "LOOPS_TRAINER",
             "MODEL_DEPLOYMENT",
@@ -14033,7 +15216,7 @@ class BillableResource(BaseModel):
         ]
         | str,
         Field(
-            description="Resource kind (MODEL_DEPLOYMENT, CHAINLET, TRAINING_JOB, LOOPS_TRAINER, or LOOPS_SAMPLER)",
+            description="Resource kind (MODEL_DEPLOYMENT, CHAINLET, TRAINING_JOB, LOOPS_TRAINER, LOOPS_SAMPLER, or LOOPS_RUN)",
             title="ResourceKind",
         ),
     ]
@@ -14066,7 +15249,7 @@ class BillableResource(BaseModel):
     base_model: Annotated[
         str | None,
         Field(
-            description="Base model used by this Loops trainer or sampler",
+            description="Base model used by this Loops run, trainer, or sampler",
             title="Base Model",
         ),
     ] = None
@@ -14097,12 +15280,35 @@ class BillableResource(BaseModel):
     ] = None
 
 
+class DailyLoopsUsage(BaseModel):
+    subtotal: Annotated[
+        float | Subtotal1,
+        Field(description="Cost in dollars across all four meters", title="Subtotal"),
+    ]
+    uncached_prefill: Annotated[
+        LoopsMeterUsage, Field(description="Prompt tokens that missed the prefix cache")
+    ]
+    cached_prefill: Annotated[
+        LoopsMeterUsage, Field(description="Prompt tokens served from the prefix cache")
+    ]
+    sample: Annotated[
+        LoopsMeterUsage, Field(description="Tokens generated by sampling")
+    ]
+    train: Annotated[
+        LoopsMeterUsage,
+        Field(
+            description="Tokens processed by forward and forward-backward training calls"
+        ),
+    ]
+    date: Annotated[date_aliased, Field(description="Date of the usage", title="Date")]
+
+
 class DedicatedItem(BaseModel):
     billable_resource: Annotated[
         BillableResource, Field(description="The model deployment resource")
     ]
     subtotal: Annotated[
-        float | Subtotal3,
+        float | Subtotal4,
         Field(
             description="Subtotal cost in dollars for this billable resource",
             title="Subtotal",
@@ -14143,7 +15349,7 @@ class DedicatedItem(BaseModel):
 
 class DedicatedUsage(BaseModel):
     subtotal: Annotated[
-        float | Subtotal4,
+        float | Subtotal5,
         Field(
             description="Subtotal cost in dollars after applying credits used",
             title="Subtotal",
@@ -14163,12 +15369,44 @@ class DedicatedUsage(BaseModel):
     ] = None
 
 
+class LoopsResourceItem(BaseModel):
+    subtotal: Annotated[
+        float | Subtotal8,
+        Field(description="Cost in dollars across all four meters", title="Subtotal"),
+    ]
+    uncached_prefill: Annotated[
+        LoopsMeterUsage, Field(description="Prompt tokens that missed the prefix cache")
+    ]
+    cached_prefill: Annotated[
+        LoopsMeterUsage, Field(description="Prompt tokens served from the prefix cache")
+    ]
+    sample: Annotated[
+        LoopsMeterUsage, Field(description="Tokens generated by sampling")
+    ]
+    train: Annotated[
+        LoopsMeterUsage,
+        Field(
+            description="Tokens processed by forward and forward-backward training calls"
+        ),
+    ]
+    billable_resource: Annotated[
+        BillableResource,
+        Field(
+            description="The Loops run (LOOPS_RUN) or standalone sampler (LOOPS_SAMPLER). A resource that no longer exists has only its ID and kind set."
+        ),
+    ]
+    daily: Annotated[
+        list[DailyLoopsUsage] | None,
+        Field(description="Daily usage breakdown", title="Daily"),
+    ] = None
+
+
 class TrainingItem(BaseModel):
     billable_resource: Annotated[
         BillableResource, Field(description="The training job resource")
     ]
     subtotal: Annotated[
-        float | Subtotal7,
+        float | Subtotal12,
         Field(
             description="Subtotal cost in dollars for this billable resource",
             title="Subtotal",
@@ -14188,7 +15426,7 @@ class TrainingItem(BaseModel):
 
 class TrainingUsage(BaseModel):
     subtotal: Annotated[
-        float | Subtotal8,
+        float | Subtotal13,
         Field(
             description="Subtotal cost in dollars after applying credits used",
             title="Subtotal",
@@ -14205,18 +15443,6 @@ class TrainingUsage(BaseModel):
     breakdown: Annotated[
         list[TrainingItem] | None,
         Field(description="Per-job usage breakdown", title="Breakdown"),
-    ] = None
-
-
-class UsageSummary(BaseModel):
-    dedicated_usage: Annotated[
-        DedicatedUsage | None, Field(description="Dedicated model serving usage")
-    ] = None
-    training_usage: Annotated[
-        TrainingUsage | None, Field(description="Training usage")
-    ] = None
-    model_apis_usage: Annotated[
-        ModelApisUsage | None, Field(description="Model APIs usage")
     ] = None
 
 
@@ -14361,7 +15587,8 @@ class GridRoute(BaseModel):
         Annotated[
             GridRouteTargetBasetenModelAPI
             | GridRouteTargetConnection
-            | GridRouteTargetClassifier,
+            | GridRouteTargetClassifier
+            | GridRouteTargetIntelligent,
             Field(
                 description="Configured upstream target.",
                 discriminator="type",
@@ -14436,11 +15663,17 @@ class GridHarnessModel(BaseModel):
     route: Annotated[GridRoute, Field(description="Route to use for this role.")]
 
 
-class GridPrimaryHarnessDefaults(BaseModel):
+class GridHarnessModels(BaseModel):
     primary: Annotated[
         GridHarnessModel | None,
         Field(
             description="Route for the primary model, which new sessions use. Null when the team has no route to use."
+        ),
+    ]
+    background: Annotated[
+        GridHarnessModel | None,
+        Field(
+            description="Route for background tasks, such as session titles. Null when the team has no route to use."
         ),
     ]
 
@@ -14450,25 +15683,25 @@ class UpdateGridHarnessDefaults(BaseModel):
         extra="forbid",
     )
     claude_code: Annotated[
-        UpdateGridBackgroundHarnessModels | None,
+        UpdateGridHarnessModels | None,
         Field(
             description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
         ),
     ] = None
     opencode: Annotated[
-        UpdateGridBackgroundHarnessModels | None,
+        UpdateGridHarnessModels | None,
         Field(
             description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
         ),
     ] = None
     codex: Annotated[
-        UpdateGridPrimaryHarnessModels | None,
+        UpdateGridHarnessModels | None,
         Field(
             description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
         ),
     ] = None
     pi: Annotated[
-        UpdateGridPrimaryHarnessModels | None,
+        UpdateGridHarnessModels | None,
         Field(
             description="Route IDs for the model roles to change; roles left out are unchanged. Every route must belong to the team. Pass null to clear every role, or omit to leave the harness unchanged."
         ),
@@ -14610,7 +15843,11 @@ class EndpointTarget(BaseModel):
             "OPENAI_COMPATIBLE",
         ]
         | str,
-        Field(description="Upstream provider.", title="GatewayProvider"),
+        Field(
+            description="Upstream provider.",
+            examples=["ANTHROPIC", "OPENAI_COMPATIBLE"],
+            title="GatewayEndpointProviderV1",
+        ),
     ]
     secret_id: Annotated[
         str | None, Field(description="Referenced secret, if any.", title="Secret Id")
@@ -14824,53 +16061,6 @@ class GetSandboxConfigurationResponse(BaseModel):
     ]
 
 
-class SandboxProxyConfig(BaseModel):
-    allowed_domains: Annotated[
-        list[str] | None,
-        Field(
-            description="List of allowed external domains (allowlist). When set, only these domains are reachable. Supports wildcards (e.g. *.storage.example.com).",
-            examples=[
-                [
-                    "api.openai.com",
-                    "pypi.org",
-                    "files.pythonhosted.org",
-                    "registry.npmjs.org",
-                ]
-            ],
-        ),
-    ] = None
-    bypass: Annotated[
-        list[str] | None,
-        Field(
-            description="Domains that bypass the proxy entirely via the NO_PROXY directive. Traffic to these destinations goes direct, not through the CONNECT tunnel. Supports wildcards. Note that localhost, private ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), 169.254.169.254, .local and .internal are always bypassed by default.",
-            examples=[["registry.npmjs.org"]],
-        ),
-    ] = None
-    forbidden_domains: Annotated[
-        list[str] | None,
-        Field(
-            description="List of forbidden external domains (denylist). When set, all domains except these are reachable. Supports wildcards (e.g. *.malware.com). If both allowed_domains and forbidden_domains are set, allowed_domains takes precedence.",
-            examples=[["facebook.com", "*.facebook.com"]],
-        ),
-    ] = None
-    routing: Annotated[
-        list[SandboxProxyTarget] | None,
-        Field(
-            description='Per-destination routing rules with header/body injection and secrets. Use destinations ["*"] for global rules that apply to all destinations.',
-            examples=[
-                [
-                    {
-                        "destinations": ["api.openai.com"],
-                        "headers": {"Authorization": "Bearer {{SECRET:openai-key}}"},
-                        "body": {"user": "baseten-api-review-0916"},
-                        "secrets": {"openai-key": "sk-proj-demo-not-a-valid-api-key"},
-                    }
-                ]
-            ],
-        ),
-    ] = None
-
-
 class ListSandboxImagesResponse(BaseModel):
     items: Annotated[
         list[SandboxImage], Field(description="Image repositories on this page.")
@@ -15035,7 +16225,7 @@ class DeploymentArchivePayload(BaseModel):
     autoscaling_settings: Annotated[
         UpdateAutoscalingSettings | None,
         Field(
-            description="Autoscaling settings for the new deployment. With `environment_name`, the new deployment starts from the environment's settings with these changes applied, and the environment keeps the result when the promotion completes. Without it, they apply to the new deployment only.",
+            description="Autoscaling settings for the new deployment. The new deployment starts from the settings of the environment named by `environment_name` with these changes applied, and the environment keeps the result when the promotion completes. Requires `environment_name`.",
             examples=[{"max_replica": 4, "min_replica": 2}],
         ),
     ] = None
@@ -15062,7 +16252,7 @@ class DeploymentArchivePayload(BaseModel):
     instance_type_id: Annotated[
         str | None,
         Field(
-            description="Instance type for the new deployment, from `GET /v1/instance_types`, in place of the one in `config`. With `environment_name`, the environment takes it when the promotion completes. Without it, it applies to the new deployment only. Cannot be set with `preserve_env_instance_type: true`.",
+            description="Instance type for the new deployment, from `GET /v1/instance_types`, in place of the one in `config`. The environment named by `environment_name` takes it when the promotion completes. Requires `environment_name`. Cannot be set with `preserve_env_instance_type: true`.",
             title="Instance Type Id",
         ),
     ] = None
@@ -15142,12 +16332,16 @@ class AuditLogEntry(BaseModel):
             "SECRET_DELETED",
             "API_KEY_CREATED",
             "API_KEY_DELETED",
+            "API_KEY_LIFETIME_LIMITS_UPDATED",
             "GATEWAY_ENDPOINT_CREATED",
             "GATEWAY_ENDPOINT_UPDATED",
             "GATEWAY_ENDPOINT_DELETED",
             "PROVIDER_CONNECTION_CREATED",
             "PROVIDER_CONNECTION_UPDATED",
             "PROVIDER_CONNECTION_DELETED",
+            "GRID_MACHINE_USER_CREATED",
+            "GRID_MACHINE_USER_UPDATED",
+            "GRID_MACHINE_USER_DELETED",
             "USER_INVITED",
             "USER_JOINED_ORGANIZATION",
             "WEBHOOK_SIGNING_SECRET_CREATED",
@@ -15206,12 +16400,16 @@ class AuditLogEntry(BaseModel):
             | AuditLogEventSecretDeleted
             | AuditLogEventApiKeyCreated
             | AuditLogEventApiKeyDeleted
+            | AuditLogEventApiKeyLifetimeLimitsUpdated
             | AuditLogEventGatewayEndpointCreated
             | AuditLogEventGatewayEndpointUpdated
             | AuditLogEventGatewayEndpointDeleted
             | AuditLogEventProviderConnectionCreated
             | AuditLogEventProviderConnectionUpdated
             | AuditLogEventProviderConnectionDeleted
+            | AuditLogEventGridMachineUserCreated
+            | AuditLogEventGridMachineUserUpdated
+            | AuditLogEventGridMachineUserDeleted
             | AuditLogEventUserInvited
             | AuditLogEventUserJoinedOrganization
             | AuditLogEventWebhookSigningSecretCreated
@@ -15641,35 +16839,87 @@ class GetLoopsDeploymentMetricsResponse(BaseModel):
     ]
 
 
-class GridBackgroundHarnessDefaults(BaseModel):
-    primary: Annotated[
-        GridHarnessModel | None,
+class LoopsBaseModelItem(BaseModel):
+    subtotal: Annotated[
+        float | Subtotal6,
+        Field(description="Cost in dollars across all four meters", title="Subtotal"),
+    ]
+    uncached_prefill: Annotated[
+        LoopsMeterUsage, Field(description="Prompt tokens that missed the prefix cache")
+    ]
+    cached_prefill: Annotated[
+        LoopsMeterUsage, Field(description="Prompt tokens served from the prefix cache")
+    ]
+    sample: Annotated[
+        LoopsMeterUsage, Field(description="Tokens generated by sampling")
+    ]
+    train: Annotated[
+        LoopsMeterUsage,
         Field(
-            description="Route for the primary model, which new sessions use. Null when the team has no route to use."
+            description="Tokens processed by forward and forward-backward training calls"
         ),
     ]
-    background: Annotated[
-        GridHarnessModel | None,
-        Field(
-            description="Route for background tasks, such as session titles. Null when the team has no route to use."
-        ),
+    base_model: Annotated[
+        str, Field(description="Base model the usage is priced by", title="Base Model")
     ]
+    daily: Annotated[
+        list[DailyLoopsUsage] | None,
+        Field(description="Daily usage breakdown", title="Daily"),
+    ] = None
+    breakdown: Annotated[
+        list[LoopsResourceItem] | None,
+        Field(
+            description="Usage per run and standalone sampler on this base model",
+            title="Breakdown",
+        ),
+    ] = None
+
+
+class LoopsUsage(BaseModel):
+    subtotal: Annotated[
+        float | Subtotal9,
+        Field(description="Cost in dollars before credits", title="Subtotal"),
+    ]
+    credits_used: Annotated[
+        float | CreditsUsed,
+        Field(description="Credits applied in dollars", title="Credits Used"),
+    ]
+    total: Annotated[
+        float | Total, Field(description="Total cost in dollars", title="Total")
+    ]
+    breakdown: Annotated[
+        list[LoopsBaseModelItem] | None,
+        Field(description="Per-base-model usage breakdown", title="Breakdown"),
+    ] = None
+
+
+class UsageSummary(BaseModel):
+    dedicated_usage: Annotated[
+        DedicatedUsage | None, Field(description="Dedicated model serving usage")
+    ] = None
+    training_usage: Annotated[
+        TrainingUsage | None, Field(description="Training usage")
+    ] = None
+    model_apis_usage: Annotated[
+        ModelApisUsage | None, Field(description="Model APIs usage")
+    ] = None
+    loops_usage: Annotated[
+        LoopsUsage | None,
+        Field(
+            description="Serverless Loops usage, billed per token. Loops usage on dedicated trainers and samplers is billed by the minute and is part of training usage."
+        ),
+    ] = None
 
 
 class GridHarnessDefaults(BaseModel):
     claude_code: Annotated[
-        GridBackgroundHarnessDefaults,
-        Field(description="Default models for Claude Code."),
+        GridHarnessModels, Field(description="Default models for Claude Code.")
     ]
     opencode: Annotated[
-        GridBackgroundHarnessDefaults, Field(description="Default models for OpenCode.")
+        GridHarnessModels, Field(description="Default models for OpenCode.")
     ]
-    codex: Annotated[
-        GridPrimaryHarnessDefaults, Field(description="Default models for Codex.")
-    ]
-    pi: Annotated[
-        GridPrimaryHarnessDefaults, Field(description="Default models for Pi.")
-    ]
+    codex: Annotated[GridHarnessModels, Field(description="Default models for Codex.")]
+    pi: Annotated[GridHarnessModels, Field(description="Default models for Pi.")]
 
 
 class GridTeamSettings(BaseModel):
@@ -15778,46 +17028,6 @@ class SandboxLifecycle(BaseModel):
     ] = None
 
 
-class SandboxNetwork(BaseModel):
-    proxy: Annotated[
-        SandboxProxyConfig | None,
-        Field(
-            description="Proxy configuration for routing sandbox HTTP traffic through the platform proxy with MITM inspection and per-destination header/body injection",
-            examples=[
-                {
-                    "allowed_domains": [
-                        "api.openai.com",
-                        "pypi.org",
-                        "files.pythonhosted.org",
-                        "registry.npmjs.org",
-                    ],
-                    "bypass": ["registry.npmjs.org"],
-                    "forbidden_domains": ["facebook.com", "*.facebook.com"],
-                    "routing": [
-                        {
-                            "destinations": ["api.openai.com"],
-                            "headers": {
-                                "Authorization": "Bearer {{SECRET:openai-key}}"
-                            },
-                            "body": {"user": "baseten-api-review-0916"},
-                            "secrets": {
-                                "openai-key": "sk-proj-demo-not-a-valid-api-key"
-                            },
-                        }
-                    ],
-                }
-            ],
-        ),
-    ] = None
-    subnet: Annotated[
-        str | None,
-        Field(
-            description='Subnet name for the sandbox. Defaults to "default" at creation.',
-            examples=["default"],
-        ),
-    ] = None
-
-
 class SandboxConfiguration(BaseModel):
     lifecycle: Annotated[
         SandboxLifecycle | None,
@@ -15835,39 +17045,6 @@ class SandboxConfiguration(BaseModel):
                         },
                     ],
                     "terminated_retention": "24h",
-                }
-            ],
-        ),
-    ] = None
-    network: Annotated[
-        SandboxNetwork | None,
-        Field(
-            description="Network configuration for a sandbox including subnet, domain filtering, and proxy settings",
-            examples=[
-                {
-                    "proxy": {
-                        "allowed_domains": [
-                            "api.openai.com",
-                            "pypi.org",
-                            "files.pythonhosted.org",
-                            "registry.npmjs.org",
-                        ],
-                        "bypass": ["registry.npmjs.org"],
-                        "forbidden_domains": ["facebook.com", "*.facebook.com"],
-                        "routing": [
-                            {
-                                "destinations": ["api.openai.com"],
-                                "headers": {
-                                    "Authorization": "Bearer {{SECRET:openai-key}}"
-                                },
-                                "body": {"user": "baseten-api-review-0916"},
-                                "secrets": {
-                                    "openai-key": "sk-proj-demo-not-a-valid-api-key"
-                                },
-                            }
-                        ],
-                    },
-                    "subnet": "default",
                 }
             ],
         ),
@@ -15901,10 +17078,19 @@ class SandboxConfiguration(BaseModel):
     memory: Annotated[
         int | None,
         Field(
-            description="Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs). Must be between 1024 and 262144.",
+            description="Memory allocation in megabytes. Must be between 1024 and 262144. When cpu is not set at creation, memory also determines the CPU allocation (by default 2048 MB = 1 vCPU, 4096 MB = 2, 8192 MB = 4, 16384 MB = 6, 32768 MB = 8, 65536 MB = 16, 131072 MB or more = 32).",
             examples=[4096],
             ge=512,
             le=262144,
+        ),
+    ] = None
+    cpu: Annotated[
+        int | None,
+        Field(
+            description="Number of vCPUs the sandbox runs with. Always returned, including for sandboxes created without cpu, whose CPU allocation was derived from memory. Set at creation only.",
+            examples=[2],
+            ge=1,
+            le=32,
         ),
     ] = None
     filesystem: Annotated[
@@ -15983,39 +17169,6 @@ class CreateSandboxRequest(BaseModel):
             ],
         ),
     ] = None
-    network: Annotated[
-        SandboxNetwork | None,
-        Field(
-            description="Network configuration for a sandbox including subnet, domain filtering, and proxy settings",
-            examples=[
-                {
-                    "proxy": {
-                        "allowed_domains": [
-                            "api.openai.com",
-                            "pypi.org",
-                            "files.pythonhosted.org",
-                            "registry.npmjs.org",
-                        ],
-                        "bypass": ["registry.npmjs.org"],
-                        "forbidden_domains": ["facebook.com", "*.facebook.com"],
-                        "routing": [
-                            {
-                                "destinations": ["api.openai.com"],
-                                "headers": {
-                                    "Authorization": "Bearer {{SECRET:openai-key}}"
-                                },
-                                "body": {"user": "baseten-api-review-0916"},
-                                "secrets": {
-                                    "openai-key": "sk-proj-demo-not-a-valid-api-key"
-                                },
-                            }
-                        ],
-                    },
-                    "subnet": "default",
-                }
-            ],
-        ),
-    ] = None
     region: Annotated[
         str | None,
         Field(
@@ -16043,14 +17196,23 @@ class CreateSandboxRequest(BaseModel):
         ),
     ] = "baseten/base-image:latest"
     memory: Annotated[
-        int,
+        int | None,
         Field(
-            description="Memory allocation in megabytes. Also determines CPU allocation (CPU cores = memory in MB / 2048, e.g., 4096MB = 2 CPUs). Defaults to 4096. Must be between 1024 and 262144.",
+            description="Memory allocation in megabytes. Must be between 1024 and 262144. Defaults to 4096, or to 8192 MB per vCPU (a 1:8 ratio) when only cpu is set, capped at the account's memory quota. When cpu is omitted, memory also determines the CPU allocation (by default 2048 MB = 1 vCPU, 4096 MB = 2, 8192 MB = 4, 16384 MB = 6, 32768 MB = 8, 65536 MB = 16, 131072 MB or more = 32).",
             examples=[4096],
             ge=512,
             le=262144,
         ),
-    ] = 4096
+    ] = None
+    cpu: Annotated[
+        int | None,
+        Field(
+            description="Optional number of vCPUs, a whole number between 1 and 32. When omitted, the CPU allocation is derived from memory. When set, memory must be between 1024 and 8192 megabytes per vCPU (a ratio from 1:1 to 1:8), and cpu must not exceed the account's per-sandbox cpu quota. A value equal to the allocation memory alone would give is always accepted. When memory is omitted, it defaults to 8192 MB per vCPU, capped at the account's memory quota. Immutable after creation.",
+            examples=[2],
+            ge=1,
+            le=32,
+        ),
+    ] = None
     filesystem: Annotated[
         SandboxFilesystem | None,
         Field(
@@ -16256,28 +17418,6 @@ class ListSandboxesResponse(BaseModel):
                             ],
                             "terminated_retention": "24h",
                         },
-                        "network": {
-                            "proxy": {
-                                "allowed_domains": [
-                                    "api.openai.com",
-                                    "pypi.org",
-                                    "files.pythonhosted.org",
-                                    "registry.npmjs.org",
-                                ],
-                                "bypass": ["registry.npmjs.org"],
-                                "forbidden_domains": ["facebook.com", "*.facebook.com"],
-                                "routing": [
-                                    {
-                                        "destinations": ["api.openai.com"],
-                                        "headers": {
-                                            "Authorization": "Bearer {{SECRET:openai-key}}"
-                                        },
-                                        "body": {"user": "baseten-api-review-0916"},
-                                    }
-                                ],
-                            },
-                            "subnet": "default",
-                        },
                         "region": "us-pdx-1",
                         "envs": [
                             {
@@ -16289,6 +17429,7 @@ class ListSandboxesResponse(BaseModel):
                         ],
                         "image": "baseten/base-image:latest",
                         "memory": 4096,
+                        "cpu": 2,
                         "ports": [{"name": "http", "protocol": "HTTP", "target": 3000}],
                         "external_id": "api-review-20260916-001",
                         "labels": {

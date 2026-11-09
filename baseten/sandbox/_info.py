@@ -147,61 +147,6 @@ class SandboxPort:
 
 
 @dataclass(kw_only=True)
-class SandboxNetworkProxyRoute:
-    """A proxy rule injecting headers and body fields into requests to its destinations."""
-
-    destinations: Sequence[str] | None = None
-    """Destination domains the rule applies to. ``["*"]`` matches all."""
-
-    headers: Mapping[str, str] | None = None
-    """Headers to inject. Values may reference ``{{SECRET:name}}`` from ``secrets``."""
-
-    body: Mapping[str, str] | None = None
-    """Body fields to inject. Values may reference ``{{SECRET:name}}`` from ``secrets``."""
-
-    secrets: Mapping[str, str] | None = None
-    """Named secret values for this rule.
-
-    Write-only, so always unset on :class:`SandboxInfo`.
-    """
-
-
-@dataclass(kw_only=True)
-class SandboxNetworkProxy:
-    """Proxy configuration of a sandbox's network."""
-
-    allowed_domains: Sequence[str] | None = None
-    """When set, only these external domains are reachable.
-
-    Supports wildcards such as ``*.example.com``. Takes precedence over
-    ``forbidden_domains``.
-    """
-
-    forbidden_domains: Sequence[str] | None = None
-    """When set, every external domain except these is reachable. Supports wildcards."""
-
-    bypass: Sequence[str] | None = None
-    """Domains reached directly rather than through the proxy.
-
-    Supports wildcards. Local and private addresses always bypass it.
-    """
-
-    routing: Sequence[SandboxNetworkProxyRoute] | None = None
-    """Rules injecting headers and body fields into matching requests."""
-
-
-@dataclass(kw_only=True)
-class SandboxNetwork:
-    """Network configuration of a sandbox, fixed at creation."""
-
-    subnet: str | None = None
-    """Subnet name. The server defaults to ``default``."""
-
-    proxy: SandboxNetworkProxy | None = None
-    """Routes the sandbox's HTTP traffic through the platform proxy."""
-
-
-@dataclass(kw_only=True)
 class SandboxFileSystemOptions:
     """Filesystem configuration of a sandbox, fixed at creation.
 
@@ -247,7 +192,10 @@ class SandboxInfo:
     """Image reference, including its tag."""
 
     memory: int | None
-    """Memory in megabytes, which also sets the CPU allocation."""
+    """Memory in megabytes."""
+
+    cpu: int | None
+    """Number of vCPUs the sandbox runs with."""
 
     region: str | None
 
@@ -266,8 +214,6 @@ class SandboxInfo:
     lifecycle: SandboxLifecycle | None
 
     ports: list[SandboxPort]
-
-    network: SandboxNetwork | None
 
     filesystem: SandboxFileSystemOptions | None
 
@@ -296,6 +242,7 @@ def sandbox_info_from_api(sandbox: baseten.client.managementapi.Sandbox) -> Sand
         status=sandbox.status,
         image=sandbox.image,
         memory=sandbox.memory,
+        cpu=sandbox.cpu,
         region=sandbox.region,
         envs=_envs_from_api(sandbox.envs),
         labels=dict(sandbox.labels or {}),
@@ -304,7 +251,6 @@ def sandbox_info_from_api(sandbox: baseten.client.managementapi.Sandbox) -> Sand
         if sandbox.lifecycle is None
         else _lifecycle_from_api(sandbox.lifecycle),
         ports=ports_from_api(sandbox.ports),
-        network=None if sandbox.network is None else _network_from_api(sandbox.network),
         filesystem=None
         if sandbox.filesystem is None
         else SandboxFileSystemOptions(
@@ -377,40 +323,6 @@ def ports_to_api(
         )
         for port in ports
     ]
-
-
-def network_to_api(
-    network: SandboxNetwork,
-) -> baseten.client.managementapi.SandboxNetwork:
-    """Convert a network configuration to the control plane's form."""
-    proxy = network.proxy
-    return baseten.client.managementapi.SandboxNetwork(
-        **set_fields(
-            subnet=network.subnet,
-            proxy=None
-            if proxy is None
-            else baseten.client.managementapi.SandboxProxyConfig(
-                **set_fields(
-                    allowed_domains=_optional_list(proxy.allowed_domains),
-                    forbidden_domains=_optional_list(proxy.forbidden_domains),
-                    bypass=_optional_list(proxy.bypass),
-                    routing=None
-                    if proxy.routing is None
-                    else [
-                        baseten.client.managementapi.SandboxProxyTarget(
-                            **set_fields(
-                                destinations=_optional_list(route.destinations),
-                                headers=_optional_dict(route.headers),
-                                body=_optional_dict(route.body),
-                                secrets=_optional_dict(route.secrets),
-                            )
-                        )
-                        for route in proxy.routing
-                    ],
-                )
-            ),
-        )
-    )
 
 
 def filesystem_to_api(
@@ -513,33 +425,6 @@ def _policy_from_api(
             )
 
 
-def _network_from_api(
-    network: baseten.client.managementapi.SandboxNetwork,
-) -> SandboxNetwork:
-    proxy = network.proxy
-    return SandboxNetwork(
-        subnet=network.subnet,
-        proxy=None
-        if proxy is None
-        else SandboxNetworkProxy(
-            allowed_domains=proxy.allowed_domains,
-            forbidden_domains=proxy.forbidden_domains,
-            bypass=proxy.bypass,
-            routing=None
-            if proxy.routing is None
-            else [
-                SandboxNetworkProxyRoute(
-                    destinations=route.destinations,
-                    headers=route.headers,
-                    body=route.body,
-                    secrets=route.secrets,
-                )
-                for route in proxy.routing
-            ],
-        ),
-    )
-
-
 def _envs_from_api(
     envs: list[baseten.client.managementapi.SandboxEnv] | None,
 ) -> dict[str, SandboxEnvValue]:
@@ -551,11 +436,3 @@ def _envs_from_api(
             value="" if env.value is None else env.value, secret=env.secret
         )
     return result
-
-
-def _optional_list(values: Sequence[str] | None) -> list[str] | None:
-    return None if values is None else list(values)
-
-
-def _optional_dict(values: Mapping[str, str] | None) -> dict[str, str] | None:
-    return None if values is None else dict(values)

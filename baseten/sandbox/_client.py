@@ -45,14 +45,12 @@ from baseten.sandbox._info import (
     SandboxFileSystemOptions,
     SandboxInfo,
     SandboxLifecycle,
-    SandboxNetwork,
     SandboxPort,
     SandboxStatus,
     SandboxVolumeMount,
     envs_to_api,
     filesystem_to_api,
     lifecycle_to_api,
-    network_to_api,
     ports_to_api,
     sandbox_info_from_api,
     set_fields,
@@ -296,13 +294,13 @@ class SandboxClient:
         create_if_not_exists: bool | None = None,
         image: str | None = None,
         memory: int | None = None,
+        cpu: int | None = None,
         region: str | None = None,
         envs: Mapping[str, SandboxEnvValue] | None = None,
         labels: Mapping[str, str] | None = None,
         external_id: str | None = None,
         lifecycle: SandboxLifecycle | None = None,
         ports: Sequence[SandboxPort] | None = None,
-        network: SandboxNetwork | None = None,
         filesystem: SandboxFileSystemOptions | None = None,
         volumes: Sequence[SandboxVolumeMount] | None = None,
     ) -> SandboxCreateResult:
@@ -317,16 +315,17 @@ class SandboxClient:
                 preserved.
             image: Image reference including its tag. Defaults to
                 ``baseten/base-image:latest``.
-            memory: Memory in megabytes, which also sets the CPU allocation.
-                Defaults to 4096.
+            memory: Memory in megabytes. Defaults to 4096, or to 8192 per vCPU
+                when only *cpu* is set. When *cpu* is ``None``, it also sets
+                the CPU allocation.
+            cpu: Number of vCPUs, from 1 to 32. ``None`` derives the CPU
+                allocation from *memory*.
             region: Region to run in. ``None`` picks the closest one.
             envs: Environment variables, by name.
             labels: Labels, by key.
             external_id: Caller-owned identifier for external lookups.
             lifecycle: When the sandbox is deleted automatically.
             ports: Ports the sandbox exposes.
-            network: Network configuration, which cannot be changed after
-                creation.
             filesystem: Filesystem configuration, which cannot be changed
                 after creation.
             volumes: Persistent volumes to mount, each in the sandbox's
@@ -344,6 +343,7 @@ class SandboxClient:
                         create_if_not_exists=create_if_not_exists,
                         image=image,
                         memory=memory,
+                        cpu=cpu,
                         region=region,
                         envs=None if envs is None else envs_to_api(envs),
                         labels=None if labels is None else dict(labels),
@@ -352,7 +352,6 @@ class SandboxClient:
                         if lifecycle is None
                         else lifecycle_to_api(lifecycle),
                         ports=None if ports is None else ports_to_api(ports),
-                        network=None if network is None else network_to_api(network),
                         filesystem=None
                         if filesystem is None
                         else filesystem_to_api(filesystem),
@@ -700,13 +699,13 @@ class AsyncSandboxClient:
         create_if_not_exists: bool | None = None,
         image: str | None = None,
         memory: int | None = None,
+        cpu: int | None = None,
         region: str | None = None,
         envs: Mapping[str, SandboxEnvValue] | None = None,
         labels: Mapping[str, str] | None = None,
         external_id: str | None = None,
         lifecycle: SandboxLifecycle | None = None,
         ports: Sequence[SandboxPort] | None = None,
-        network: SandboxNetwork | None = None,
         filesystem: SandboxFileSystemOptions | None = None,
         volumes: Sequence[SandboxVolumeMount] | None = None,
     ) -> AsyncSandboxCreateResult:
@@ -722,6 +721,7 @@ class AsyncSandboxClient:
                         create_if_not_exists=create_if_not_exists,
                         image=image,
                         memory=memory,
+                        cpu=cpu,
                         region=region,
                         envs=None if envs is None else envs_to_api(envs),
                         labels=None if labels is None else dict(labels),
@@ -730,7 +730,6 @@ class AsyncSandboxClient:
                         if lifecycle is None
                         else lifecycle_to_api(lifecycle),
                         ports=None if ports is None else ports_to_api(ports),
-                        network=None if network is None else network_to_api(network),
                         filesystem=None
                         if filesystem is None
                         else filesystem_to_api(filesystem),

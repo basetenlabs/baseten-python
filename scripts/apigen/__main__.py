@@ -24,7 +24,7 @@ INFERENCE_SPEC_URL = "https://api.baseten.co/inference-spec"
 TRUSS_CONFIG_SCHEMA_URL = (
     "https://raw.githubusercontent.com/basetenlabs/truss/main/truss/config.schema.json"
 )
-SANDBOX_SPEC_URL = "https://raw.githubusercontent.com/blaxel-ai/sandbox/main/sandbox-api/docs/openapi.yml"
+SANDBOX_SPEC_URL = "https://raw.githubusercontent.com/basetenlabs/sandbox/main/sandbox-api/docs/openapi.yml"
 
 APIGEN_DIR = Path(__file__).parent
 SPECS_DIR = APIGEN_DIR / "specs"

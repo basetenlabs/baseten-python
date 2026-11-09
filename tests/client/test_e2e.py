@@ -17,6 +17,7 @@ import inspect
 import os
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -150,6 +151,7 @@ async def test_api_key_crud() -> None:
                 request=baseten.client.managementapi.CreateAPIKeyRequest(
                     name=key_name,
                     type="PERSONAL",
+                    expires_at=datetime.now(UTC) + timedelta(days=1),
                 ),
             )
             assert created.api_key
