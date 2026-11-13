@@ -52,8 +52,7 @@ class SandboxEnvValue:
     secret: bool | None = None
     """Whether the value is a secret. Defaults to true.
 
-    Secret values come back masked as ``"****"``, unless read with
-    ``show_secrets``.
+    Secret values come back masked as ``"****"``.
     """
 
 

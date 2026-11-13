@@ -362,22 +362,17 @@ class SandboxClient:
         info = sandbox_info_from_api(sandbox)
         return SandboxCreateResult(self._sandbox_context(info.name, info.url), info)
 
-    def get_info(self, *, name: str, show_secrets: bool | None = None) -> SandboxInfo:
+    def get_info(self, *, name: str) -> SandboxInfo:
         """Get a sandbox's current record.
 
         Args:
             name: Name of the sandbox.
-            show_secrets: Reveal environment variable values for workspace
-                administrators. Defaults to false. Callers without the admin
-                role receive masked values even when true.
         """
         with self._control_api() as api:
             sandbox = api.get_sandbox(
                 sandbox_name=name,
                 params=baseten.client.managementapi.GetSandboxParams(
-                    **set_fields(
-                        team_id=self._options.team_id, show_secrets=show_secrets
-                    )
+                    **set_fields(team_id=self._options.team_id)
                 ),
             )
         return sandbox_info_from_api(sandbox)
@@ -742,17 +737,13 @@ class AsyncSandboxClient:
             self._sandbox_context(info.name, info.url), info
         )
 
-    async def get_info(
-        self, *, name: str, show_secrets: bool | None = None
-    ) -> SandboxInfo:
+    async def get_info(self, *, name: str) -> SandboxInfo:
         """Get a sandbox's current record. As :meth:`SandboxClient.get_info`."""
         with self._control_api() as api:
             sandbox = await api.get_sandbox(
                 sandbox_name=name,
                 params=baseten.client.managementapi.GetSandboxParams(
-                    **set_fields(
-                        team_id=self._options.team_id, show_secrets=show_secrets
-                    )
+                    **set_fields(team_id=self._options.team_id)
                 ),
             )
         return sandbox_info_from_api(sandbox)

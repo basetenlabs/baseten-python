@@ -216,17 +216,6 @@ class TestSandboxClient:
         api.client().get_info(name="sbx")
         assert "team_id" not in api.requests[0].url.params
 
-    def test_gets_info_with_show_secrets_only_when_set(self) -> None:
-        api = _Api()
-        api.route("GET", "/v1/sandboxes/instances/sbx", _record())
-        client = api.client()
-        client.get_info(name="sbx")
-        client.get_info(name="sbx", show_secrets=True)
-        assert [r.url.params.get("show_secrets") for r in api.requests] == [
-            None,
-            "true",
-        ]
-
     def test_gets_sandbox_by_name_with_call_and_from_record_without(self) -> None:
         api = _Api()
         api.route("GET", "/v1/sandboxes/instances/sbx", _record())
