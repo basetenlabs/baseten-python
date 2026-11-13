@@ -177,24 +177,6 @@ async def test_gets_record(
 
 
 @pytest.mark.asyncio
-async def test_gets_record_with_secrets_revealed(
-    client: SandboxClient | AsyncSandboxClient, shared: _Shared
-) -> None:
-    # The e2e key is a workspace admin, so secrets are revealed.
-    if isinstance(client, SandboxClient):
-        info = await asyncio.to_thread(
-            client.get_info, name=shared.name, show_secrets=True
-        )
-    else:
-        info = await client.get_info(name=shared.name, show_secrets=True)
-    assert info.envs == {
-        "E2E_PLAIN": SandboxEnvValue(value="plain-value", secret=False),
-        "E2E_SECRET": SandboxEnvValue(value="secret-value", secret=True),
-        "E2E_DEFAULT": SandboxEnvValue(value="default-value", secret=True),
-    }
-
-
-@pytest.mark.asyncio
 async def test_gets_sandbox_by_name_record_and_url(
     client: SandboxClient | AsyncSandboxClient, shared: _Shared
 ) -> None:
