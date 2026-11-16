@@ -7,6 +7,13 @@ from typing import Self
 import httpx
 
 import baseten.client.inferenceapi
+from baseten.client._token_auth import (
+    AccessTokenSource,
+    AsyncAccessTokenSource,
+    async_credentials_auth,
+    check_client_auth,
+    credentials_auth,
+)
 from baseten.client._user_agent import with_user_agent
 
 
@@ -18,8 +25,8 @@ class InferenceClientOptions:
     was constructed with.
     """
 
-    api_key: str
-    """API key for authentication."""
+    api_key: str | None
+    """API key for authentication, or ``None`` when *credentials* is set."""
 
     headers: Mapping[str, str] | None = None
     """Additional headers to send on every request."""
@@ -36,6 +43,9 @@ class InferenceClientOptions:
     base_url_override: str | None = None
     """Explicit base URL override. When set, *model_id*, *chain_id*, and
     *environment* are ignored."""
+
+    credentials: AccessTokenSource | AsyncAccessTokenSource | None = None
+    """Source of short-lived access tokens, used in place of *api_key*."""
 
     @property
     def base_url(self) -> str:
@@ -88,7 +98,8 @@ class InferenceClient:
     def __init__(
         self,
         *,
-        api_key: str,
+        api_key: str | None = None,
+        credentials: AccessTokenSource | None = None,
         headers: Mapping[str, str] | None = None,
         model_id: str | None = None,
         chain_id: str | None = None,
@@ -100,7 +111,14 @@ class InferenceClient:
         """Create a new synchronous inference client.
 
         Args:
-            api_key: API key for authentication.
+            api_key: API key for authentication. Exactly one of *api_key* and
+                *credentials* is required.
+            credentials: Source of short-lived access tokens in place of an
+                API key, such as :class:`WorkloadIdentityCredentials`. A token
+                is fetched for every request, so a long-lived client picks up
+                refreshed tokens. It is sent only to this client's API host,
+                and a request whose token Baseten refuses is sent again with a
+                new one when the source can drop the refused token.
             headers: Additional headers to send on every request.
             model_id: Model ID. Mutually exclusive with *chain_id*.
             chain_id: Chain ID. Mutually exclusive with *model_id*.
@@ -115,6 +133,7 @@ class InferenceClient:
                 client is created internally, ``False`` when
                 *http_client_override* is provided.
         """
+        check_client_auth(api_key=api_key, credentials=credentials, headers=headers)
         self._options = InferenceClientOptions(
             api_key=api_key,
             headers=headers,
@@ -122,17 +141,24 @@ class InferenceClient:
             chain_id=chain_id,
             environment=environment,
             base_url_override=base_url_override,
+            credentials=credentials,
+        )
+        auth = (
+            None
+            if credentials is None
+            else credentials_auth(credentials, origin=self._options.base_url)
         )
         if http_client_override is None:
             request_headers: dict[str, str] = {**(headers or {})}
             # Empty api_key is an advanced opt-out from sending Authorization.
-            if api_key != "":
+            if api_key:
                 request_headers["Authorization"] = f"Bearer {api_key}"
             # No read timeout, matching the JS and Go clients.
             self._http_client = httpx.Client(
                 base_url=self._options.base_url,
                 headers=with_user_agent(request_headers),
                 timeout=httpx.Timeout(5.0, read=None),
+                auth=auth,
             )
             self.close_http_client_on_close = (
                 True
@@ -146,7 +172,7 @@ class InferenceClient:
                 if close_http_client_on_close is None
                 else close_http_client_on_close
             )
-        self._api = baseten.client.inferenceapi.ApiClient(self._http_client)
+        self._api = baseten.client.inferenceapi.ApiClient(self._http_client, auth=auth)
 
     @property
     def options(self) -> InferenceClientOptions:
@@ -205,7 +231,8 @@ class AsyncInferenceClient:
     def __init__(
         self,
         *,
-        api_key: str,
+        api_key: str | None = None,
+        credentials: AsyncAccessTokenSource | None = None,
         headers: Mapping[str, str] | None = None,
         model_id: str | None = None,
         chain_id: str | None = None,
@@ -217,7 +244,10 @@ class AsyncInferenceClient:
         """Create a new asynchronous inference client.
 
         Args:
-            api_key: API key for authentication.
+            api_key: API key for authentication. Exactly one of *api_key* and
+                *credentials* is required.
+            credentials: Source of short-lived access tokens, as for
+                :class:`InferenceClient`.
             headers: Additional headers to send on every request.
             model_id: Model ID. Mutually exclusive with *chain_id*.
             chain_id: Chain ID. Mutually exclusive with *model_id*.
@@ -232,6 +262,7 @@ class AsyncInferenceClient:
                 client is created internally, ``False`` when
                 *http_client_override* is provided.
         """
+        check_client_auth(api_key=api_key, credentials=credentials, headers=headers)
         self._options = InferenceClientOptions(
             api_key=api_key,
             headers=headers,
@@ -239,17 +270,24 @@ class AsyncInferenceClient:
             chain_id=chain_id,
             environment=environment,
             base_url_override=base_url_override,
+            credentials=credentials,
+        )
+        auth = (
+            None
+            if credentials is None
+            else async_credentials_auth(credentials, origin=self._options.base_url)
         )
         if http_client_override is None:
             request_headers: dict[str, str] = {**(headers or {})}
             # Empty api_key is an advanced opt-out from sending Authorization.
-            if api_key != "":
+            if api_key:
                 request_headers["Authorization"] = f"Bearer {api_key}"
             # No read timeout, matching the JS and Go clients.
             self._http_client = httpx.AsyncClient(
                 base_url=self._options.base_url,
                 headers=with_user_agent(request_headers),
                 timeout=httpx.Timeout(5.0, read=None),
+                auth=auth,
             )
             self.close_http_client_on_close = (
                 True
@@ -263,7 +301,9 @@ class AsyncInferenceClient:
                 if close_http_client_on_close is None
                 else close_http_client_on_close
             )
-        self._api = baseten.client.inferenceapi.AsyncApiClient(self._http_client)
+        self._api = baseten.client.inferenceapi.AsyncApiClient(
+            self._http_client, auth=auth
+        )
 
     @property
     def options(self) -> InferenceClientOptions:

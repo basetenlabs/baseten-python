@@ -34,6 +34,23 @@ async with AsyncManagementClient(api_key="my-api-key") as client:
         print(model.name)
 ```
 
+### Authenticating with workload identity federation
+
+Instead of an API key, a workload can exchange its identity provider's token (for example a projected Kubernetes service account token) for a short-lived Baseten access token under a trust rule. The credentials exchange on first use, cache the access token, and replace it before it expires:
+
+```python
+from baseten.client import ManagementClient, WorkloadIdentityCredentials
+
+credentials = WorkloadIdentityCredentials(
+    trust_rule_id="my-trust-rule-id",
+    identity_token_file="/var/run/secrets/tokens/baseten",
+)
+with ManagementClient(credentials=credentials) as client:
+    ...
+```
+
+`AsyncWorkloadIdentityCredentials` is the same for async clients.
+
 ## Sandboxes
 
 `baseten.sandbox` creates and works with sandboxes. HTTP/2 is used when the `h2` package is installed, which is strongly recommended:

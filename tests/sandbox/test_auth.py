@@ -9,8 +9,8 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import pytest
 
+import baseten.client._token_auth
 import baseten.client.managementapi
-import baseten.sandbox._auth
 from baseten.sandbox import SandboxTokenProviderContext
 from baseten.sandbox._auth import (
     AsyncTokenAuth,
@@ -26,7 +26,7 @@ def _revoked(request: httpx.Request | None = None) -> httpx.Response:
 
 @pytest.fixture(autouse=True)
 def no_revoked_retry_delay(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(baseten.sandbox._auth, "_token_revoked_retry_delay", 0.0)
+    monkeypatch.setattr(baseten.client._token_auth, "_resend_delay_sec", 0.0)
 
 
 class _Server:
@@ -89,8 +89,9 @@ class TestTokenSource:
         assert server.mints[0].headers["Authorization"] == "Bearer key"
         assert json.loads(server.mints[0].content) == {"scopes": ["sandboxes"]}
 
-    def test_refreshes_within_a_minute_of_expiry(self) -> None:
-        server = _Server(expires_in=timedelta(seconds=30))
+    def test_refreshes_at_expiry(self) -> None:
+        # Refresh timing within the lifetime is covered by the token cache tests.
+        server = _Server(expires_in=timedelta(0))
         tokens = server.tokens()
         assert tokens.token() == "token-1"
         assert tokens.token() == "token-2"
@@ -226,6 +227,18 @@ class TestTokenAuth:
             "Bearer token-2",
         ]
 
+    def test_resends_with_new_token_after_invalid_token(self) -> None:
+        server = _Server()
+        server.respond = lambda request: (
+            httpx.Response(
+                401, headers={"WWW-Authenticate": 'Bearer error="invalid_token"'}
+            )
+            if len(server.requests) == 1
+            else httpx.Response(200)
+        )
+        assert _get(server, server.tokens()).status_code == 200
+        assert server.authorizations == ["Bearer token-1", "Bearer token-2"]
+
     def test_tells_caching_provider_which_token_was_revoked(self) -> None:
         server = _Server()
         server.respond = lambda request: (
@@ -245,14 +258,16 @@ class TestTokenAuth:
     ) -> None:
         delays: list[float] = []
         monkeypatch.setattr(
-            baseten.sandbox._auth.time, "sleep", lambda seconds: delays.append(seconds)
+            baseten.client._token_auth.time,
+            "sleep",
+            lambda seconds: delays.append(seconds),
         )
         server = _Server(respond=_revoked)
         response = _get(server, server.tokens())
         assert response.status_code == 401
         assert len(server.requests) == 3
         # Only the second resend waits, to be minted past the revocation.
-        assert delays == [baseten.sandbox._auth._token_revoked_retry_delay]
+        assert delays == [baseten.client._token_auth._resend_delay_sec]
 
     def test_does_not_resend_other_401(self) -> None:
         server = _Server(respond=lambda request: httpx.Response(401))
