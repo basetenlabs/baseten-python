@@ -21,18 +21,18 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: chainguard-actions/actions-checkout@59b7218bfc2eaabc464f1254f6e1dac5bda91d94 # v4.4.0
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: chainguard-actions/astral-sh-setup-uv@d074662c6bd48040f94d5f5eeae1479d285f0177 # v10.3.3
 
       - run: uv sync
 
       - name: Generate docs
         run: uv run poe generate-docs
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: chainguard-actions/actions-upload-pages-artifact@910d554a410bf61031b9fc5b7f6930040f193dc7 # v3.0.1
         with:
           path: _site
 
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: chainguard-actions/actions-deploy-pages@f4d5c29b63bb3df1e6eac647993dd0c3fe33651c # v4.0.5
