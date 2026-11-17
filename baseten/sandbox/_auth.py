@@ -56,40 +56,36 @@ _SANDBOX_TOKEN_REQUEST = baseten.client.managementapi.CreateTokenRequest(
 class TokenSource:
     """Where each request's bearer token comes from.
 
-    Either a caller's token provider, or a token minted from an API key and
-    cached until shortly before it expires. The API key is exchanged for a
-    token because the sandbox APIs do not accept API keys directly. Should that
-    change, only this class changes.
+    Either a caller's token provider, or a token minted through *mint_api* and
+    cached until shortly before it expires. *mint_api* authenticates with an
+    API key or credentials, which are exchanged for a token because the
+    sandbox APIs do not accept them directly. Should that change, only this
+    class changes.
     """
 
     def __init__(
         self,
         *,
-        api_key: str,
         token_provider: SandboxTokenProvider | None,
-        mint_api: baseten.client.managementapi.ApiClient,
+        mint_api: baseten.client.managementapi.ApiClient | None,
     ) -> None:
-        """Create a token source. ``mint_api`` authenticates with the API key."""
-        if token_provider is not None and api_key != "":
-            raise ValueError("api_key must be empty when token_provider is set")
+        """Create a token source.
+
+        With neither *token_provider* nor *mint_api*, no Authorization is
+        sent, which is the advanced opt-out of an empty API key.
+        """
         self._provider = token_provider
         self._cache = (
-            TokenCache(
-                mint=lambda: _access_token(
-                    mint_api.post_token(request=_SANDBOX_TOKEN_REQUEST)
-                ),
-                refresh_before=_TOKEN_EXPIRY_LEEWAY,
-            )
-            if api_key != ""
-            else None
+            None
+            if token_provider is not None or mint_api is None
+            else _token_cache(mint_api)
         )
 
     def token(self, revoked_token: str | None = None) -> str | None:
-        """Return the token for a request.
+        """Return the token for a request, or ``None`` to send no Authorization.
 
         ``revoked_token`` is the token the previous attempt was refused with,
-        if any. ``None`` means no Authorization is sent, which is the advanced
-        opt-out of an empty API key with no token provider.
+        if any.
         """
         if self._provider is not None:
             return self._provider(
@@ -97,8 +93,6 @@ class TokenSource:
             )
         if self._cache is None:
             return None
-        if revoked_token is not None:
-            self.invalidate(revoked_token)
         return self._cache.token().token
 
     def invalidate(self, token: str) -> None:
@@ -113,24 +107,15 @@ class AsyncTokenSource:
     def __init__(
         self,
         *,
-        api_key: str,
         token_provider: AsyncSandboxTokenProvider | None,
-        mint_api: baseten.client.managementapi.AsyncApiClient,
+        mint_api: baseten.client.managementapi.AsyncApiClient | None,
     ) -> None:
-        """Create a token source. ``mint_api`` authenticates with the API key."""
-        if token_provider is not None and api_key != "":
-            raise ValueError("api_key must be empty when token_provider is set")
+        """Create a token source, as :class:`TokenSource` does."""
         self._provider = token_provider
-
-        async def mint() -> AccessToken:
-            return _access_token(
-                await mint_api.post_token(request=_SANDBOX_TOKEN_REQUEST)
-            )
-
         self._cache = (
-            AsyncTokenCache(mint=mint, refresh_before=_TOKEN_EXPIRY_LEEWAY)
-            if api_key != ""
-            else None
+            None
+            if token_provider is not None or mint_api is None
+            else _async_token_cache(mint_api)
         )
 
     async def token(self, revoked_token: str | None = None) -> str | None:
@@ -141,11 +126,9 @@ class AsyncTokenSource:
             )
         if self._cache is None:
             return None
-        if revoked_token is not None:
-            await self.invalidate(revoked_token)
         return (await self._cache.token()).token
 
-    async def invalidate(self, token: str) -> None:
+    def invalidate(self, token: str) -> None:
         """Drop a token the server rejected, so the next request gets a new one."""
         if self._cache is not None:
             self._cache.invalidate(token)
@@ -156,7 +139,7 @@ class TokenAuth(baseten.client._token_auth.TokenAuth):
 
     def __init__(self, tokens: TokenSource) -> None:
         """Create the auth."""
-        super().__init__(tokens.token)
+        super().__init__(tokens.token, tokens.invalidate)
         self.tokens = tokens
 
 
@@ -165,8 +148,24 @@ class AsyncTokenAuth(baseten.client._token_auth.AsyncTokenAuth):
 
     def __init__(self, tokens: AsyncTokenSource) -> None:
         """Create the auth."""
-        super().__init__(tokens.token)
+        super().__init__(tokens.token, tokens.invalidate)
         self.tokens = tokens
+
+
+def _token_cache(mint_api: baseten.client.managementapi.ApiClient) -> TokenCache:
+    return TokenCache(
+        mint=lambda: _access_token(mint_api.post_token(request=_SANDBOX_TOKEN_REQUEST)),
+        refresh_leeway=_TOKEN_EXPIRY_LEEWAY,
+    )
+
+
+def _async_token_cache(
+    mint_api: baseten.client.managementapi.AsyncApiClient,
+) -> AsyncTokenCache:
+    async def mint() -> AccessToken:
+        return _access_token(await mint_api.post_token(request=_SANDBOX_TOKEN_REQUEST))
+
+    return AsyncTokenCache(mint=mint, refresh_leeway=_TOKEN_EXPIRY_LEEWAY)
 
 
 def _access_token(minted: baseten.client.managementapi.Token) -> AccessToken:

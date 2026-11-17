@@ -8,11 +8,11 @@ import httpx
 
 import baseten.client.inferenceapi
 from baseten.client._token_auth import (
-    AccessTokenSource,
-    AsyncAccessTokenSource,
-    async_credentials_auth,
+    AsyncCredentials,
+    AsyncCredentialsAuth,
+    Credentials,
+    CredentialsAuth,
     check_client_auth,
-    credentials_auth,
 )
 from baseten.client._user_agent import with_user_agent
 
@@ -44,8 +44,8 @@ class InferenceClientOptions:
     """Explicit base URL override. When set, *model_id*, *chain_id*, and
     *environment* are ignored."""
 
-    credentials: AccessTokenSource | AsyncAccessTokenSource | None = None
-    """Source of short-lived access tokens, used in place of *api_key*."""
+    credentials: Credentials | AsyncCredentials | None = None
+    """Supplies short-lived access tokens, used in place of *api_key*."""
 
     @property
     def base_url(self) -> str:
@@ -99,7 +99,7 @@ class InferenceClient:
         self,
         *,
         api_key: str | None = None,
-        credentials: AccessTokenSource | None = None,
+        credentials: Credentials | None = None,
         headers: Mapping[str, str] | None = None,
         model_id: str | None = None,
         chain_id: str | None = None,
@@ -113,12 +113,11 @@ class InferenceClient:
         Args:
             api_key: API key for authentication. Exactly one of *api_key* and
                 *credentials* is required.
-            credentials: Source of short-lived access tokens in place of an
+            credentials: Supplies short-lived access tokens in place of an
                 API key, such as :class:`WorkloadIdentityCredentials`. A token
                 is fetched for every request, so a long-lived client picks up
                 refreshed tokens. It is sent only to this client's API host,
-                and a request whose token Baseten refuses is sent again with a
-                new one when the source can drop the refused token.
+                and each request is sent once.
             headers: Additional headers to send on every request.
             model_id: Model ID. Mutually exclusive with *chain_id*.
             chain_id: Chain ID. Mutually exclusive with *model_id*.
@@ -146,7 +145,7 @@ class InferenceClient:
         auth = (
             None
             if credentials is None
-            else credentials_auth(credentials, origin=self._options.base_url)
+            else CredentialsAuth(credentials, origin=self._options.base_url)
         )
         if http_client_override is None:
             request_headers: dict[str, str] = {**(headers or {})}
@@ -232,7 +231,7 @@ class AsyncInferenceClient:
         self,
         *,
         api_key: str | None = None,
-        credentials: AsyncAccessTokenSource | None = None,
+        credentials: AsyncCredentials | None = None,
         headers: Mapping[str, str] | None = None,
         model_id: str | None = None,
         chain_id: str | None = None,
@@ -246,7 +245,7 @@ class AsyncInferenceClient:
         Args:
             api_key: API key for authentication. Exactly one of *api_key* and
                 *credentials* is required.
-            credentials: Source of short-lived access tokens, as for
+            credentials: Supplies short-lived access tokens, as for
                 :class:`InferenceClient`.
             headers: Additional headers to send on every request.
             model_id: Model ID. Mutually exclusive with *chain_id*.
@@ -275,7 +274,7 @@ class AsyncInferenceClient:
         auth = (
             None
             if credentials is None
-            else async_credentials_auth(credentials, origin=self._options.base_url)
+            else AsyncCredentialsAuth(credentials, origin=self._options.base_url)
         )
         if http_client_override is None:
             request_headers: dict[str, str] = {**(headers or {})}

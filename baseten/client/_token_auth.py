@@ -1,8 +1,8 @@
 """What every short-lived Baseten token needs.
 
-A cache that mints a new token shortly before the current one expires, and an
-:class:`httpx.Auth` that sends a request again with a new token when the server
-refuses the current one.
+A cache that mints a new token shortly before the current one expires, an
+:class:`httpx.Auth` that sends a token from :class:`Credentials`, and one that
+sends a request again with a new token when the server refuses the current one.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ import time
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Protocol, runtime_checkable
+from typing import Protocol
 
 import httpx
 
@@ -30,40 +30,31 @@ class AccessToken:
     """When the token expires."""
 
 
-@runtime_checkable
-class AccessTokenSource(Protocol):
-    """Supplies a current access token.
+@dataclass(frozen=True)
+class AccessTokenOptions:
+    """What :class:`Credentials` are told about the token they are asked for.
 
-    A client configured with one calls it before every request, so the source
-    decides when to refresh.
+    Has no fields yet; it lets fields be added without breaking implementations.
     """
 
-    def access_token(self) -> AccessToken:
+
+class Credentials(Protocol):
+    """Supplies a current Baseten access token.
+
+    A client given one as ``credentials`` calls it before every request, so
+    the credentials decide when to refresh.
+    """
+
+    def access_token(self, options: AccessTokenOptions) -> AccessToken:
         """Return a current access token."""
         ...
 
 
-@runtime_checkable
-class AsyncAccessTokenSource(Protocol):
-    """Async form of :class:`AccessTokenSource`."""
+class AsyncCredentials(Protocol):
+    """Async form of :class:`Credentials`."""
 
-    async def access_token(self) -> AccessToken:
+    async def access_token(self, options: AccessTokenOptions) -> AccessToken:
         """Return a current access token."""
-        ...
-
-
-@runtime_checkable
-class AccessTokenInvalidator(Protocol):
-    """Implemented by an access token source that caches tokens.
-
-    When Baseten refuses a token before it expires, for example because it was
-    revoked, a client drops it with :meth:`invalidate_access_token`, asks the
-    source for a new one, and sends the request again. Clients resend only for
-    sources that implement this.
-    """
-
-    def invalidate_access_token(self, token: str) -> None:
-        """Drop *token* if it is still the cached one."""
         ...
 
 
@@ -78,17 +69,17 @@ class _CachedToken:
 
 
 def _cached(
-    token: AccessToken, *, minted_at: datetime, refresh_before: timedelta
+    token: AccessToken, *, minted_at: datetime, refresh_leeway: timedelta
 ) -> _CachedToken:
-    """Cache *token* until *refresh_before* its expiry, capped at half its lifetime.
+    """Cache *token* until *refresh_leeway* before expiry, capped at half its lifetime.
 
-    The cap keeps a token whose lifetime is shorter than the margin from being
+    The cap keeps a token whose lifetime is shorter than the leeway from being
     minted again on every call.
     """
     lifetime = max(token.expires_at - minted_at, timedelta(0))
     return _CachedToken(
         token=token,
-        refresh_at=token.expires_at - min(refresh_before, lifetime / 2),
+        refresh_at=token.expires_at - min(refresh_leeway, lifetime / 2),
     )
 
 
@@ -104,12 +95,12 @@ class TokenCache:
         self,
         *,
         mint: Callable[[], AccessToken],
-        refresh_before: timedelta,
+        refresh_leeway: timedelta,
         now: Callable[[], datetime] = _utc_now,
     ) -> None:
         """Create an empty cache; the first mint happens on first use."""
         self._mint = mint
-        self._refresh_before = refresh_before
+        self._refresh_leeway = refresh_leeway
         self._now = now
         self._lock = threading.Lock()
         self._current: _CachedToken | None = None
@@ -125,7 +116,7 @@ class TokenCache:
             minted_at = self._now()
             token = self._mint()
             self._current = _cached(
-                token, minted_at=minted_at, refresh_before=self._refresh_before
+                token, minted_at=minted_at, refresh_leeway=self._refresh_leeway
             )
             # Returned even if already due, so a skewed clock cannot make every
             # call mint.
@@ -151,12 +142,12 @@ class AsyncTokenCache:
         self,
         *,
         mint: Callable[[], Awaitable[AccessToken]],
-        refresh_before: timedelta,
+        refresh_leeway: timedelta,
         now: Callable[[], datetime] = _utc_now,
     ) -> None:
         """Create an empty cache; the first mint happens on first use."""
         self._mint = mint
-        self._refresh_before = refresh_before
+        self._refresh_leeway = refresh_leeway
         self._now = now
         self._current: _CachedToken | None = None
         self._minting: asyncio.Task[_CachedToken] | None = None
@@ -202,7 +193,7 @@ class AsyncTokenCache:
             minted_at = self._now()
             token = await self._mint()
             self._current = _cached(
-                token, minted_at=minted_at, refresh_before=self._refresh_before
+                token, minted_at=minted_at, refresh_leeway=self._refresh_leeway
             )
             return self._current
         finally:
@@ -228,46 +219,35 @@ class TokenAuth(httpx.Auth):
     *get_token* is called with ``None``, or with the token the server just
     refused, and returns the token to send, or ``None`` to send no
     Authorization. When the server refuses the token (see
-    :func:`is_token_refused`) and the body can be sent again, the request is
-    resent with a new token, at most twice.
+    :func:`is_token_refused`), it is passed to *invalidate*, and the request
+    is sent again with a new token when its body can be, at most twice.
     """
 
     def __init__(
         self,
         get_token: Callable[[str | None], str | None],
-        *,
-        resend_refused: bool = True,
-        origin: str | None = None,
+        invalidate: Callable[[str], None],
     ) -> None:
-        """Create the auth.
-
-        Args:
-            get_token: Returns the token for a request.
-            resend_refused: Whether to resend a request whose token was refused.
-            origin: When set, only requests to this URL's host and port that
-                carry no Authorization of their own are authenticated, so a
-                token never reaches another host through a shared HTTP client.
-        """
+        """Create the auth."""
         self._get_token = get_token
-        self._resend_refused = resend_refused
-        self._origin = None if origin is None else httpx.URL(origin)
+        self._invalidate = invalidate
 
     def sync_auth_flow(
         self, request: httpx.Request
     ) -> Generator[httpx.Request, httpx.Response, None]:
         """Send the request, again with a new token if its token was refused."""
-        if not _applies_to(request, self._origin):
-            yield request
-            return
-        resend = self._resend_refused and _is_replayable(request)
+        replayable = _is_replayable(request)
         refused: str | None = None
         for attempt in range(_MAX_RESENDS + 1):
             token = self._get_token(refused)
             _set_authorization(request, token)
             response = yield request
-            if token is None or not resend or not is_token_refused(response):
+            if token is None or not is_token_refused(response):
                 return
-            if attempt == _MAX_RESENDS:
+            # Dropped even when the request is not sent again, so later
+            # requests do not reuse it.
+            self._invalidate(token)
+            if not replayable or attempt == _MAX_RESENDS:
                 return
             refused = token
             if attempt > 0:
@@ -280,31 +260,26 @@ class AsyncTokenAuth(httpx.Auth):
     def __init__(
         self,
         get_token: Callable[[str | None], Awaitable[str | None]],
-        *,
-        resend_refused: bool = True,
-        origin: str | None = None,
+        invalidate: Callable[[str], None],
     ) -> None:
         """Create the auth, as :class:`TokenAuth` does."""
         self._get_token = get_token
-        self._resend_refused = resend_refused
-        self._origin = None if origin is None else httpx.URL(origin)
+        self._invalidate = invalidate
 
     async def async_auth_flow(
         self, request: httpx.Request
     ) -> AsyncGenerator[httpx.Request, httpx.Response]:
         """Send the request, again with a new token if its token was refused."""
-        if not _applies_to(request, self._origin):
-            yield request
-            return
-        resend = self._resend_refused and _is_replayable(request)
+        replayable = _is_replayable(request)
         refused: str | None = None
         for attempt in range(_MAX_RESENDS + 1):
             token = await self._get_token(refused)
             _set_authorization(request, token)
             response = yield request
-            if token is None or not resend or not is_token_refused(response):
+            if token is None or not is_token_refused(response):
                 return
-            if attempt == _MAX_RESENDS:
+            self._invalidate(token)
+            if not replayable or attempt == _MAX_RESENDS:
                 return
             refused = token
             if attempt > 0:
@@ -330,9 +305,63 @@ def is_token_refused(response: httpx.Response) -> bool:
     )
 
 
-def _applies_to(request: httpx.Request, origin: httpx.URL | None) -> bool:
-    if origin is None:
-        return True
+class CredentialsAuth(httpx.Auth):
+    """Sends a token from :class:`Credentials` on each request to one origin.
+
+    A token is fetched for every request, so a long-lived client picks up
+    refreshed tokens. Each request is sent once; a refusal is returned to the
+    caller as is.
+    """
+
+    def __init__(self, credentials: Credentials, *, origin: str) -> None:
+        """Create the auth.
+
+        Args:
+            credentials: Supplies the token.
+            origin: Only requests to this URL's host and port that carry no
+                Authorization of their own are authenticated, so a token never
+                reaches another host through a shared HTTP client.
+        """
+        if inspect.iscoroutinefunction(credentials.access_token):
+            raise TypeError(
+                "credentials.access_token is async; use the client's async form"
+            )
+        self._credentials = credentials
+        self._origin = httpx.URL(origin)
+
+    def sync_auth_flow(
+        self, request: httpx.Request
+    ) -> Generator[httpx.Request, httpx.Response, None]:
+        """Send the request with the current token."""
+        if _applies_to(request, self._origin):
+            token = self._credentials.access_token(AccessTokenOptions())
+            _set_authorization(request, _non_empty(token))
+        yield request
+
+
+class AsyncCredentialsAuth(httpx.Auth):
+    """Async form of :class:`CredentialsAuth`."""
+
+    def __init__(self, credentials: AsyncCredentials, *, origin: str) -> None:
+        """Create the auth, as :class:`CredentialsAuth` does."""
+        if not inspect.iscoroutinefunction(credentials.access_token):
+            raise TypeError(
+                "credentials.access_token must be async; use the client's sync form"
+            )
+        self._credentials = credentials
+        self._origin = httpx.URL(origin)
+
+    async def async_auth_flow(
+        self, request: httpx.Request
+    ) -> AsyncGenerator[httpx.Request, httpx.Response]:
+        """Send the request with the current token."""
+        if _applies_to(request, self._origin):
+            token = await self._credentials.access_token(AccessTokenOptions())
+            _set_authorization(request, _non_empty(token))
+        yield request
+
+
+def _applies_to(request: httpx.Request, origin: httpx.URL) -> bool:
     return (
         request.url.host == origin.host
         and request.url.port == origin.port
@@ -352,6 +381,12 @@ def _set_authorization(request: httpx.Request, token: str | None) -> None:
         request.headers["Authorization"] = f"Bearer {token}"
 
 
+def _non_empty(token: AccessToken) -> str:
+    if token.token == "":
+        raise ValueError("the credentials returned an empty access token")
+    return token.token
+
+
 def check_client_auth(
     *,
     api_key: str | None,
@@ -367,51 +402,3 @@ def check_client_auth(
         key.lower() == "authorization" for key in headers or {}
     ):
         raise ValueError("headers must not set Authorization when credentials is set")
-
-
-def credentials_auth(credentials: AccessTokenSource, *, origin: str) -> TokenAuth:
-    """Build the auth that sends *credentials*' token to *origin* only."""
-    if inspect.iscoroutinefunction(credentials.access_token):
-        raise TypeError(
-            "credentials.access_token is async; use the client's async form"
-        )
-    invalidator = (
-        credentials if isinstance(credentials, AccessTokenInvalidator) else None
-    )
-
-    def get_token(refused: str | None) -> str:
-        if refused is not None and invalidator is not None:
-            invalidator.invalidate_access_token(refused)
-        return _non_empty(credentials.access_token())
-
-    # Without a way to drop the refused token, the source would return it
-    # again, so the request is sent once.
-    return TokenAuth(get_token, resend_refused=invalidator is not None, origin=origin)
-
-
-def async_credentials_auth(
-    credentials: AsyncAccessTokenSource, *, origin: str
-) -> AsyncTokenAuth:
-    """Async form of :func:`credentials_auth`."""
-    if not inspect.iscoroutinefunction(credentials.access_token):
-        raise TypeError(
-            "credentials.access_token must be async; use the client's sync form"
-        )
-    invalidator = (
-        credentials if isinstance(credentials, AccessTokenInvalidator) else None
-    )
-
-    async def get_token(refused: str | None) -> str:
-        if refused is not None and invalidator is not None:
-            invalidator.invalidate_access_token(refused)
-        return _non_empty(await credentials.access_token())
-
-    return AsyncTokenAuth(
-        get_token, resend_refused=invalidator is not None, origin=origin
-    )
-
-
-def _non_empty(token: AccessToken) -> str:
-    if token.token == "":
-        raise ValueError("the access token source returned an empty token")
-    return token.token

@@ -9,19 +9,17 @@ from pathlib import Path
 import httpx
 import pytest
 
-import baseten.client._token_auth
-import baseten.client.managementapi
 from baseten.client import (
     AccessToken,
+    AccessTokenOptions,
     AsyncInferenceClient,
     AsyncManagementClient,
     AsyncWorkloadIdentityCredentials,
     InferenceClient,
-    InvalidGrantError,
     ManagementClient,
     WorkloadIdentityCredentials,
-    WorkloadIdentityError,
 )
+from baseten.client.managementapi import ResponseError
 
 _BASE_URL = "https://api.test"
 _ORG = {
@@ -30,11 +28,7 @@ _ORG = {
     "allow_personal_api_keys": True,
     "allow_service_account_api_keys": True,
 }
-
-
-@pytest.fixture(autouse=True)
-def no_resend_delay(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(baseten.client._token_auth, "_resend_delay_sec", 0.0)
+_OPTIONS = AccessTokenOptions()
 
 
 class _Server:
@@ -136,21 +130,21 @@ class TestWorkloadIdentityCredentials:
         server = _Server()
         credentials = server.credentials()
         before = datetime.now(UTC)
-        token = credentials.access_token()
+        token = credentials.access_token(_OPTIONS)
         assert token.token == "access-1"
         assert token.expires_at >= before + timedelta(hours=1)
-        assert credentials.access_token().token == "access-1"
+        assert credentials.access_token(_OPTIONS).token == "access-1"
         assert server.assertions == ["idp-jwt"]
 
     def test_refreshes_within_leeway(self) -> None:
         server = _Server(expires_in=600)
-        credentials = server.credentials(refresh_before_expiry=timedelta(minutes=1))
+        credentials = server.credentials(refresh_leeway=timedelta(minutes=1))
         clock = _with_clock(credentials)
-        credentials.access_token()
+        credentials.access_token(_OPTIONS)
         clock.now += timedelta(minutes=8, seconds=59)
-        assert credentials.access_token().token == "access-1"
+        assert credentials.access_token(_OPTIONS).token == "access-1"
         clock.now += timedelta(seconds=1)
-        assert credentials.access_token().token == "access-2"
+        assert credentials.access_token(_OPTIONS).token == "access-2"
 
     def test_leeway_capped_at_half_lifetime(self) -> None:
         # The default five-minute leeway exceeds the lifetime; without the cap
@@ -158,12 +152,12 @@ class TestWorkloadIdentityCredentials:
         server = _Server(expires_in=60)
         credentials = server.credentials()
         clock = _with_clock(credentials)
-        credentials.access_token()
+        credentials.access_token(_OPTIONS)
         clock.now += timedelta(seconds=29)
-        credentials.access_token()
+        credentials.access_token(_OPTIONS)
         assert len(server.assertions) == 1
         clock.now += timedelta(seconds=1)
-        credentials.access_token()
+        credentials.access_token(_OPTIONS)
         assert len(server.assertions) == 2
 
     def test_rereads_token_file_on_every_exchange(self, tmp_path: Path) -> None:
@@ -172,25 +166,25 @@ class TestWorkloadIdentityCredentials:
         path.write_text("jwt-one\n")
         credentials = server.credentials(identity_token_file=path)
         clock = _with_clock(credentials)
-        credentials.access_token()
+        credentials.access_token(_OPTIONS)
         path.write_text("jwt-two")
         clock.now += timedelta(minutes=10)
-        credentials.access_token()
+        credentials.access_token(_OPTIONS)
         assert server.assertions == ["jwt-one", "jwt-two"]
 
     def test_missing_token_file(self, tmp_path: Path) -> None:
         server = _Server()
         credentials = server.credentials(identity_token_file=tmp_path / "missing")
         with pytest.raises(FileNotFoundError):
-            credentials.access_token()
+            credentials.access_token(_OPTIONS)
         assert server.assertions == []
 
     def test_empty_token_file(self, tmp_path: Path) -> None:
         path = tmp_path / "token"
         path.write_text("\n")
         credentials = _Server().credentials(identity_token_file=path)
-        with pytest.raises(WorkloadIdentityError, match="is empty"):
-            credentials.access_token()
+        with pytest.raises(ValueError, match="is empty"):
+            credentials.access_token(_OPTIONS)
 
     def test_invalid_grant_is_explained_and_not_cached(self) -> None:
         server = _Server()
@@ -198,27 +192,49 @@ class TestWorkloadIdentityCredentials:
             400, json={"error": "invalid_grant"}
         )
         credentials = server.credentials()
-        with pytest.raises(InvalidGrantError, match="rule-1"):
-            credentials.access_token()
-        with pytest.raises(InvalidGrantError):
-            credentials.access_token()
+        with pytest.raises(ResponseError) as exc_info:
+            credentials.access_token(_OPTIONS)
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.body == '{"error":"invalid_grant"}'
+        (note,) = exc_info.value.__notes__
+        assert "trust rule rule-1" in note
+        assert "may have expired" in note
+        with pytest.raises(ResponseError):
+            credentials.access_token(_OPTIONS)
         assert len(server.assertions) == 2
 
-    def test_non_json_response(self) -> None:
+    def test_non_json_error_keeps_whole_body(self) -> None:
+        body = "<html>" + "x" * 2000 + "</html>"
         server = _Server()
-        server.exchange_response = _error_response(502, "<html>bad gateway</html>")
-        with pytest.raises(
-            WorkloadIdentityError,
-            match="HTTP 502 with a non-JSON response.*bad gateway",
-        ):
-            server.credentials().access_token()
+        server.exchange_response = _error_response(502, body)
+        with pytest.raises(ResponseError) as exc_info:
+            server.credentials().access_token(_OPTIONS)
+        assert (exc_info.value.status_code, exc_info.value.body) == (502, body)
+        assert not hasattr(exc_info.value, "__notes__")
 
     def test_other_error_status(self) -> None:
         server = _Server()
         server.exchange_response = _error_response(429, '{"error":"rate_limited"}')
-        with pytest.raises(WorkloadIdentityError, match="HTTP 429") as exc_info:
-            server.credentials().access_token()
-        assert not isinstance(exc_info.value, InvalidGrantError)
+        with pytest.raises(ResponseError, match="HTTP 429") as exc_info:
+            server.credentials().access_token(_OPTIONS)
+        assert not hasattr(exc_info.value, "__notes__")
+
+    def test_does_not_follow_redirects(self) -> None:
+        server = _Server()
+        server.exchange_response = lambda: httpx.Response(
+            307, headers={"Location": "https://elsewhere.test/v1/auth/token"}
+        )
+        credentials = WorkloadIdentityCredentials(
+            trust_rule_id="rule-1",
+            identity_token=lambda: "idp-jwt",
+            base_url_override=_BASE_URL,
+            http_client_override=httpx.Client(
+                transport=httpx.MockTransport(server.handle), follow_redirects=True
+            ),
+        )
+        with pytest.raises(ResponseError, match="HTTP 307"):
+            credentials.access_token(_OPTIONS)
+        assert server.assertions == ["idp-jwt"]
 
     @pytest.mark.parametrize(
         "body",
@@ -231,8 +247,8 @@ class TestWorkloadIdentityCredentials:
     def test_malformed_success(self, body: dict[str, object]) -> None:
         server = _Server()
         server.exchange_response = lambda: httpx.Response(200, json=body)
-        with pytest.raises(WorkloadIdentityError):
-            server.credentials().access_token()
+        with pytest.raises(ValueError):
+            server.credentials().access_token(_OPTIONS)
 
     @pytest.mark.parametrize(
         "kwargs",
@@ -243,7 +259,7 @@ class TestWorkloadIdentityCredentials:
             {
                 "trust_rule_id": "r",
                 "identity_token": str,
-                "refresh_before_expiry": timedelta(seconds=-1),
+                "refresh_leeway": timedelta(seconds=-1),
             },
         ],
     )
@@ -270,7 +286,9 @@ class TestAsyncWorkloadIdentityCredentials:
                 transport=httpx.MockTransport(handle)
             ),
         )
-        tasks = [asyncio.create_task(credentials.access_token()) for _ in range(32)]
+        tasks = [
+            asyncio.create_task(credentials.access_token(_OPTIONS)) for _ in range(32)
+        ]
         await asyncio.sleep(0)
         release.set()
         tokens = await asyncio.gather(*tasks)
@@ -287,8 +305,8 @@ class TestAsyncWorkloadIdentityCredentials:
             return "idp-jwt"
 
         credentials = server.async_credentials(identity_token=identity_token)
-        cancelled = asyncio.create_task(credentials.access_token())
-        waiting = asyncio.create_task(credentials.access_token())
+        cancelled = asyncio.create_task(credentials.access_token(_OPTIONS))
+        waiting = asyncio.create_task(credentials.access_token(_OPTIONS))
         await asyncio.sleep(0)
         cancelled.cancel()
         release.set()
@@ -305,8 +323,8 @@ class TestAsyncWorkloadIdentityCredentials:
         credentials = _Server().async_credentials(
             identity_token=identity_token, exchange_timeout_sec=0.01
         )
-        with pytest.raises(WorkloadIdentityError, match="timed out"):
-            await credentials.access_token()
+        with pytest.raises(TimeoutError, match="timed out"):
+            await credentials.access_token(_OPTIONS)
 
     @pytest.mark.asyncio
     async def test_rereads_token_file(self, tmp_path: Path) -> None:
@@ -315,10 +333,10 @@ class TestAsyncWorkloadIdentityCredentials:
         path.write_text("jwt-one")
         credentials = server.async_credentials(identity_token_file=path)
         clock = _with_clock(credentials)
-        await credentials.access_token()
+        await credentials.access_token(_OPTIONS)
         path.write_text("jwt-two")
         clock.now += timedelta(minutes=10)
-        await credentials.access_token()
+        await credentials.access_token(_OPTIONS)
         assert server.assertions == ["jwt-one", "jwt-two"]
 
 
@@ -364,37 +382,41 @@ class TestClientsWithCredentials:
         await inference.http_client.get("/anything")
         assert server.authorizations == ["Bearer access-1", "Bearer access-1"]
 
-    def test_resends_refused_token(self) -> None:
+    def test_returns_refusal_without_resending(self) -> None:
+        # A 401 can come from the model itself, so it is the caller's to see.
         server = _Server()
         server.respond = _refuse_access_1
         management = _management(server, server.credentials())
-        management.api.get_organizations_me()
-        assert server.authorizations == ["Bearer access-1", "Bearer access-2"]
+        with pytest.raises(ResponseError, match="HTTP 401"):
+            management.api.get_organizations_me()
+        assert server.authorizations == ["Bearer access-1"]
 
     @pytest.mark.asyncio
-    async def test_async_resends_refused_token(self) -> None:
+    async def test_async_returns_refusal_without_resending(self) -> None:
         server = _Server()
         server.respond = _refuse_access_1
-        management = AsyncManagementClient(
+        inference = AsyncInferenceClient(
             credentials=server.async_credentials(), base_url_override=_BASE_URL
         )
-        management.http_client._transport = httpx.MockTransport(server.handle_async)  # type: ignore[attr-defined]
-        await management.api.get_organizations_me()
-        assert server.authorizations == ["Bearer access-1", "Bearer access-2"]
+        inference.http_client._transport = httpx.MockTransport(server.handle_async)  # type: ignore[attr-defined]
+        response = await inference.http_client.get("/predict")
+        assert response.status_code == 401
+        assert server.authorizations == ["Bearer access-1"]
 
-    def test_sends_once_for_source_without_invalidation(self) -> None:
-        class Source:
-            def access_token(self) -> AccessToken:
+    def test_accepts_own_credentials(self) -> None:
+        seen: list[AccessTokenOptions] = []
+
+        class Own:
+            def access_token(self, options: AccessTokenOptions) -> AccessToken:
+                seen.append(options)
                 return AccessToken(
-                    token="access-1", expires_at=datetime.now(UTC) + timedelta(hours=1)
+                    token="own", expires_at=datetime.now(UTC) + timedelta(hours=1)
                 )
 
         server = _Server()
-        server.respond = _refuse_access_1
-        management = _management(server, Source())
-        with pytest.raises(baseten.client.managementapi.ResponseError):
-            management.api.get_organizations_me()
-        assert server.authorizations == ["Bearer access-1"]
+        _management(server, Own()).api.get_organizations_me()
+        assert server.authorizations == ["Bearer own"]
+        assert seen == [AccessTokenOptions()]
 
     def test_leaves_other_hosts_alone(self) -> None:
         server = _Server()

@@ -8,11 +8,11 @@ import httpx
 
 import baseten.client.managementapi
 from baseten.client._token_auth import (
-    AccessTokenSource,
-    AsyncAccessTokenSource,
-    async_credentials_auth,
+    AsyncCredentials,
+    AsyncCredentialsAuth,
+    Credentials,
+    CredentialsAuth,
     check_client_auth,
-    credentials_auth,
 )
 from baseten.client._user_agent import with_user_agent
 
@@ -34,8 +34,8 @@ class ManagementClientOptions:
     base_url_override: str | None = None
     """Explicit base URL override, or ``None`` to use the default."""
 
-    credentials: AccessTokenSource | AsyncAccessTokenSource | None = None
-    """Source of short-lived access tokens, used in place of *api_key*."""
+    credentials: Credentials | AsyncCredentials | None = None
+    """Supplies short-lived access tokens, used in place of *api_key*."""
 
     @property
     def base_url(self) -> str:
@@ -61,7 +61,7 @@ class ManagementClient:
         self,
         *,
         api_key: str | None = None,
-        credentials: AccessTokenSource | None = None,
+        credentials: Credentials | None = None,
         headers: Mapping[str, str] | None = None,
         base_url_override: str | None = None,
         http_client_override: httpx.Client | None = None,
@@ -72,12 +72,11 @@ class ManagementClient:
         Args:
             api_key: API key for authentication. Exactly one of *api_key* and
                 *credentials* is required.
-            credentials: Source of short-lived access tokens in place of an
+            credentials: Supplies short-lived access tokens in place of an
                 API key, such as :class:`WorkloadIdentityCredentials`. A token
                 is fetched for every request, so a long-lived client picks up
                 refreshed tokens. It is sent only to this client's API host,
-                and a request whose token Baseten refuses is sent again with a
-                new one when the source can drop the refused token.
+                and each request is sent once.
             headers: Additional headers to send on every request.
             base_url_override: Override the default base URL. When ``None``,
                 :meth:`default_base_url` is used.
@@ -99,7 +98,7 @@ class ManagementClient:
         auth = (
             None
             if credentials is None
-            else credentials_auth(credentials, origin=self._options.base_url)
+            else CredentialsAuth(credentials, origin=self._options.base_url)
         )
         if http_client_override is None:
             request_headers: dict[str, str] = {**(headers or {})}
@@ -174,7 +173,7 @@ class AsyncManagementClient:
         self,
         *,
         api_key: str | None = None,
-        credentials: AsyncAccessTokenSource | None = None,
+        credentials: AsyncCredentials | None = None,
         headers: Mapping[str, str] | None = None,
         base_url_override: str | None = None,
         http_client_override: httpx.AsyncClient | None = None,
@@ -185,7 +184,7 @@ class AsyncManagementClient:
         Args:
             api_key: API key for authentication. Exactly one of *api_key* and
                 *credentials* is required.
-            credentials: Source of short-lived access tokens, as for
+            credentials: Supplies short-lived access tokens, as for
                 :class:`ManagementClient`.
             headers: Additional headers to send on every request.
             base_url_override: Override the default base URL. When ``None``,
@@ -208,7 +207,7 @@ class AsyncManagementClient:
         auth = (
             None
             if credentials is None
-            else async_credentials_auth(credentials, origin=self._options.base_url)
+            else AsyncCredentialsAuth(credentials, origin=self._options.base_url)
         )
         if http_client_override is None:
             request_headers: dict[str, str] = {**(headers or {})}

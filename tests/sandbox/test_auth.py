@@ -69,13 +69,14 @@ class _Server:
 
     def tokens(self, *, api_key: str = "key", provider=None) -> TokenSource:
         return TokenSource(
-            api_key=api_key,
             token_provider=provider,
             mint_api=baseten.client.managementapi.ApiClient(
                 httpx.Client(transport=httpx.MockTransport(self.handle)),
                 base_url="https://api.test",
                 headers={"Authorization": f"Bearer {api_key}"},
-            ),
+            )
+            if api_key
+            else None,
         )
 
 
@@ -147,10 +148,6 @@ class TestTokenSource:
         assert tokens.token() == "provided-1"
         assert tokens.token(revoked_token="provided-1") == "provided-2"
         assert [context.revoked_token for context in contexts] == [None, "provided-1"]
-
-    def test_rejects_api_key_alongside_provider(self) -> None:
-        with pytest.raises(ValueError, match="api_key must be empty"):
-            _Server().tokens(provider=lambda context: "token")
 
     def test_no_token_for_empty_api_key_without_provider(self) -> None:
         server = _Server()
@@ -274,16 +271,18 @@ class TestTokenAuth:
         assert _get(server, server.tokens()).status_code == 401
         assert len(server.requests) == 1
 
-    def test_does_not_resend_stream_body(self) -> None:
+    def test_does_not_resend_stream_body_but_drops_its_token(self) -> None:
         server = _Server(respond=_revoked)
+        tokens = server.tokens()
         with httpx.Client(transport=httpx.MockTransport(server.handle)) as client:
             response = client.post(
                 "https://sbx.test/upload",
                 content=iter([b"chunk"]),
-                auth=TokenAuth(server.tokens()),
+                auth=TokenAuth(tokens),
             )
         assert response.status_code == 401
         assert len(server.requests) == 1
+        assert tokens.token() == "token-2"
 
     def test_sends_no_authorization_without_token(self) -> None:
         server = _Server()
@@ -350,11 +349,12 @@ def _async_tokens(
         return server.handle(request)
 
     return AsyncTokenSource(
-        api_key=api_key,
         token_provider=provider,
         mint_api=baseten.client.managementapi.AsyncApiClient(
             httpx.AsyncClient(transport=httpx.MockTransport(handle)),
             base_url="https://api.test",
             headers={"Authorization": f"Bearer {api_key}"},
-        ),
+        )
+        if api_key
+        else None,
     )

@@ -27,37 +27,33 @@ from baseten.client._sandbox import (
 )
 from baseten.client._token_auth import (
     AccessToken,
-    AccessTokenInvalidator,
-    AccessTokenSource,
-    AsyncAccessTokenSource,
+    AccessTokenOptions,
+    AsyncCredentials,
+    Credentials,
 )
 from baseten.client._workload_identity import (
     AsyncIdentityTokenProvider,
     AsyncWorkloadIdentityCredentials,
     IdentityTokenProvider,
-    InvalidGrantError,
     WorkloadIdentityCredentials,
-    WorkloadIdentityError,
 )
 
 __all__ = [
     "AccessToken",
-    "AccessTokenInvalidator",
-    "AccessTokenSource",
-    "AsyncAccessTokenSource",
+    "AccessTokenOptions",
+    "AsyncCredentials",
     "AsyncIdentityTokenProvider",
     "AsyncInferenceClient",
     "AsyncManagementClient",
     "AsyncSandboxClient",
     "AsyncWorkloadIdentityCredentials",
+    "Credentials",
     "IdentityTokenProvider",
     "InferenceClient",
     "InferenceClientOptions",
-    "InvalidGrantError",
     "ManagementClient",
     "ManagementClientOptions",
     "SandboxClient",
     "SandboxClientOptions",
     "WorkloadIdentityCredentials",
-    "WorkloadIdentityError",
 ]

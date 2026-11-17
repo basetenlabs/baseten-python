@@ -46,11 +46,11 @@ class _Mints:
 
 
 def _cache(
-    lifetime: timedelta, refresh_before: timedelta
+    lifetime: timedelta, refresh_leeway: timedelta
 ) -> tuple[TokenCache, _Clock, _Mints]:
     clock = _Clock()
     mints = _Mints(clock, lifetime)
-    cache = TokenCache(mint=mints.mint, refresh_before=refresh_before, now=clock)
+    cache = TokenCache(mint=mints.mint, refresh_leeway=refresh_leeway, now=clock)
     return cache, clock, mints
 
 
@@ -109,7 +109,7 @@ class TestTokenCache:
             release.wait()
             return mints.mint()
 
-        cache = TokenCache(mint=mint, refresh_before=timedelta(minutes=1), now=clock)
+        cache = TokenCache(mint=mint, refresh_leeway=timedelta(minutes=1), now=clock)
         errors: list[BaseException] = []
         results: list[str] = []
 
@@ -137,7 +137,7 @@ class TestAsyncTokenCache:
         clock = _Clock()
         mints = _Mints(clock, timedelta(minutes=1))
         cache = AsyncTokenCache(
-            mint=mints.mint_async, refresh_before=timedelta(minutes=5), now=clock
+            mint=mints.mint_async, refresh_leeway=timedelta(minutes=5), now=clock
         )
         assert (await cache.token()).token == "token-1"
         clock.now += timedelta(seconds=29)
@@ -156,7 +156,7 @@ class TestAsyncTokenCache:
             return mints.mint()
 
         cache = AsyncTokenCache(
-            mint=mint, refresh_before=timedelta(minutes=1), now=clock
+            mint=mint, refresh_leeway=timedelta(minutes=1), now=clock
         )
         mints.failures = 1
         first = asyncio.create_task(cache.token())
@@ -173,7 +173,7 @@ class TestAsyncTokenCache:
         clock = _Clock()
         mints = _Mints(clock, timedelta(hours=1))
         cache = AsyncTokenCache(
-            mint=mints.mint_async, refresh_before=timedelta(minutes=1), now=clock
+            mint=mints.mint_async, refresh_leeway=timedelta(minutes=1), now=clock
         )
         await cache.token()
         cache.invalidate("token-0")
