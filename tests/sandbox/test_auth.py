@@ -224,17 +224,13 @@ class TestTokenAuth:
             "Bearer token-2",
         ]
 
-    def test_resends_with_new_token_after_invalid_token(self) -> None:
+    def test_does_not_resend_after_invalid_token_challenge(self) -> None:
         server = _Server()
-        server.respond = lambda request: (
-            httpx.Response(
-                401, headers={"WWW-Authenticate": 'Bearer error="invalid_token"'}
-            )
-            if len(server.requests) == 1
-            else httpx.Response(200)
+        server.respond = lambda request: httpx.Response(
+            401, headers={"WWW-Authenticate": 'Bearer error="invalid_token"'}
         )
-        assert _get(server, server.tokens()).status_code == 200
-        assert server.authorizations == ["Bearer token-1", "Bearer token-2"]
+        assert _get(server, server.tokens()).status_code == 401
+        assert server.authorizations == ["Bearer token-1"]
 
     def test_tells_caching_provider_which_token_was_revoked(self) -> None:
         server = _Server()

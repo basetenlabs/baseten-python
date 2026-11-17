@@ -186,14 +186,10 @@ class TestAsyncTokenCache:
     ("status", "headers", "refused"),
     [
         (401, {"x-blaxel-error-code": "TOKEN_REVOKED"}, True),
-        (
-            401,
-            {"WWW-Authenticate": 'Bearer realm="baseten", error="invalid_token"'},
-            True,
-        ),
+        (401, {"WWW-Authenticate": 'Bearer error="invalid_token"'}, False),
         (401, {}, False),
         (401, {"WWW-Authenticate": 'Bearer realm="baseten"'}, False),
-        (403, {"WWW-Authenticate": 'Bearer error="invalid_token"'}, False),
+        (403, {"x-blaxel-error-code": "TOKEN_REVOKED"}, False),
     ],
 )
 def test_is_token_refused(status: int, headers: dict[str, str], refused: bool) -> None:

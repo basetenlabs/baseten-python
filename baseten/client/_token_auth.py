@@ -293,15 +293,10 @@ def is_token_refused(response: httpx.Response) -> bool:
     was done, so sending it again with a new token is safe even when it has
     side effects.
     """
-    if response.status_code != 401:
-        return False
     # Sandboxes, and the control plane for sandbox tokens, send this header.
-    if response.headers.get("x-blaxel-error-code") == "TOKEN_REVOKED":
-        return True
-    # The RFC 6750 response to a refused access token.
-    return any(
-        'error="invalid_token"' in challenge
-        for challenge in response.headers.get_list("www-authenticate")
+    return (
+        response.status_code == 401
+        and response.headers.get("x-blaxel-error-code") == "TOKEN_REVOKED"
     )
 
 
