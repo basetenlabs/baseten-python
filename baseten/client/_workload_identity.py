@@ -9,6 +9,7 @@ from typing import Any, TypeAlias
 
 import httpx
 
+from baseten.client._management import ManagementClient
 from baseten.client._token_auth import (
     AccessToken,
     AccessTokenOptions,
@@ -22,8 +23,6 @@ from baseten.client.managementapi import ResponseError
 # The exchange takes an RFC 8693 request naming the trust rule as its audience.
 _TOKEN_EXCHANGE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:token-exchange"
 _JWT_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:jwt"
-
-_DEFAULT_BASE_URL = "https://api.baseten.co"
 
 IdentityTokenProvider: TypeAlias = Callable[[], str]
 """Returns the identity provider's JWT. Called on every exchange."""
@@ -43,25 +42,30 @@ class _Exchange:
         has_identity_token: bool,
         base_url_override: str | None,
         refresh_leeway: timedelta,
-        exchange_timeout_sec: float,
+        exchange_timeout: timedelta,
     ) -> None:
         if (identity_token_file is None) == (not has_identity_token):
             raise ValueError(
                 "exactly one of identity_token_file and identity_token is required"
             )
-        if trust_rule_id == "":
+        if identity_token_file is not None and os.fspath(identity_token_file) == "":
+            raise ValueError("identity_token_file must not be empty")
+        if trust_rule_id.strip() == "":
             raise ValueError("trust_rule_id is required")
         if refresh_leeway < timedelta(0):
             raise ValueError("refresh_leeway must not be negative")
-        if exchange_timeout_sec <= 0:
-            raise ValueError("exchange_timeout_sec must be positive")
+        if exchange_timeout <= timedelta(0):
+            raise ValueError("exchange_timeout must be positive")
         self.trust_rule_id = trust_rule_id
         self.identity_token_file = (
             None if identity_token_file is None else Path(identity_token_file)
         )
-        base_url = (base_url_override or _DEFAULT_BASE_URL).rstrip("/")
+        base_url = (base_url_override or ManagementClient.default_base_url()).rstrip(
+            "/"
+        )
         self.url = f"{base_url}/v1/auth/token"
-        self.timeout = httpx.Timeout(exchange_timeout_sec)
+        self.timeout_sec = exchange_timeout.total_seconds()
+        self.timeout = httpx.Timeout(self.timeout_sec)
         self.headers = with_user_agent({"Accept": "application/json"})
 
     def read_identity_token_file(self) -> str:
@@ -180,7 +184,7 @@ class WorkloadIdentityCredentials:
         identity_token: IdentityTokenProvider | None = None,
         base_url_override: str | None = None,
         refresh_leeway: timedelta = timedelta(minutes=5),
-        exchange_timeout_sec: float = 10.0,
+        exchange_timeout: timedelta = timedelta(seconds=10),
         http_client_override: httpx.Client | None = None,
     ) -> None:
         """Validate the options. Baseten is not contacted until first use.
@@ -196,11 +200,14 @@ class WorkloadIdentityCredentials:
             identity_token: Returns the identity provider's JWT. Called on
                 every exchange.
             base_url_override: Management API base URL the exchange is sent
-                to. ``None`` uses ``https://api.baseten.co``.
+                to. ``None`` uses :meth:`ManagementClient.default_base_url`.
+                Must point at the same Baseten environment as the clients
+                given these credentials, since a token is accepted only by
+                the environment that issued it.
             refresh_leeway: How long before expiry the access token is
                 replaced, capped at half the token's lifetime so a short-lived
                 token is still reused.
-            exchange_timeout_sec: Bounds each phase of one exchange, which
+            exchange_timeout: Bounds each phase of one exchange, which
                 every caller waiting for a token shares.
             http_client_override: HTTP client to send the exchange with.
                 ``None`` uses a new one per exchange.
@@ -211,7 +218,7 @@ class WorkloadIdentityCredentials:
             has_identity_token=identity_token is not None,
             base_url_override=base_url_override,
             refresh_leeway=refresh_leeway,
-            exchange_timeout_sec=exchange_timeout_sec,
+            exchange_timeout=exchange_timeout,
         )
         self._identity_token = identity_token
         self._http_client = http_client_override
@@ -258,13 +265,13 @@ class AsyncWorkloadIdentityCredentials:
         identity_token: AsyncIdentityTokenProvider | None = None,
         base_url_override: str | None = None,
         refresh_leeway: timedelta = timedelta(minutes=5),
-        exchange_timeout_sec: float = 10.0,
+        exchange_timeout: timedelta = timedelta(seconds=10),
         http_client_override: httpx.AsyncClient | None = None,
     ) -> None:
         """Validate the options, as :class:`WorkloadIdentityCredentials` does.
 
-        Here *exchange_timeout_sec* bounds the whole exchange, including
-        *identity_token*.
+        Here *exchange_timeout* bounds the whole exchange, including
+        *identity_token* and reading *identity_token_file*.
         """
         self._exchange = _Exchange(
             trust_rule_id=trust_rule_id,
@@ -272,11 +279,10 @@ class AsyncWorkloadIdentityCredentials:
             has_identity_token=identity_token is not None,
             base_url_override=base_url_override,
             refresh_leeway=refresh_leeway,
-            exchange_timeout_sec=exchange_timeout_sec,
+            exchange_timeout=exchange_timeout,
         )
         self._identity_token = identity_token
         self._http_client = http_client_override
-        self._exchange_timeout_sec = exchange_timeout_sec
         # Replaced in tests.
         self._now: Callable[[], datetime] = _utc_now
         self._cache = AsyncTokenCache(
@@ -291,19 +297,22 @@ class AsyncWorkloadIdentityCredentials:
 
     async def _exchange_token(self) -> AccessToken:
         try:
-            async with asyncio.timeout(self._exchange_timeout_sec):
+            async with asyncio.timeout(self._exchange.timeout_sec):
                 return await self._exchange_once()
         except TimeoutError as e:
             raise TimeoutError(
                 "workload identity token exchange timed out after "
-                f"{self._exchange_timeout_sec}s"
+                f"{self._exchange.timeout_sec}s"
             ) from e
 
     async def _exchange_once(self) -> AccessToken:
         if self._identity_token is not None:
             identity_token = await self._identity_token()
         else:
-            identity_token = self._exchange.read_identity_token_file()
+            # Off the event loop, since the file system can be slow.
+            identity_token = await asyncio.to_thread(
+                self._exchange.read_identity_token_file
+            )
         post_kwargs = self._exchange.post_kwargs(self._exchange.body(identity_token))
         # Taken before sending, so the computed expiry errs early.
         issued_at = self._now()

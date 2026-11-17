@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import socket
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -236,6 +237,21 @@ class TestWorkloadIdentityCredentials:
             credentials.access_token(_OPTIONS)
         assert server.assertions == ["idp-jwt"]
 
+    def test_exchange_timeout(self) -> None:
+        # Accepts the connection but never answers it.
+        with socket.socket() as listener:
+            listener.bind(("127.0.0.1", 0))
+            listener.listen()
+            host, port = listener.getsockname()
+            credentials = WorkloadIdentityCredentials(
+                trust_rule_id="rule-1",
+                identity_token=lambda: "idp-jwt",
+                base_url_override=f"http://{host}:{port}",
+                exchange_timeout=timedelta(milliseconds=100),
+            )
+            with pytest.raises(httpx.TimeoutException):
+                credentials.access_token(_OPTIONS)
+
     @pytest.mark.parametrize(
         "body",
         [
@@ -256,6 +272,13 @@ class TestWorkloadIdentityCredentials:
             {"trust_rule_id": "r"},
             {"trust_rule_id": "r", "identity_token_file": "/f", "identity_token": str},
             {"trust_rule_id": "", "identity_token": str},
+            {"trust_rule_id": "  ", "identity_token": str},
+            {"trust_rule_id": "r", "identity_token_file": ""},
+            {
+                "trust_rule_id": "r",
+                "identity_token": str,
+                "exchange_timeout": timedelta(0),
+            },
             {
                 "trust_rule_id": "r",
                 "identity_token": str,
@@ -321,10 +344,43 @@ class TestAsyncWorkloadIdentityCredentials:
             return "never"
 
         credentials = _Server().async_credentials(
-            identity_token=identity_token, exchange_timeout_sec=0.01
+            identity_token=identity_token,
+            exchange_timeout=timedelta(milliseconds=10),
         )
         with pytest.raises(TimeoutError, match="timed out"):
             await credentials.access_token(_OPTIONS)
+
+    @pytest.mark.asyncio
+    async def test_invalid_grant_is_explained(self) -> None:
+        server = _Server()
+        server.exchange_response = lambda: httpx.Response(
+            400, json={"error": "invalid_grant"}
+        )
+        with pytest.raises(ResponseError) as exc_info:
+            await server.async_credentials().access_token(_OPTIONS)
+        assert exc_info.value.status_code == 400
+        (note,) = exc_info.value.__notes__
+        assert "trust rule rule-1" in note
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("response", "match"),
+        [
+            (httpx.Response(200, text="<html>"), "not JSON"),
+            (httpx.Response(200, json=["a"]), "no access_token"),
+            (
+                httpx.Response(200, json={"access_token": "a", "token_type": "Bearer"}),
+                "expires_in",
+            ),
+        ],
+    )
+    async def test_malformed_success(
+        self, response: httpx.Response, match: str
+    ) -> None:
+        server = _Server()
+        server.exchange_response = lambda: response
+        with pytest.raises(ValueError, match=match):
+            await server.async_credentials().access_token(_OPTIONS)
 
     @pytest.mark.asyncio
     async def test_rereads_token_file(self, tmp_path: Path) -> None:
@@ -438,6 +494,35 @@ class TestClientsWithCredentials:
         management = _management(server, server.credentials())
         management.http_client.get("/start", follow_redirects=True)
         assert server.authorizations == ["Bearer access-1", None]
+
+    def test_management_with_http_client_override(self) -> None:
+        server = _Server()
+        http_client = httpx.Client(
+            base_url=_BASE_URL, transport=httpx.MockTransport(server.handle)
+        )
+        # No base_url_override: the token goes where the override sends
+        # requests, not to the default base URL.
+        management = ManagementClient(
+            credentials=server.credentials(), http_client_override=http_client
+        )
+        management.api.get_organizations_me()
+        # Only the API client authenticates; the HTTP client is the caller's.
+        management.http_client.get("/direct")
+        assert server.authorizations == ["Bearer access-1", None]
+
+    def test_inference_with_http_client_override(self) -> None:
+        server = _Server()
+        server.respond = lambda request: httpx.Response(202)
+        http_client = httpx.Client(
+            base_url="https://model-x.api.test",
+            transport=httpx.MockTransport(server.handle),
+        )
+        # Neither model_id nor chain_id, which only the default URL needs.
+        inference = InferenceClient(
+            credentials=server.credentials(), http_client_override=http_client
+        )
+        inference.api.wake(env_name="production")
+        assert server.authorizations == ["Bearer access-1"]
 
     def test_validates_auth_options(self) -> None:
         credentials = _Server().credentials()

@@ -12,7 +12,7 @@ import inspect
 import threading
 import time
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
@@ -23,8 +23,8 @@ import httpx
 class AccessToken:
     """A short-lived Baseten access token, sent as ``Authorization: Bearer``."""
 
-    token: str
-    """The bearer token."""
+    token: str = field(repr=False)
+    """The bearer token, left out of the repr so logging it does not leak it."""
 
     expires_at: datetime
     """When the token expires."""
@@ -83,12 +83,21 @@ def _cached(
     )
 
 
+class _Mint:
+    """One call to a :class:`TokenCache`'s mint; its result is set before *done*."""
+
+    def __init__(self) -> None:
+        self.done = threading.Event()
+        self.result: _CachedToken | None = None
+        self.error: BaseException | None = None
+
+
 class TokenCache:
     """Holds one token and mints a new one when it is due for refresh.
 
-    Safe for use from several threads. Concurrent callers on a cold cache share
-    one mint. *mint* must bound its own duration, since every waiting caller
-    waits on it.
+    Safe for use from several threads. Concurrent callers share one mint,
+    which runs on the thread of the caller that started it. *mint* must bound
+    its own duration, since every waiting caller waits on it.
     """
 
     def __init__(
@@ -103,32 +112,95 @@ class TokenCache:
         self._refresh_leeway = refresh_leeway
         self._now = now
         self._lock = threading.Lock()
-        self._current: _CachedToken | None = None
+        self._current: _Mint | None = None
+        # The token last dropped for being due for refresh. Still valid until
+        # it expires, so it stands in when the refresh fails.
+        self._previous: AccessToken | None = None
 
     def token(self) -> AccessToken:
         """Return the cached token, minting one when none is cached or it is due."""
-        # Held across the mint, so a burst on a cold cache sends one mint. A
-        # caller that waited on a failed mint then makes one of its own.
-        with self._lock:
-            current = self._current
-            if current is not None and self._now() < current.refresh_at:
-                return current.token
-            minted_at = self._now()
-            token = self._mint()
-            self._current = _cached(
-                token, minted_at=minted_at, refresh_leeway=self._refresh_leeway
-            )
-            # Returned even if already due, so a skewed clock cannot make every
-            # call mint.
-            return token
+        joined_failure = False
+        while True:
+            with self._lock:
+                mint = self._current
+                started = mint is None
+                if mint is None:
+                    mint = _Mint()
+                    self._current = mint
+            if started:
+                self._run_mint(mint)
+            else:
+                mint.done.wait()
+            if mint.error is not None:
+                # Interrupted rather than failed, so the starter's own
+                # exception is not raised on another thread.
+                if not started and not isinstance(mint.error, Exception):
+                    continue
+                # Another caller's failed mint gets one more try, which may
+                # be this caller's own or one shared with other such callers;
+                # the failed one already left the cache.
+                if not started and not joined_failure:
+                    joined_failure = True
+                    continue
+                fallback = self._fallback()
+                if fallback is not None:
+                    return fallback
+                raise mint.error
+            assert mint.result is not None
+            # A token this caller just minted is used even if already due, so
+            # a skewed clock cannot loop here forever.
+            if started or self._now() < mint.result.refresh_at:
+                return mint.result.token
+            with self._lock:
+                if self._current is mint:
+                    self._current = None
+                    self._previous = mint.result.token
 
     def invalidate(self, token: str) -> None:
         """Drop *token* if it is still the cached one."""
         with self._lock:
+            if self._previous is not None and self._previous.token == token:
+                self._previous = None
+            current = self._current
             # Compared by value, so a refusal of an older token never discards
-            # a newer one another caller already minted.
-            if self._current is not None and self._current.token.token == token:
+            # a newer one another caller already minted. One still minting is
+            # newer than any token a caller could have sent.
+            if (
+                current is not None
+                and current.result is not None
+                and current.result.token.token == token
+            ):
                 self._current = None
+
+    def _fallback(self) -> AccessToken | None:
+        # A refresh that fails while the replaced token is still valid falls
+        # back to it, so a brief outage of the minting endpoint does not fail
+        # requests the old token can still serve.
+        with self._lock:
+            previous = self._previous
+        if previous is not None and self._now() < previous.expires_at:
+            return previous
+        return None
+
+    def _run_mint(self, mint: _Mint) -> None:
+        """Run *mint*, keeping a ``KeyboardInterrupt`` or the like propagating."""
+        try:
+            minted_at = self._now()
+            mint.result = _cached(
+                self._mint(), minted_at=minted_at, refresh_leeway=self._refresh_leeway
+            )
+            with self._lock:
+                self._previous = None
+        except BaseException as e:
+            mint.error = e
+            # Not cached, so the next caller tries again.
+            with self._lock:
+                if self._current is mint:
+                    self._current = None
+            if not isinstance(e, Exception):
+                raise
+        finally:
+            mint.done.set()
 
 
 class AsyncTokenCache:
@@ -149,55 +221,73 @@ class AsyncTokenCache:
         self._mint = mint
         self._refresh_leeway = refresh_leeway
         self._now = now
-        self._current: _CachedToken | None = None
-        self._minting: asyncio.Task[_CachedToken] | None = None
+        self._current: asyncio.Task[_CachedToken] | None = None
+        # As in TokenCache.
+        self._previous: AccessToken | None = None
 
     async def token(self) -> AccessToken:
         """Return the cached token, as :meth:`TokenCache.token` does."""
+        joined_failure = False
         while True:
-            current = self._current
-            if current is not None and self._now() < current.refresh_at:
-                return current.token
-            started = self._minting is None
-            if self._minting is None:
-                self._minting = asyncio.create_task(self._run_mint())
+            task = self._current
+            started = task is None
+            if task is None:
+                task = asyncio.create_task(self._run_mint())
                 # Retrieved here so a failure no caller is left to see is not
                 # reported as never retrieved.
-                self._minting.add_done_callback(
-                    lambda task: task.cancelled() or task.exception()
-                )
+                task.add_done_callback(lambda t: t.cancelled() or t.exception())
+                self._current = task
             try:
-                minted = await asyncio.shield(self._minting)
+                minted = await asyncio.shield(task)
             except Exception:
-                # Another caller's failed mint gets one more try of this
-                # caller's own; the failed one already left the cache.
-                if started:
-                    raise
-                continue
+                # As in TokenCache: at most one more try after joining
+                # another caller's failed mint.
+                if not started and not joined_failure:
+                    joined_failure = True
+                    continue
+                previous = self._previous
+                if previous is not None and self._now() < previous.expires_at:
+                    return previous
+                raise
             # A token this caller just minted is used even if already due, so
             # a skewed clock cannot loop here forever.
             if started or self._now() < minted.refresh_at:
                 return minted.token
-            if self._current is minted:
+            if self._current is task:
                 self._current = None
+                self._previous = minted.token
 
     def invalidate(self, token: str) -> None:
         """Drop *token* if it is still the cached one."""
+        if self._previous is not None and self._previous.token == token:
+            self._previous = None
+        current = self._current
         # Compared by value, so a refusal of an older token never discards a
         # newer one another caller already minted.
-        if self._current is not None and self._current.token.token == token:
+        if (
+            current is not None
+            and current.done()
+            and not current.cancelled()
+            and current.exception() is None
+            and current.result().token.token == token
+        ):
             self._current = None
 
     async def _run_mint(self) -> _CachedToken:
         try:
             minted_at = self._now()
-            token = await self._mint()
-            self._current = _cached(
-                token, minted_at=minted_at, refresh_leeway=self._refresh_leeway
+            minted = _cached(
+                await self._mint(),
+                minted_at=minted_at,
+                refresh_leeway=self._refresh_leeway,
             )
-            return self._current
-        finally:
-            self._minting = None
+        except BaseException:
+            # Not cached, so the next caller tries again.
+            if self._current is asyncio.current_task():
+                self._current = None
+            raise
+        self._previous = None
+        return minted
 
 
 # A few resends cover a new token being invalidated in the same event as the
@@ -313,9 +403,9 @@ class CredentialsAuth(httpx.Auth):
 
         Args:
             credentials: Supplies the token.
-            origin: Only requests to this URL's host and port that carry no
-                Authorization of their own are authenticated, so a token never
-                reaches another host through a shared HTTP client.
+            origin: Only requests to this URL's scheme, host and port that
+                carry no Authorization of their own are authenticated, so a
+                token never reaches another host through a shared HTTP client.
         """
         if inspect.iscoroutinefunction(credentials.access_token):
             raise TypeError(
@@ -356,9 +446,27 @@ class AsyncCredentialsAuth(httpx.Auth):
         yield request
 
 
+def credentials_origin(
+    http_client_override: httpx.Client | httpx.AsyncClient | None,
+    base_url: Callable[[], str],
+) -> str:
+    """Return the origin a client's credentials are sent to.
+
+    The API client sends its requests to *http_client_override*'s base URL
+    when it has one, so that is where the token must go; *base_url* is
+    called only otherwise, since an inference client given an override may
+    have no model or chain to compute one from.
+    """
+    if http_client_override is not None and http_client_override.base_url.host:
+        return str(http_client_override.base_url)
+    return base_url()
+
+
 def _applies_to(request: httpx.Request, origin: httpx.URL) -> bool:
+    # Scheme too, so a token meant for https is never sent in the clear.
     return (
-        request.url.host == origin.host
+        request.url.scheme == origin.scheme
+        and request.url.host == origin.host
         and request.url.port == origin.port
         and "Authorization" not in request.headers
     )

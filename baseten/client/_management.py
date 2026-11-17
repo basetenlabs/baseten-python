@@ -13,6 +13,7 @@ from baseten.client._token_auth import (
     Credentials,
     CredentialsAuth,
     check_client_auth,
+    credentials_origin,
 )
 from baseten.client._user_agent import with_user_agent
 
@@ -83,6 +84,10 @@ class ManagementClient:
             http_client_override: Pre-configured httpx client. When provided,
                 the caller is responsible for setting base URL and all
                 headers.
+                *credentials* still apply, but only to requests made
+                through :attr:`api`, which sends a token to this client's
+                base URL (or, if it has none, the resolved base URL).
+                Requests sent on the HTTP client directly carry none.
             close_http_client_on_close: Whether :meth:`close` should close
                 the underlying HTTP client. Defaults to ``True`` when the
                 client is created internally, ``False`` when
@@ -98,7 +103,12 @@ class ManagementClient:
         auth = (
             None
             if credentials is None
-            else CredentialsAuth(credentials, origin=self._options.base_url)
+            else CredentialsAuth(
+                credentials,
+                origin=credentials_origin(
+                    http_client_override, lambda: self._options.base_url
+                ),
+            )
         )
         if http_client_override is None:
             request_headers: dict[str, str] = {**(headers or {})}
@@ -192,6 +202,10 @@ class AsyncManagementClient:
             http_client_override: Pre-configured httpx async client. When
                 provided, the caller is responsible for setting base URL
                 and all headers.
+                *credentials* still apply, but only to requests made
+                through :attr:`api`, which sends a token to this client's
+                base URL (or, if it has none, the resolved base URL).
+                Requests sent on the HTTP client directly carry none.
             close_http_client_on_close: Whether :meth:`close` should close
                 the underlying HTTP client. Defaults to ``True`` when the
                 client is created internally, ``False`` when
@@ -207,7 +221,12 @@ class AsyncManagementClient:
         auth = (
             None
             if credentials is None
-            else AsyncCredentialsAuth(credentials, origin=self._options.base_url)
+            else AsyncCredentialsAuth(
+                credentials,
+                origin=credentials_origin(
+                    http_client_override, lambda: self._options.base_url
+                ),
+            )
         )
         if http_client_override is None:
             request_headers: dict[str, str] = {**(headers or {})}
