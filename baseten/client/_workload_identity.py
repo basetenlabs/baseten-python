@@ -232,6 +232,8 @@ class WorkloadIdentityCredentials:
 
     def access_token(self, options: AccessTokenOptions) -> AccessToken:
         """Return a current access token, exchanging for a new one when due."""
+        if options.refused_token is not None:
+            self._cache.invalidate(options.refused_token)
         return self._cache.token()
 
     def _exchange_token(self) -> AccessToken:
@@ -293,6 +295,8 @@ class AsyncWorkloadIdentityCredentials:
 
     async def access_token(self, options: AccessTokenOptions) -> AccessToken:
         """Return a current access token, exchanging for a new one when due."""
+        if options.refused_token is not None:
+            self._cache.invalidate(options.refused_token)
         return await self._cache.token()
 
     async def _exchange_token(self) -> AccessToken:

@@ -438,26 +438,44 @@ class TestClientsWithCredentials:
         await inference.http_client.get("/anything")
         assert server.authorizations == ["Bearer access-1", "Bearer access-1"]
 
-    def test_returns_refusal_without_resending(self) -> None:
-        # A 401 can come from the model itself, so it is the caller's to see.
+    @pytest.mark.parametrize(
+        ("challenge", "second"),
+        [
+            ('Bearer realm="baseten", error="invalid_token"', "Bearer access-2"),
+            ('Bearer realm="model", error="invalid_token"', "Bearer access-1"),
+            ('Bearer realm="baseten"', "Bearer access-1"),
+            (None, "Bearer access-1"),
+        ],
+        ids=[
+            "baseten_refusal",
+            "other_realm",
+            "authentication_required",
+            "no_challenge",
+        ],
+    )
+    def test_sends_each_request_once(self, challenge: str | None, second: str) -> None:
+        # Only a refusal from Baseten's auth layer makes the next request use a
+        # new token; the refused request itself is the caller's to see.
         server = _Server()
-        server.respond = _refuse_access_1
+        server.respond = _refuse_once(challenge)
         management = _management(server, server.credentials())
         with pytest.raises(ResponseError, match="HTTP 401"):
             management.api.get_organizations_me()
-        assert server.authorizations == ["Bearer access-1"]
+        management.api.get_organizations_me()
+        assert server.authorizations == ["Bearer access-1", second]
 
     @pytest.mark.asyncio
-    async def test_async_returns_refusal_without_resending(self) -> None:
+    async def test_async_replaces_token_baseten_refused(self) -> None:
         server = _Server()
-        server.respond = _refuse_access_1
+        server.respond = _refuse_once('Bearer realm="baseten", error="invalid_token"')
         inference = AsyncInferenceClient(
             credentials=server.async_credentials(), base_url_override=_BASE_URL
         )
         inference.http_client._transport = httpx.MockTransport(server.handle_async)  # type: ignore[attr-defined]
         response = await inference.http_client.get("/predict")
         assert response.status_code == 401
-        assert server.authorizations == ["Bearer access-1"]
+        await inference.http_client.get("/predict")
+        assert server.authorizations == ["Bearer access-1", "Bearer access-2"]
 
     def test_accepts_own_credentials(self) -> None:
         seen: list[AccessTokenOptions] = []
@@ -544,12 +562,18 @@ class TestClientsWithCredentials:
             ManagementClient(credentials=_Server().async_credentials())  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
 
 
-def _refuse_access_1(request: httpx.Request) -> httpx.Response:
-    if request.headers.get("Authorization") == "Bearer access-1":
-        return httpx.Response(
-            401,
-            headers={
-                "WWW-Authenticate": 'Bearer realm="baseten", error="invalid_token"'
-            },
-        )
-    return httpx.Response(200, json=_ORG)
+def _refuse_once(
+    challenge: str | None,
+) -> Callable[[httpx.Request], httpx.Response]:
+    """Answer the first request with a 401 carrying *challenge*, then succeed."""
+    calls = 0
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            headers = {} if challenge is None else {"WWW-Authenticate": challenge}
+            return httpx.Response(401, headers=headers)
+        return httpx.Response(200, json=_ORG)
+
+    return respond

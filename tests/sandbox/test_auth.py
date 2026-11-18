@@ -9,14 +9,15 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import pytest
 
-import baseten.client._token_auth
 import baseten.client.managementapi
+import baseten.sandbox._auth
 from baseten.sandbox import SandboxTokenProviderContext
 from baseten.sandbox._auth import (
     AsyncTokenAuth,
     AsyncTokenSource,
     TokenAuth,
     TokenSource,
+    is_token_revoked,
 )
 
 
@@ -26,7 +27,7 @@ def _revoked(request: httpx.Request | None = None) -> httpx.Response:
 
 @pytest.fixture(autouse=True)
 def no_revoked_retry_delay(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(baseten.client._token_auth, "_resend_delay_sec", 0.0)
+    monkeypatch.setattr(baseten.sandbox._auth, "_token_revoked_retry_delay_sec", 0.0)
 
 
 class _Server:
@@ -251,7 +252,7 @@ class TestTokenAuth:
     ) -> None:
         delays: list[float] = []
         monkeypatch.setattr(
-            baseten.client._token_auth.time,
+            baseten.sandbox._auth.time,
             "sleep",
             lambda seconds: delays.append(seconds),
         )
@@ -260,7 +261,7 @@ class TestTokenAuth:
         assert response.status_code == 401
         assert len(server.requests) == 3
         # Only the second resend waits, to be minted past the revocation.
-        assert delays == [baseten.client._token_auth._resend_delay_sec]
+        assert delays == [baseten.sandbox._auth._token_revoked_retry_delay_sec]
 
     def test_does_not_resend_other_401(self) -> None:
         server = _Server(respond=lambda request: httpx.Response(401))
@@ -354,3 +355,16 @@ def _async_tokens(
         if api_key
         else None,
     )
+
+
+@pytest.mark.parametrize(
+    ("status", "headers", "revoked"),
+    [
+        (401, {"x-blaxel-error-code": "TOKEN_REVOKED"}, True),
+        (401, {"WWW-Authenticate": 'Bearer error="invalid_token"'}, False),
+        (401, {}, False),
+        (403, {"x-blaxel-error-code": "TOKEN_REVOKED"}, False),
+    ],
+)
+def test_is_token_revoked(status: int, headers: dict[str, str], revoked: bool) -> None:
+    assert is_token_revoked(httpx.Response(status, headers=headers)) is revoked

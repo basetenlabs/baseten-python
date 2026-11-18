@@ -1,8 +1,7 @@
 """What every short-lived Baseten token needs.
 
-A cache that mints a new token shortly before the current one expires, an
-:class:`httpx.Auth` that sends a token from :class:`Credentials`, and one that
-sends a request again with a new token when the server refuses the current one.
+A cache that mints a new token shortly before the current one expires, and an
+:class:`httpx.Auth` that sends a token from :class:`Credentials`.
 """
 
 from __future__ import annotations
@@ -10,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import inspect
 import threading
-import time
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -32,9 +30,12 @@ class AccessToken:
 
 @dataclass(frozen=True)
 class AccessTokenOptions:
-    """What :class:`Credentials` are told about the token they are asked for.
+    """What :class:`Credentials` are told about the token they are asked for."""
 
-    Has no fields yet; it lets fields be added without breaking implementations.
+    refused_token: str | None = field(default=None, repr=False)
+    """A token Baseten refused before its stated expiry.
+
+    Credentials that cache tokens must not return it again.
     """
 
 
@@ -290,112 +291,13 @@ class AsyncTokenCache:
         return minted
 
 
-# A few resends cover a new token being invalidated in the same event as the
-# old one. Past that, the refusal is returned, since tokens that keep getting
-# refused point at something a new token cannot fix.
-_MAX_RESENDS = 2
-
-# Revocation refuses every token issued before a cutoff, the time of the
-# revoking event rounded up to the next whole second. A token minted right
-# after the event can fall before the cutoff and be refused too, so after the
-# first resend, each one waits this long to be minted past it. A module
-# variable so tests can shorten it.
-_resend_delay_sec = 1.0
-
-
-class TokenAuth(httpx.Auth):
-    """Authenticates requests with ``Authorization: Bearer`` from *get_token*.
-
-    *get_token* is called with ``None``, or with the token the server just
-    refused, and returns the token to send, or ``None`` to send no
-    Authorization. When the server refuses the token (see
-    :func:`is_token_refused`), it is passed to *invalidate*, and the request
-    is sent again with a new token when its body can be, at most twice.
-    """
-
-    def __init__(
-        self,
-        get_token: Callable[[str | None], str | None],
-        invalidate: Callable[[str], None],
-    ) -> None:
-        """Create the auth."""
-        self._get_token = get_token
-        self._invalidate = invalidate
-
-    def sync_auth_flow(
-        self, request: httpx.Request
-    ) -> Generator[httpx.Request, httpx.Response, None]:
-        """Send the request, again with a new token if its token was refused."""
-        replayable = _is_replayable(request)
-        refused: str | None = None
-        for attempt in range(_MAX_RESENDS + 1):
-            token = self._get_token(refused)
-            _set_authorization(request, token)
-            response = yield request
-            if token is None or not is_token_refused(response):
-                return
-            # Dropped even when the request is not sent again, so later
-            # requests do not reuse it.
-            self._invalidate(token)
-            if not replayable or attempt == _MAX_RESENDS:
-                return
-            refused = token
-            if attempt > 0:
-                time.sleep(_resend_delay_sec)
-
-
-class AsyncTokenAuth(httpx.Auth):
-    """Async form of :class:`TokenAuth`."""
-
-    def __init__(
-        self,
-        get_token: Callable[[str | None], Awaitable[str | None]],
-        invalidate: Callable[[str], None],
-    ) -> None:
-        """Create the auth, as :class:`TokenAuth` does."""
-        self._get_token = get_token
-        self._invalidate = invalidate
-
-    async def async_auth_flow(
-        self, request: httpx.Request
-    ) -> AsyncGenerator[httpx.Request, httpx.Response]:
-        """Send the request, again with a new token if its token was refused."""
-        replayable = _is_replayable(request)
-        refused: str | None = None
-        for attempt in range(_MAX_RESENDS + 1):
-            token = await self._get_token(refused)
-            _set_authorization(request, token)
-            response = yield request
-            if token is None or not is_token_refused(response):
-                return
-            self._invalidate(token)
-            if not replayable or attempt == _MAX_RESENDS:
-                return
-            refused = token
-            if attempt > 0:
-                await asyncio.sleep(_resend_delay_sec)
-
-
-def is_token_refused(response: httpx.Response) -> bool:
-    """Report whether the server refused a request's token before its expiry.
-
-    For example after it was revoked. The request was refused before any work
-    was done, so sending it again with a new token is safe even when it has
-    side effects.
-    """
-    # Sandboxes, and the control plane for sandbox tokens, send this header.
-    return (
-        response.status_code == 401
-        and response.headers.get("x-blaxel-error-code") == "TOKEN_REVOKED"
-    )
-
-
 class CredentialsAuth(httpx.Auth):
     """Sends a token from :class:`Credentials` on each request to one origin.
 
     A token is fetched for every request, so a long-lived client picks up
     refreshed tokens. Each request is sent once; a refusal is returned to the
-    caller as is.
+    caller as is, and when Baseten refused the token, the next request asks
+    the credentials for a new one.
     """
 
     def __init__(self, credentials: Credentials, *, origin: str) -> None:
@@ -413,15 +315,26 @@ class CredentialsAuth(httpx.Auth):
             )
         self._credentials = credentials
         self._origin = httpx.URL(origin)
+        # The last token Baseten refused, passed to the next access_token call
+        # so the credentials replace it.
+        self._refused: str | None = None
 
     def sync_auth_flow(
         self, request: httpx.Request
     ) -> Generator[httpx.Request, httpx.Response, None]:
         """Send the request with the current token."""
-        if _applies_to(request, self._origin):
-            token = self._credentials.access_token(AccessTokenOptions())
-            _set_authorization(request, _non_empty(token))
-        yield request
+        if not _applies_to(request, self._origin):
+            yield request
+            return
+        options = AccessTokenOptions(refused_token=self._refused)
+        self._refused = None
+        token = _non_empty(self._credentials.access_token(options))
+        _set_authorization(request, token)
+        response = yield request
+        # The request is not sent again, since it may have side effects; only
+        # the next request gets a new token.
+        if refused_by_baseten(response):
+            self._refused = token
 
 
 class AsyncCredentialsAuth(httpx.Auth):
@@ -435,15 +348,38 @@ class AsyncCredentialsAuth(httpx.Auth):
             )
         self._credentials = credentials
         self._origin = httpx.URL(origin)
+        self._refused: str | None = None
 
     async def async_auth_flow(
         self, request: httpx.Request
     ) -> AsyncGenerator[httpx.Request, httpx.Response]:
         """Send the request with the current token."""
-        if _applies_to(request, self._origin):
-            token = await self._credentials.access_token(AccessTokenOptions())
-            _set_authorization(request, _non_empty(token))
-        yield request
+        if not _applies_to(request, self._origin):
+            yield request
+            return
+        options = AccessTokenOptions(refused_token=self._refused)
+        self._refused = None
+        token = _non_empty(await self._credentials.access_token(options))
+        _set_authorization(request, token)
+        response = yield request
+        if refused_by_baseten(response):
+            self._refused = token
+
+
+def refused_by_baseten(response: httpx.Response) -> bool:
+    """Report whether Baseten's auth layer refused the request's access token.
+
+    It signals that with this challenge. A model's own error response cannot
+    carry it, since its headers are not forwarded.
+    """
+    if response.status_code != 401:
+        return False
+    return any(
+        challenge.startswith("Bearer ")
+        and 'realm="baseten"' in challenge
+        and 'error="invalid_token"' in challenge
+        for challenge in response.headers.get_list("WWW-Authenticate")
+    )
 
 
 def credentials_origin(
@@ -470,13 +406,6 @@ def _applies_to(request: httpx.Request, origin: httpx.URL) -> bool:
         and request.url.port == origin.port
         and "Authorization" not in request.headers
     )
-
-
-def _is_replayable(request: httpx.Request) -> bool:
-    """Report whether a request's body can be sent again."""
-    # A stream body can be read only once, so a request carrying one is never
-    # sent again. The SDK itself never sends one; only raw API calls can.
-    return isinstance(request.stream, httpx.ByteStream)
 
 
 def _set_authorization(request: httpx.Request, token: str | None) -> None:

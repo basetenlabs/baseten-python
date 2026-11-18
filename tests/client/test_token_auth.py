@@ -14,7 +14,6 @@ from baseten.client._token_auth import (
     TokenCache,
     _applies_to,
     _cached,
-    is_token_refused,
 )
 
 # How long each mint in the concurrency tests takes, long enough for every
@@ -319,17 +318,3 @@ def test_access_token_repr_hides_token() -> None:
     assert "secret-bearer" not in repr(token)
     cached = _cached(token, minted_at=token.expires_at, refresh_leeway=timedelta(0))
     assert "secret-bearer" not in repr(cached)
-
-
-@pytest.mark.parametrize(
-    ("status", "headers", "refused"),
-    [
-        (401, {"x-blaxel-error-code": "TOKEN_REVOKED"}, True),
-        (401, {"WWW-Authenticate": 'Bearer error="invalid_token"'}, False),
-        (401, {}, False),
-        (401, {"WWW-Authenticate": 'Bearer realm="baseten"'}, False),
-        (403, {"x-blaxel-error-code": "TOKEN_REVOKED"}, False),
-    ],
-)
-def test_is_token_refused(status: int, headers: dict[str, str], refused: bool) -> None:
-    assert is_token_refused(httpx.Response(status, headers=headers)) is refused
