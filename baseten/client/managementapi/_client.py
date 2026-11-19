@@ -11,8 +11,6 @@ import httpx
 from pydantic import BaseModel
 
 from ._models import (
-    AccessTrustRule,
-    AccessTrustRules,
     ActivateResponse,
     APIKey,
     APIKeys,
@@ -27,7 +25,6 @@ from ._models import (
     ChainTombstone,
     CleanupImagesParams,
     CleanupSandboxImagesResponse,
-    CreateAccessTrustRuleRequest,
     CreateApiKeyForGroupRequest,
     CreateApiKeyForGroupResponse,
     CreateAPIKeyRequest,
@@ -44,7 +41,6 @@ from ._models import (
     CreateGridRouteRequest,
     CreateGridTokenRequest,
     CreateGroupRequest,
-    CreateIdentityProviderRequest,
     CreateLibraryListingRequest,
     CreateLibraryListingVersionRequest,
     CreateLLMModelRequest,
@@ -65,7 +61,6 @@ from ._models import (
     CreateSandboxRequest,
     CreateSandboxVolumeParams,
     CreateSandboxVolumeRequest,
-    CreateServiceAccountRequest,
     CreateTokenRequest,
     CreateTrainingJobRequest,
     CreateTrainingJobResponse,
@@ -76,12 +71,8 @@ from ._models import (
     DeactivateLoopsRunResponse,
     DeactivateLoopsSamplerResponse,
     DeactivateResponse,
-    DeletedAccessTrustRule,
-    DeletedIdentityProvider,
-    DeletedServiceAccount,
     DeleteImageParams,
     DeleteImageTagParams,
-    DeleteLoopsRunResponse,
     DeleteSandboxParams,
     DeleteSandboxPreviewParams,
     DeleteSandboxPreviewTokenParams,
@@ -96,8 +87,6 @@ from ._models import (
     DeployLoopsCheckpointResponse,
     Deployment,
     DeploymentConfigResponse,
-    DeploymentReplica,
-    DeploymentReplicas,
     Deployments,
     DeploymentTombstone,
     DownloadDeploymentResponse,
@@ -113,8 +102,6 @@ from ._models import (
     ExploreMetadataResponse,
     GatewayEventsResponse,
     GatewayKeyInfo,
-    GetAccessIdentityProvidersParams,
-    GetAccessTrustRulesParams,
     GetApiKeysParams,
     GetAuditLogsParams,
     GetAuthCodesResponse,
@@ -129,6 +116,7 @@ from ._models import (
     GetDeploymentPatchesStateResponse,
     GetExploreMetadataParams,
     GetGatewayEventsParams,
+    GetGridClassifiersParams,
     GetGridConnectionsParams,
     GetGridMachineUsersParams,
     GetGridRouteClassifiersParams,
@@ -166,12 +154,10 @@ from ._models import (
     GetModelsDeploymentsLogsParams,
     GetModelsDeploymentsMetricsParams,
     GetModelsDeploymentsParams,
-    GetModelsDeploymentsReplicasParams,
     GetModelsDeploymentsStartupsParams,
     GetModelsDeploymentsStartupsSummaryParams,
     GetModelsEnvironmentsLogsParams,
     GetModelsEnvironmentsMetricsParams,
-    GetModelsEnvironmentsReplicasParams,
     GetModelsEnvironmentsStartupsParams,
     GetModelsEnvironmentsStartupsSummaryParams,
     GetModelsParams,
@@ -181,7 +167,6 @@ from ._models import (
     GetSandboxParams,
     GetSandboxPreviewParams,
     GetSandboxVolumeParams,
-    GetServiceAccountsParams,
     GetTeamsLoopsRunsParams,
     GetTeamsLoopsSamplersParams,
     GetTeamsModelsParams,
@@ -204,6 +189,8 @@ from ._models import (
     GetVolumesParams,
     GetVolumesSyncsParams,
     GetVolumesVersionsParams,
+    GridClassifier,
+    GridClassifiersResponse,
     GridConnection,
     GridConnectionsResponse,
     GridConnectionTombstone,
@@ -222,8 +209,6 @@ from ._models import (
     GridToken,
     Group,
     GroupsResponse,
-    IdentityProvider,
-    IdentityProviders,
     InstanceTypePrices,
     InstanceTypes,
     KeysForGroupResponse,
@@ -257,10 +242,8 @@ from ._models import (
     ListVolumesResponse,
     ListVolumeVersionsResponse,
     LLMModelHandle,
-    LoopsCheckpoint,
     LoopsCheckpointFilesResponse,
     LoopsCheckpointSourceResponse,
-    LoopsCheckpointTombstone,
     LoopsDebugArchiveFilesResponse,
     Model,
     ModelAPI,
@@ -278,7 +261,6 @@ from ._models import (
     PatchTeamTrainingGpuCapacityResponse,
     PatchVolumeRequest,
     PatchVolumeResponse,
-    PredefinedIdentityProviders,
     PrepareModelUploadRequest,
     PrepareModelUploadResponse,
     PromoteRequest,
@@ -308,9 +290,6 @@ from ._models import (
     Secret,
     Secrets,
     SecretTombstone,
-    ServiceAccount,
-    ServiceAccounts,
-    SetLoopsCheckpointTtlRequest,
     SetVolumeTagRequest,
     SetVolumeTagResponse,
     SignalPromotionResponse,
@@ -326,12 +305,9 @@ from ._models import (
     Teams,
     TerminateReplicaResponse,
     Token,
-    TokenExchangeRequest,
-    TokenExchangeResponse,
     ToolCallUsageResponse,
     TrainingJobTombstone,
     TrainingProjectTombstone,
-    UpdateAccessTrustRuleRequest,
     UpdateAutoscalingSettings,
     UpdateAutoscalingSettingsResponse,
     UpdateChainEnvironmentRequest,
@@ -350,11 +326,9 @@ from ._models import (
     UpdateGridTeamSettingsRequest,
     UpdateGridUserSettingsRequest,
     UpdateGroupRequest,
-    UpdateIdentityProviderRequest,
     UpdateLibraryListingRequest,
     UpdateLibraryListingVersionRequest,
     UpdateModelRequest,
-    UpdateOrganizationRequest,
     UpdateRequestBackpressureSettings,
     UpdateSandboxParams,
     UpdateSandboxPreviewParams,
@@ -362,7 +336,6 @@ from ._models import (
     UpdateSandboxRequest,
     UpdateSandboxVolumeParams,
     UpdateSandboxVolumeRequest,
-    UpdateServiceAccountRequest,
     UpdateTrainingJobRequest,
     UpdateTrainingJobResponse,
     UpsertSecretRequest,
@@ -373,9 +346,6 @@ from ._models import (
     UsersResponse,
     ValidateLoopsCheckpointRequest,
     ValidateLoopsCheckpointResponse,
-    Verification,
-    VerifyAccessTrustRuleRequest,
-    VerifyIdentityProviderRequest,
     Volume,
     VolumeSync,
     VolumeSyncs,
@@ -539,40 +509,6 @@ class ApiClient:
                 body=request,
                 query=params,
                 success_codes=[201],
-                error_codes=None,
-            ),
-        )
-
-    def delete_access_identity_providers(
-        self, *, identity_provider_id: str
-    ) -> DeletedIdentityProvider:
-        """Deletes an identity provider"""
-        return self._do_json(
-            DeletedIdentityProvider,
-            _ApiRequest(
-                method="DELETE",
-                path_fmt="/v1/access/identity_providers/{}",
-                path_args=[identity_provider_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def delete_access_trust_rules(
-        self, *, trust_rule_id: str
-    ) -> DeletedAccessTrustRule:
-        """Deletes a trust rule"""
-        return self._do_json(
-            DeletedAccessTrustRule,
-            _ApiRequest(
-                method="DELETE",
-                path_fmt="/v1/access/trust_rules/{}",
-                path_args=[trust_rule_id],
-                body=None,
-                query=None,
-                success_codes=[200],
                 error_codes=None,
             ),
         )
@@ -775,38 +711,6 @@ class ApiClient:
             ),
         )
 
-    def delete_loops_checkpoints(
-        self, *, checkpoint_id: str
-    ) -> LoopsCheckpointTombstone:
-        """Deletes a Loops checkpoint"""
-        return self._do_json(
-            LoopsCheckpointTombstone,
-            _ApiRequest(
-                method="DELETE",
-                path_fmt="/v1/loops/checkpoints/{}",
-                path_args=[checkpoint_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def delete_loops_runs(self, *, run_id: str) -> DeleteLoopsRunResponse:
-        """Deletes a Loops run"""
-        return self._do_json(
-            DeleteLoopsRunResponse,
-            _ApiRequest(
-                method="DELETE",
-                path_fmt="/v1/loops/runs/{}",
-                path_args=[run_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
     def delete_models(self, *, model_id: str) -> ModelTombstone:
         """Deletes a model by ID"""
         return self._do_json(
@@ -866,23 +770,6 @@ class ApiClient:
                 method="DELETE",
                 path_fmt="/v1/models/{}/environments/{}",
                 path_args=[model_id, env_name],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def delete_models_environments_replicas(
-        self, *, model_id: str, env_name: str, replica_id: str
-    ) -> TerminateReplicaResponse:
-        """Terminates a replica in an environment"""
-        return self._do_json(
-            TerminateReplicaResponse,
-            _ApiRequest(
-                method="DELETE",
-                path_fmt="/v1/models/{}/environments/{}/replicas/{}",
-                path_args=[model_id, env_name, replica_id],
                 body=None,
                 query=None,
                 success_codes=[200],
@@ -974,23 +861,6 @@ class ApiClient:
                 method="DELETE",
                 path_fmt="/v1/secrets/{}",
                 path_args=[secret_name],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def delete_service_accounts(
-        self, *, service_account_id: str
-    ) -> DeletedServiceAccount:
-        """Deletes a service account"""
-        return self._do_json(
-            DeletedServiceAccount,
-            _ApiRequest(
-                method="DELETE",
-                path_fmt="/v1/service_accounts/{}",
-                path_args=[service_account_id],
                 body=None,
                 query=None,
                 success_codes=[200],
@@ -1104,89 +974,6 @@ class ApiClient:
                 path_fmt="/v1/volumes/{}/{}/versions/{}",
                 path_args=[volume_namespace, volume_name, volume_version],
                 body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_access_identity_providers(
-        self, *, params: GetAccessIdentityProvidersParams | None = None
-    ) -> IdentityProviders:
-        """Lists identity providers"""
-        return self._do_json(
-            IdentityProviders,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/access/identity_providers",
-                path_args=[],
-                body=None,
-                query=params,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_access_identity_providers_identity_provider_id(
-        self, *, identity_provider_id: str
-    ) -> IdentityProvider:
-        """Gets an identity provider"""
-        return self._do_json(
-            IdentityProvider,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/access/identity_providers/{}",
-                path_args=[identity_provider_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_access_predefined_identity_providers(self) -> PredefinedIdentityProviders:
-        """Lists predefined identity providers"""
-        return self._do_json(
-            PredefinedIdentityProviders,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/access/predefined_identity_providers",
-                path_args=[],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_access_trust_rules(
-        self, *, params: GetAccessTrustRulesParams | None = None
-    ) -> AccessTrustRules:
-        """Lists trust rules"""
-        return self._do_json(
-            AccessTrustRules,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/access/trust_rules",
-                path_args=[],
-                body=None,
-                query=params,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_access_trust_rules_trust_rule_id(
-        self, *, trust_rule_id: str
-    ) -> AccessTrustRule:
-        """Gets a trust rule"""
-        return self._do_json(
-            AccessTrustRule,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/access/trust_rules/{}",
-                path_args=[trust_rule_id],
-                body=None,
                 query=None,
                 success_codes=[200],
                 error_codes=None,
@@ -1588,6 +1375,40 @@ class ApiClient:
                 method="GET",
                 path_fmt="/v1/gateway/groups/{}",
                 path_args=[group_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_grid_classifiers(
+        self, *, params: GetGridClassifiersParams | None = None
+    ) -> GridClassifiersResponse:
+        """Lists classifiers available for intelligent routes"""
+        return self._do_json(
+            GridClassifiersResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/classifiers",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    def get_grid_classifiers_classifier_id(
+        self, *, classifier_id: str
+    ) -> GridClassifier:
+        """Gets a classifier available for intelligent routes"""
+        return self._do_json(
+            GridClassifier,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/classifiers/{}",
+                path_args=[classifier_id],
                 body=None,
                 query=None,
                 success_codes=[200],
@@ -2447,44 +2268,6 @@ class ApiClient:
             ),
         )
 
-    def get_models_deployments_replicas(
-        self,
-        *,
-        model_id: str,
-        deployment_id: str,
-        params: GetModelsDeploymentsReplicasParams | None = None,
-    ) -> DeploymentReplicas:
-        """Lists replicas for a deployment"""
-        return self._do_json(
-            DeploymentReplicas,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/models/{}/deployments/{}/replicas",
-                path_args=[model_id, deployment_id],
-                body=None,
-                query=params,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_models_deployments_replicas_replica_id(
-        self, *, model_id: str, deployment_id: str, replica_id: str
-    ) -> DeploymentReplica:
-        """Gets a replica in a deployment"""
-        return self._do_json(
-            DeploymentReplica,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/models/{}/deployments/{}/replicas/{}",
-                path_args=[model_id, deployment_id, replica_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
     def get_models_deployments_startups(
         self,
         *,
@@ -2596,44 +2379,6 @@ class ApiClient:
                 path_args=[model_id, env_name],
                 body=None,
                 query=params,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_models_environments_replicas(
-        self,
-        *,
-        model_id: str,
-        env_name: str,
-        params: GetModelsEnvironmentsReplicasParams | None = None,
-    ) -> DeploymentReplicas:
-        """Lists replicas for an environment"""
-        return self._do_json(
-            DeploymentReplicas,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/models/{}/environments/{}/replicas",
-                path_args=[model_id, env_name],
-                body=None,
-                query=params,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_models_environments_replicas_replica_id(
-        self, *, model_id: str, env_name: str, replica_id: str
-    ) -> DeploymentReplica:
-        """Gets a replica in an environment"""
-        return self._do_json(
-            DeploymentReplica,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/models/{}/environments/{}/replicas/{}",
-                path_args=[model_id, env_name, replica_id],
-                body=None,
-                query=None,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -2838,40 +2583,6 @@ class ApiClient:
                 method="GET",
                 path_fmt="/v1/secrets",
                 path_args=[],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_service_accounts(
-        self, *, params: GetServiceAccountsParams | None = None
-    ) -> ServiceAccounts:
-        """Lists service accounts"""
-        return self._do_json(
-            ServiceAccounts,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/service_accounts",
-                path_args=[],
-                body=None,
-                query=params,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def get_service_accounts_service_account_id(
-        self, *, service_account_id: str
-    ) -> ServiceAccount:
-        """Gets a service account"""
-        return self._do_json(
-            ServiceAccount,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/service_accounts/{}",
-                path_args=[service_account_id],
                 body=None,
                 query=None,
                 success_codes=[200],
@@ -3538,40 +3249,6 @@ class ApiClient:
             ),
         )
 
-    def patch_access_identity_providers(
-        self, *, identity_provider_id: str, request: UpdateIdentityProviderRequest
-    ) -> IdentityProvider:
-        """Updates an identity provider"""
-        return self._do_json(
-            IdentityProvider,
-            _ApiRequest(
-                method="PATCH",
-                path_fmt="/v1/access/identity_providers/{}",
-                path_args=[identity_provider_id],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def patch_access_trust_rules(
-        self, *, trust_rule_id: str, request: UpdateAccessTrustRuleRequest
-    ) -> AccessTrustRule:
-        """Updates a trust rule"""
-        return self._do_json(
-            AccessTrustRule,
-            _ApiRequest(
-                method="PATCH",
-                path_fmt="/v1/access/trust_rules/{}",
-                path_args=[trust_rule_id],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
     def patch_chains_environments(
         self, *, chain_id: str, env_name: str, request: UpdateChainEnvironmentRequest
     ) -> UpdateChainEnvironmentResponse:
@@ -3922,40 +3599,6 @@ class ApiClient:
             ),
         )
 
-    def patch_organizations_me(
-        self, *, request: UpdateOrganizationRequest
-    ) -> OrganizationInfo:
-        """Updates the authenticated organization"""
-        return self._do_json(
-            OrganizationInfo,
-            _ApiRequest(
-                method="PATCH",
-                path_fmt="/v1/organizations/me",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def patch_service_accounts(
-        self, *, service_account_id: str, request: UpdateServiceAccountRequest
-    ) -> ServiceAccount:
-        """Updates a service account"""
-        return self._do_json(
-            ServiceAccount,
-            _ApiRequest(
-                method="PATCH",
-                path_fmt="/v1/service_accounts/{}",
-                path_args=[service_account_id],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
     def patch_teams_environment_groups(
         self, *, team_id: str, env_name: str, request: UpdateEnvironmentGroupRequest
     ) -> EnvironmentGroup:
@@ -3976,7 +3619,7 @@ class ApiClient:
     def patch_training_capacity(
         self, *, request: PatchTeamTrainingGpuCapacityRequest
     ) -> PatchTeamTrainingGpuCapacityResponse:
-        """Sets a team's training GPU quota"""
+        """Sets a team's training GPU capacity"""
         return self._do_json(
             PatchTeamTrainingGpuCapacityResponse,
             _ApiRequest(
@@ -4050,74 +3693,6 @@ class ApiClient:
             ),
         )
 
-    def post_access_identity_providers(
-        self, *, request: CreateIdentityProviderRequest
-    ) -> IdentityProvider:
-        """Adds an identity provider"""
-        return self._do_json(
-            IdentityProvider,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/access/identity_providers",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def post_access_identity_providers_verify(
-        self, *, request: VerifyIdentityProviderRequest
-    ) -> Verification:
-        """Checks an identity provider before adding it"""
-        return self._do_json(
-            Verification,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/access/identity_providers/verify",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def post_access_trust_rules(
-        self, *, request: CreateAccessTrustRuleRequest
-    ) -> AccessTrustRule:
-        """Creates a trust rule"""
-        return self._do_json(
-            AccessTrustRule,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/access/trust_rules",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def post_access_trust_rules_verify(
-        self, *, request: VerifyAccessTrustRuleRequest
-    ) -> Verification:
-        """Checks a trust rule's condition and audience"""
-        return self._do_json(
-            Verification,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/access/trust_rules/verify",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
     def post_api_keys(self, *, request: CreateAPIKeyRequest) -> APIKey:
         """Creates an API key"""
         return self._do_json(
@@ -4125,23 +3700,6 @@ class ApiClient:
             _ApiRequest(
                 method="POST",
                 path_fmt="/v1/api_keys",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    def post_auth_token(
-        self, *, request: TokenExchangeRequest
-    ) -> TokenExchangeResponse:
-        """Exchanges an identity provider's JWT for an access token"""
-        return self._do_json(
-            TokenExchangeResponse,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/auth/token",
                 path_args=[],
                 body=request,
                 query=None,
@@ -5082,23 +4640,6 @@ class ApiClient:
             ),
         )
 
-    def post_service_accounts(
-        self, *, request: CreateServiceAccountRequest
-    ) -> ServiceAccount:
-        """Creates a service account"""
-        return self._do_json(
-            ServiceAccount,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/service_accounts",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
     def post_teams_api_keys(
         self, *, team_id: str, request: CreateAPIKeyRequest
     ) -> APIKey:
@@ -5520,23 +5061,6 @@ class ApiClient:
             ),
         )
 
-    def put_loops_checkpoints_ttl(
-        self, *, checkpoint_id: str, request: SetLoopsCheckpointTtlRequest
-    ) -> LoopsCheckpoint:
-        """Sets a Loops checkpoint's TTL"""
-        return self._do_json(
-            LoopsCheckpoint,
-            _ApiRequest(
-                method="PUT",
-                path_fmt="/v1/loops/checkpoints/{}/ttl",
-                path_args=[checkpoint_id],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
     def update_sandbox(
         self,
         *,
@@ -5811,40 +5335,6 @@ class AsyncApiClient:
             ),
         )
 
-    async def delete_access_identity_providers(
-        self, *, identity_provider_id: str
-    ) -> DeletedIdentityProvider:
-        """Deletes an identity provider"""
-        return await self._do_json(
-            DeletedIdentityProvider,
-            _ApiRequest(
-                method="DELETE",
-                path_fmt="/v1/access/identity_providers/{}",
-                path_args=[identity_provider_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def delete_access_trust_rules(
-        self, *, trust_rule_id: str
-    ) -> DeletedAccessTrustRule:
-        """Deletes a trust rule"""
-        return await self._do_json(
-            DeletedAccessTrustRule,
-            _ApiRequest(
-                method="DELETE",
-                path_fmt="/v1/access/trust_rules/{}",
-                path_args=[trust_rule_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
     async def delete_api_keys(self, *, api_key_prefix: str) -> APIKeyTombstone:
         """Deletes an API key by prefix"""
         return await self._do_json(
@@ -6045,38 +5535,6 @@ class AsyncApiClient:
             ),
         )
 
-    async def delete_loops_checkpoints(
-        self, *, checkpoint_id: str
-    ) -> LoopsCheckpointTombstone:
-        """Deletes a Loops checkpoint"""
-        return await self._do_json(
-            LoopsCheckpointTombstone,
-            _ApiRequest(
-                method="DELETE",
-                path_fmt="/v1/loops/checkpoints/{}",
-                path_args=[checkpoint_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def delete_loops_runs(self, *, run_id: str) -> DeleteLoopsRunResponse:
-        """Deletes a Loops run"""
-        return await self._do_json(
-            DeleteLoopsRunResponse,
-            _ApiRequest(
-                method="DELETE",
-                path_fmt="/v1/loops/runs/{}",
-                path_args=[run_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
     async def delete_models(self, *, model_id: str) -> ModelTombstone:
         """Deletes a model by ID"""
         return await self._do_json(
@@ -6136,23 +5594,6 @@ class AsyncApiClient:
                 method="DELETE",
                 path_fmt="/v1/models/{}/environments/{}",
                 path_args=[model_id, env_name],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def delete_models_environments_replicas(
-        self, *, model_id: str, env_name: str, replica_id: str
-    ) -> TerminateReplicaResponse:
-        """Terminates a replica in an environment"""
-        return await self._do_json(
-            TerminateReplicaResponse,
-            _ApiRequest(
-                method="DELETE",
-                path_fmt="/v1/models/{}/environments/{}/replicas/{}",
-                path_args=[model_id, env_name, replica_id],
                 body=None,
                 query=None,
                 success_codes=[200],
@@ -6244,23 +5685,6 @@ class AsyncApiClient:
                 method="DELETE",
                 path_fmt="/v1/secrets/{}",
                 path_args=[secret_name],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def delete_service_accounts(
-        self, *, service_account_id: str
-    ) -> DeletedServiceAccount:
-        """Deletes a service account"""
-        return await self._do_json(
-            DeletedServiceAccount,
-            _ApiRequest(
-                method="DELETE",
-                path_fmt="/v1/service_accounts/{}",
-                path_args=[service_account_id],
                 body=None,
                 query=None,
                 success_codes=[200],
@@ -6374,91 +5798,6 @@ class AsyncApiClient:
                 path_fmt="/v1/volumes/{}/{}/versions/{}",
                 path_args=[volume_namespace, volume_name, volume_version],
                 body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_access_identity_providers(
-        self, *, params: GetAccessIdentityProvidersParams | None = None
-    ) -> IdentityProviders:
-        """Lists identity providers"""
-        return await self._do_json(
-            IdentityProviders,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/access/identity_providers",
-                path_args=[],
-                body=None,
-                query=params,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_access_identity_providers_identity_provider_id(
-        self, *, identity_provider_id: str
-    ) -> IdentityProvider:
-        """Gets an identity provider"""
-        return await self._do_json(
-            IdentityProvider,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/access/identity_providers/{}",
-                path_args=[identity_provider_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_access_predefined_identity_providers(
-        self,
-    ) -> PredefinedIdentityProviders:
-        """Lists predefined identity providers"""
-        return await self._do_json(
-            PredefinedIdentityProviders,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/access/predefined_identity_providers",
-                path_args=[],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_access_trust_rules(
-        self, *, params: GetAccessTrustRulesParams | None = None
-    ) -> AccessTrustRules:
-        """Lists trust rules"""
-        return await self._do_json(
-            AccessTrustRules,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/access/trust_rules",
-                path_args=[],
-                body=None,
-                query=params,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_access_trust_rules_trust_rule_id(
-        self, *, trust_rule_id: str
-    ) -> AccessTrustRule:
-        """Gets a trust rule"""
-        return await self._do_json(
-            AccessTrustRule,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/access/trust_rules/{}",
-                path_args=[trust_rule_id],
-                body=None,
                 query=None,
                 success_codes=[200],
                 error_codes=None,
@@ -6864,6 +6203,40 @@ class AsyncApiClient:
                 method="GET",
                 path_fmt="/v1/gateway/groups/{}",
                 path_args=[group_id],
+                body=None,
+                query=None,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_grid_classifiers(
+        self, *, params: GetGridClassifiersParams | None = None
+    ) -> GridClassifiersResponse:
+        """Lists classifiers available for intelligent routes"""
+        return await self._do_json(
+            GridClassifiersResponse,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/classifiers",
+                path_args=[],
+                body=None,
+                query=params,
+                success_codes=[200],
+                error_codes=None,
+            ),
+        )
+
+    async def get_grid_classifiers_classifier_id(
+        self, *, classifier_id: str
+    ) -> GridClassifier:
+        """Gets a classifier available for intelligent routes"""
+        return await self._do_json(
+            GridClassifier,
+            _ApiRequest(
+                method="GET",
+                path_fmt="/v1/grid/classifiers/{}",
+                path_args=[classifier_id],
                 body=None,
                 query=None,
                 success_codes=[200],
@@ -7723,44 +7096,6 @@ class AsyncApiClient:
             ),
         )
 
-    async def get_models_deployments_replicas(
-        self,
-        *,
-        model_id: str,
-        deployment_id: str,
-        params: GetModelsDeploymentsReplicasParams | None = None,
-    ) -> DeploymentReplicas:
-        """Lists replicas for a deployment"""
-        return await self._do_json(
-            DeploymentReplicas,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/models/{}/deployments/{}/replicas",
-                path_args=[model_id, deployment_id],
-                body=None,
-                query=params,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_models_deployments_replicas_replica_id(
-        self, *, model_id: str, deployment_id: str, replica_id: str
-    ) -> DeploymentReplica:
-        """Gets a replica in a deployment"""
-        return await self._do_json(
-            DeploymentReplica,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/models/{}/deployments/{}/replicas/{}",
-                path_args=[model_id, deployment_id, replica_id],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
     async def get_models_deployments_startups(
         self,
         *,
@@ -7872,44 +7207,6 @@ class AsyncApiClient:
                 path_args=[model_id, env_name],
                 body=None,
                 query=params,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_models_environments_replicas(
-        self,
-        *,
-        model_id: str,
-        env_name: str,
-        params: GetModelsEnvironmentsReplicasParams | None = None,
-    ) -> DeploymentReplicas:
-        """Lists replicas for an environment"""
-        return await self._do_json(
-            DeploymentReplicas,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/models/{}/environments/{}/replicas",
-                path_args=[model_id, env_name],
-                body=None,
-                query=params,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_models_environments_replicas_replica_id(
-        self, *, model_id: str, env_name: str, replica_id: str
-    ) -> DeploymentReplica:
-        """Gets a replica in an environment"""
-        return await self._do_json(
-            DeploymentReplica,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/models/{}/environments/{}/replicas/{}",
-                path_args=[model_id, env_name, replica_id],
-                body=None,
-                query=None,
                 success_codes=[200],
                 error_codes=None,
             ),
@@ -8114,40 +7411,6 @@ class AsyncApiClient:
                 method="GET",
                 path_fmt="/v1/secrets",
                 path_args=[],
-                body=None,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_service_accounts(
-        self, *, params: GetServiceAccountsParams | None = None
-    ) -> ServiceAccounts:
-        """Lists service accounts"""
-        return await self._do_json(
-            ServiceAccounts,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/service_accounts",
-                path_args=[],
-                body=None,
-                query=params,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def get_service_accounts_service_account_id(
-        self, *, service_account_id: str
-    ) -> ServiceAccount:
-        """Gets a service account"""
-        return await self._do_json(
-            ServiceAccount,
-            _ApiRequest(
-                method="GET",
-                path_fmt="/v1/service_accounts/{}",
-                path_args=[service_account_id],
                 body=None,
                 query=None,
                 success_codes=[200],
@@ -8816,40 +8079,6 @@ class AsyncApiClient:
             ),
         )
 
-    async def patch_access_identity_providers(
-        self, *, identity_provider_id: str, request: UpdateIdentityProviderRequest
-    ) -> IdentityProvider:
-        """Updates an identity provider"""
-        return await self._do_json(
-            IdentityProvider,
-            _ApiRequest(
-                method="PATCH",
-                path_fmt="/v1/access/identity_providers/{}",
-                path_args=[identity_provider_id],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def patch_access_trust_rules(
-        self, *, trust_rule_id: str, request: UpdateAccessTrustRuleRequest
-    ) -> AccessTrustRule:
-        """Updates a trust rule"""
-        return await self._do_json(
-            AccessTrustRule,
-            _ApiRequest(
-                method="PATCH",
-                path_fmt="/v1/access/trust_rules/{}",
-                path_args=[trust_rule_id],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
     async def patch_chains_environments(
         self, *, chain_id: str, env_name: str, request: UpdateChainEnvironmentRequest
     ) -> UpdateChainEnvironmentResponse:
@@ -9202,40 +8431,6 @@ class AsyncApiClient:
             ),
         )
 
-    async def patch_organizations_me(
-        self, *, request: UpdateOrganizationRequest
-    ) -> OrganizationInfo:
-        """Updates the authenticated organization"""
-        return await self._do_json(
-            OrganizationInfo,
-            _ApiRequest(
-                method="PATCH",
-                path_fmt="/v1/organizations/me",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def patch_service_accounts(
-        self, *, service_account_id: str, request: UpdateServiceAccountRequest
-    ) -> ServiceAccount:
-        """Updates a service account"""
-        return await self._do_json(
-            ServiceAccount,
-            _ApiRequest(
-                method="PATCH",
-                path_fmt="/v1/service_accounts/{}",
-                path_args=[service_account_id],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
     async def patch_teams_environment_groups(
         self, *, team_id: str, env_name: str, request: UpdateEnvironmentGroupRequest
     ) -> EnvironmentGroup:
@@ -9256,7 +8451,7 @@ class AsyncApiClient:
     async def patch_training_capacity(
         self, *, request: PatchTeamTrainingGpuCapacityRequest
     ) -> PatchTeamTrainingGpuCapacityResponse:
-        """Sets a team's training GPU quota"""
+        """Sets a team's training GPU capacity"""
         return await self._do_json(
             PatchTeamTrainingGpuCapacityResponse,
             _ApiRequest(
@@ -9330,74 +8525,6 @@ class AsyncApiClient:
             ),
         )
 
-    async def post_access_identity_providers(
-        self, *, request: CreateIdentityProviderRequest
-    ) -> IdentityProvider:
-        """Adds an identity provider"""
-        return await self._do_json(
-            IdentityProvider,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/access/identity_providers",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def post_access_identity_providers_verify(
-        self, *, request: VerifyIdentityProviderRequest
-    ) -> Verification:
-        """Checks an identity provider before adding it"""
-        return await self._do_json(
-            Verification,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/access/identity_providers/verify",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def post_access_trust_rules(
-        self, *, request: CreateAccessTrustRuleRequest
-    ) -> AccessTrustRule:
-        """Creates a trust rule"""
-        return await self._do_json(
-            AccessTrustRule,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/access/trust_rules",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def post_access_trust_rules_verify(
-        self, *, request: VerifyAccessTrustRuleRequest
-    ) -> Verification:
-        """Checks a trust rule's condition and audience"""
-        return await self._do_json(
-            Verification,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/access/trust_rules/verify",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
     async def post_api_keys(self, *, request: CreateAPIKeyRequest) -> APIKey:
         """Creates an API key"""
         return await self._do_json(
@@ -9405,23 +8532,6 @@ class AsyncApiClient:
             _ApiRequest(
                 method="POST",
                 path_fmt="/v1/api_keys",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
-    async def post_auth_token(
-        self, *, request: TokenExchangeRequest
-    ) -> TokenExchangeResponse:
-        """Exchanges an identity provider's JWT for an access token"""
-        return await self._do_json(
-            TokenExchangeResponse,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/auth/token",
                 path_args=[],
                 body=request,
                 query=None,
@@ -10370,23 +9480,6 @@ class AsyncApiClient:
             ),
         )
 
-    async def post_service_accounts(
-        self, *, request: CreateServiceAccountRequest
-    ) -> ServiceAccount:
-        """Creates a service account"""
-        return await self._do_json(
-            ServiceAccount,
-            _ApiRequest(
-                method="POST",
-                path_fmt="/v1/service_accounts",
-                path_args=[],
-                body=request,
-                query=None,
-                success_codes=[200],
-                error_codes=None,
-            ),
-        )
-
     async def post_teams_api_keys(
         self, *, team_id: str, request: CreateAPIKeyRequest
     ) -> APIKey:
@@ -10808,23 +9901,6 @@ class AsyncApiClient:
                 body=request,
                 query=params,
                 success_codes=[202],
-                error_codes=None,
-            ),
-        )
-
-    async def put_loops_checkpoints_ttl(
-        self, *, checkpoint_id: str, request: SetLoopsCheckpointTtlRequest
-    ) -> LoopsCheckpoint:
-        """Sets a Loops checkpoint's TTL"""
-        return await self._do_json(
-            LoopsCheckpoint,
-            _ApiRequest(
-                method="PUT",
-                path_fmt="/v1/loops/checkpoints/{}/ttl",
-                path_args=[checkpoint_id],
-                body=request,
-                query=None,
-                success_codes=[200],
                 error_codes=None,
             ),
         )
