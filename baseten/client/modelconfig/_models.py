@@ -71,6 +71,25 @@ class BDNVolumeMount(BaseModel):
     ] = None
 
 
+class BEIModelConfiguration(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    checkpoint: Annotated[
+        str,
+        Field(
+            description="Hugging Face repository to download through weights, or an absolute path to manually mounted weights.",
+            min_length=1,
+            title="Checkpoint",
+        ),
+    ]
+    revision: Annotated[str | None, Field(title="Revision")] = None
+    served_model_name: Annotated[str | None, Field(title="Served Model Name")] = None
+    quantization: Annotated[
+        Literal["none", "fp8", "mxfp8", "nvfp4"] | str, Field(title="Quantization")
+    ] = "none"
+
+
 class DockerServer(BaseModel):
     model_config = ConfigDict(
         extra="allow",
@@ -85,7 +104,7 @@ class DockerServer(BaseModel):
     server_port: Annotated[
         int,
         Field(
-            description="The port where the server runs. Port 8080 is reserved by Baseten's internal reverse proxy and cannot be used.",
+            description="The port where the server runs. Port 8080 is reserved when Truss installs its internal reverse proxy; no_build deployments can use 8080.",
             title="Server Port",
         ),
     ]
@@ -234,14 +253,14 @@ class HealthChecks(BaseModel):
     restart_threshold_seconds: Annotated[
         int | None,
         Field(
-            description="The time in seconds after which an unhealthy instance is restarted. Defaults to platform-determined value when not set.",
+            description="The time in seconds after which an unhealthy instance is restarted. With trt_llm, defaults to 60 and must be <= 60. Otherwise defaults to platform-determined value when not set.",
             title="Restart Threshold Seconds",
         ),
     ] = None
     stop_traffic_threshold_seconds: Annotated[
         int | None,
         Field(
-            description="The time in seconds after which traffic is stopped to an unhealthy instance. Defaults to platform-determined value when not set.",
+            description="The time in seconds after which traffic is stopped to an unhealthy instance. With trt_llm, defaults to 30 and must be <= 30. Otherwise defaults to platform-determined value when not set.",
             title="Stop Traffic Threshold Seconds",
         ),
     ] = None
@@ -318,7 +337,7 @@ class Resources(BaseModel):
     accelerator: Annotated[
         str | None,
         Field(
-            description="The GPU type for your instance. To request multiple GPUs, use the ':' operator (e.g. L4:4).",
+            description="The accelerator type for your instance. To request multiple accelerators, use the ':' operator (e.g. L4:4).",
             examples=["A100", "T4:2", "H100:8"],
         ),
     ] = None
@@ -588,6 +607,17 @@ class BDNConfig(BaseModel):
             description="Configure loading BDN data while the deployment is running."
         ),
     ] = None
+
+
+class BEIConfiguration(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    backend: Annotated[Literal["nvidia", "tpu"] | str, Field(title="Backend")]
+    version_override: Annotated[str | None, Field(title="Version Override")] = None
+    configuration: Annotated[
+        list[BEIModelConfiguration], Field(min_length=1, title="Configuration")
+    ]
 
 
 class BISLLM(BaseModel):
@@ -908,7 +938,8 @@ class WeightsAuth(BaseModel):
         ),
     ] = None
     auth_method: Annotated[
-        Literal["CUSTOM_SECRET", "AWS_OIDC", "GCP_OIDC", "AWS_ASSUME_ROLE"] | str,
+        Literal["CUSTOM_SECRET", "AWS_OIDC", "GCP_OIDC", "HF_OIDC", "AWS_ASSUME_ROLE"]
+        | str,
         Field(
             description="Authentication method for downloading weights from the source.",
             title="WeightsAuthMethod",
@@ -919,6 +950,13 @@ class WeightsAuth(BaseModel):
         Field(
             description="Baseten secret name containing credentials for accessing the source.",
             title="Auth Secret Name",
+        ),
+    ] = None
+    hf_oidc_resource: Annotated[
+        str | None,
+        Field(
+            description="Hugging Face repository (namespace/name) or username for OIDC token exchange.",
+            title="Hf Oidc Resource",
         ),
     ] = None
 
@@ -1135,6 +1173,12 @@ class ModelConfig(BaseModel):
     trt_llm: Annotated[
         TRTLLMConfigurationV1 | TRTLLMConfigurationV2 | None,
         Field(description="TensorRT-LLM configuration for optimized LLM inference."),
+    ] = None
+    bei: Annotated[
+        BEIConfiguration | None,
+        Field(
+            description="BEIv3 encoder serving without an engine-build job. Hugging Face checkpoints use runtime weights mounts. Requires explicit restart and stop-traffic health thresholds of 1–60 seconds."
+        ),
     ] = None
     training_checkpoints: Annotated[
         CheckpointList | None,
