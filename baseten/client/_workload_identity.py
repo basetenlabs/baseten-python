@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
@@ -18,7 +19,13 @@ from baseten.client._token_auth import (
     _utc_now,
 )
 from baseten.client._user_agent import with_user_agent
-from baseten.client.managementapi import ResponseError
+from baseten.client.managementapi import (
+    ApiClient,
+    AsyncApiClient,
+    ResponseError,
+    TokenExchangeRequest,
+    TokenExchangeResponse,
+)
 
 # The exchange takes an RFC 8693 request naming the trust rule as its audience.
 _TOKEN_EXCHANGE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:token-exchange"
@@ -63,10 +70,10 @@ class _Exchange:
         base_url = (base_url_override or ManagementClient.default_base_url()).rstrip(
             "/"
         )
-        self.url = f"{base_url}/v1/auth/token"
+        self.base_url = base_url
         self.timeout_sec = exchange_timeout.total_seconds()
         self.timeout = httpx.Timeout(self.timeout_sec)
-        self.headers = with_user_agent({"Accept": "application/json"})
+        self.headers = with_user_agent({})
 
     def read_identity_token_file(self) -> str:
         assert self.identity_token_file is not None
@@ -76,80 +83,64 @@ class _Exchange:
             raise ValueError(f"identity token file {self.identity_token_file} is empty")
         return token
 
-    def body(self, identity_token: str) -> dict[str, str]:
+    def request(self, identity_token: str) -> TokenExchangeRequest:
         token = identity_token.strip()
         if token == "":
             raise ValueError("the identity token provider returned an empty token")
-        return {
-            "grant_type": _TOKEN_EXCHANGE_GRANT_TYPE,
-            "subject_token": token,
-            "subject_token_type": _JWT_TOKEN_TYPE,
-            "audience": self.trust_rule_id,
-        }
+        return TokenExchangeRequest(
+            grant_type=_TOKEN_EXCHANGE_GRANT_TYPE,
+            subject_token=token,
+            subject_token_type=_JWT_TOKEN_TYPE,
+            audience=self.trust_rule_id,
+        )
 
-    def post_kwargs(self, body: dict[str, str]) -> dict[str, Any]:
+    def api_kwargs(self) -> dict[str, Any]:
+        # No auth: the identity token in the body is what authenticates.
         return {
-            "url": self.url,
-            "json": body,
+            "base_url": self.base_url,
             "headers": self.headers,
             "timeout": self.timeout,
-            # The body carries the identity token, so it is never sent on to
-            # wherever a redirect points, even with a client that follows them.
-            "follow_redirects": False,
         }
 
-    def parse(self, response: httpx.Response, *, issued_at: datetime) -> AccessToken:
-        if response.status_code != 200:
-            error = ResponseError(status_code=response.status_code, body=response.text)
-            if _oauth_error(response) == "invalid_grant":
-                # The server sends every refusal as the same invalid_grant, so
-                # the note covers each possible cause.
-                error.add_note(
-                    "workload identity token exchange refused for trust rule "
-                    f"{self.trust_rule_id} (the trust rule may not exist or may "
-                    "not match the identity token's issuer, audience, or claims, "
-                    "or the identity token may have expired)"
-                )
-            raise error
-        try:
-            body = response.json()
-        except ValueError:
-            raise ValueError(
-                "workload identity token exchange: the response is not JSON"
-            ) from None
-        if not isinstance(body, dict):
-            body = {}
-        access_token = body.get("access_token")
-        if not isinstance(access_token, str) or access_token == "":
+    def add_refusal_note(self, error: ResponseError) -> None:
+        if _oauth_error(error.body) == "invalid_grant":
+            # The server sends every refusal as the same invalid_grant, so the
+            # note covers each possible cause.
+            error.add_note(
+                "workload identity token exchange refused for trust rule "
+                f"{self.trust_rule_id} (the trust rule may not exist or may "
+                "not match the identity token's issuer, audience, or claims, "
+                "or the identity token may have expired)"
+            )
+
+    def parse(
+        self, response: TokenExchangeResponse, *, issued_at: datetime
+    ) -> AccessToken:
+        if response.access_token == "":
             raise ValueError(
                 "workload identity token exchange: the response carried no access_token"
             )
-        token_type = body.get("token_type")
-        if not isinstance(token_type, str) or token_type.lower() != "bearer":
+        if response.token_type.lower() != "bearer":
             raise ValueError(
                 "workload identity token exchange: unsupported token_type "
-                f"{token_type!r}"
+                f"{response.token_type!r}"
             )
-        expires_in = body.get("expires_in")
-        if (
-            not isinstance(expires_in, int)
-            or isinstance(expires_in, bool)
-            or expires_in <= 0
-        ):
+        if response.expires_in <= 0:
             raise ValueError(
-                f"workload identity token exchange: invalid expires_in {expires_in!r}"
+                f"workload identity token exchange: invalid expires_in {response.expires_in!r}"
             )
         return AccessToken(
-            token=access_token, expires_at=issued_at + timedelta(seconds=expires_in)
+            token=response.access_token,
+            expires_at=issued_at + timedelta(seconds=response.expires_in),
         )
 
 
-def _oauth_error(response: httpx.Response) -> object:
+def _oauth_error(body: str) -> object:
     try:
-        body = response.json()
+        decoded = json.loads(body)
     except ValueError:
         return None
-    return body.get("error") if isinstance(body, dict) else None
+    return decoded.get("error") if isinstance(decoded, dict) else None
 
 
 class WorkloadIdentityCredentials:
@@ -241,14 +232,22 @@ class WorkloadIdentityCredentials:
             identity_token = self._identity_token()
         else:
             identity_token = self._exchange.read_identity_token_file()
-        post_kwargs = self._exchange.post_kwargs(self._exchange.body(identity_token))
+        request = self._exchange.request(identity_token)
         # Taken before sending, so the computed expiry errs early.
         issued_at = self._now()
-        if self._http_client is not None:
-            response = self._http_client.post(**post_kwargs)
-        else:
-            with httpx.Client() as http_client:
-                response = http_client.post(**post_kwargs)
+        try:
+            if self._http_client is not None:
+                response = ApiClient(
+                    self._http_client, **self._exchange.api_kwargs()
+                ).post_auth_token(request=request)
+            else:
+                with httpx.Client() as http_client:
+                    response = ApiClient(
+                        http_client, **self._exchange.api_kwargs()
+                    ).post_auth_token(request=request)
+        except ResponseError as e:
+            self._exchange.add_refusal_note(e)
+            raise
         return self._exchange.parse(response, issued_at=issued_at)
 
 
@@ -317,12 +316,20 @@ class AsyncWorkloadIdentityCredentials:
             identity_token = await asyncio.to_thread(
                 self._exchange.read_identity_token_file
             )
-        post_kwargs = self._exchange.post_kwargs(self._exchange.body(identity_token))
+        request = self._exchange.request(identity_token)
         # Taken before sending, so the computed expiry errs early.
         issued_at = self._now()
-        if self._http_client is not None:
-            response = await self._http_client.post(**post_kwargs)
-        else:
-            async with httpx.AsyncClient() as http_client:
-                response = await http_client.post(**post_kwargs)
+        try:
+            if self._http_client is not None:
+                response = await AsyncApiClient(
+                    self._http_client, **self._exchange.api_kwargs()
+                ).post_auth_token(request=request)
+            else:
+                async with httpx.AsyncClient() as http_client:
+                    response = await AsyncApiClient(
+                        http_client, **self._exchange.api_kwargs()
+                    ).post_auth_token(request=request)
+        except ResponseError as e:
+            self._exchange.add_refusal_note(e)
+            raise
         return self._exchange.parse(response, issued_at=issued_at)

@@ -22,6 +22,7 @@ from baseten.client import (
 )
 from baseten.client.managementapi import ResponseError
 
+_ACCESS_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:access_token"
 _BASE_URL = "https://api.test"
 _ORG = {
     "org_id": "o",
@@ -73,6 +74,7 @@ class _Server:
                 "access_token": f"access-{len(self.assertions)}",
                 "token_type": "Bearer",
                 "expires_in": self.expires_in,
+                "issued_token_type": _ACCESS_TOKEN_TYPE,
             },
         )
 
@@ -230,7 +232,7 @@ class TestWorkloadIdentityCredentials:
             identity_token=lambda: "idp-jwt",
             base_url_override=_BASE_URL,
             http_client_override=httpx.Client(
-                transport=httpx.MockTransport(server.handle), follow_redirects=True
+                transport=httpx.MockTransport(server.handle)
             ),
         )
         with pytest.raises(ResponseError, match="HTTP 307"):
@@ -253,17 +255,28 @@ class TestWorkloadIdentityCredentials:
                 credentials.access_token(_OPTIONS)
 
     @pytest.mark.parametrize(
-        "body",
+        ("body", "match"),
         [
-            {"token_type": "Bearer", "expires_in": 60},
-            {"access_token": "a", "token_type": "MAC", "expires_in": 60},
-            {"access_token": "a", "token_type": "Bearer"},
+            (
+                {"access_token": "", "token_type": "Bearer", "expires_in": 60},
+                "no access_token",
+            ),
+            (
+                {"access_token": "a", "token_type": "MAC", "expires_in": 60},
+                "unsupported token_type",
+            ),
+            (
+                {"access_token": "a", "token_type": "Bearer", "expires_in": 0},
+                "invalid expires_in",
+            ),
         ],
     )
-    def test_malformed_success(self, body: dict[str, object]) -> None:
+    def test_malformed_success(self, body: dict[str, object], match: str) -> None:
         server = _Server()
-        server.exchange_response = lambda: httpx.Response(200, json=body)
-        with pytest.raises(ValueError):
+        server.exchange_response = lambda: httpx.Response(
+            200, json={**body, "issued_token_type": _ACCESS_TOKEN_TYPE}
+        )
+        with pytest.raises(ValueError, match=match):
             server.credentials().access_token(_OPTIONS)
 
     @pytest.mark.parametrize(
@@ -366,8 +379,8 @@ class TestAsyncWorkloadIdentityCredentials:
     @pytest.mark.parametrize(
         ("response", "match"),
         [
-            (httpx.Response(200, text="<html>"), "not JSON"),
-            (httpx.Response(200, json=["a"]), "no access_token"),
+            (httpx.Response(200, text="<html>"), "unexpected content type"),
+            (httpx.Response(200, json=["a"]), "validation error"),
             (
                 httpx.Response(200, json={"access_token": "a", "token_type": "Bearer"}),
                 "expires_in",
