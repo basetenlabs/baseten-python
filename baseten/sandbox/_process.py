@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Literal, TypeAlias
 
+import httpx
+
 import baseten.client.sandboxapi
 from baseten.sandbox._common import (
     AsyncSandboxContext,
@@ -368,16 +370,25 @@ class SandboxProcess:
             SandboxProcessWaitTimeoutError: The process was still running
                 when the wait timed out. The process keeps running.
         """
-        # A check already in flight cannot be interrupted, so the wait can
-        # run over by up to one check.
         deadline = (
             None if timeout is None else time.monotonic() + timeout.total_seconds()
         )
         last_error: Exception | None = None
         while True:
+            # Each check is bounded by the time left, so a stalled one cannot
+            # hold the wait past its timeout.
+            if deadline is None:
+                api_context = self._context.api()
+            else:
+                time_left = timedelta(seconds=max(deadline - time.monotonic(), 0))
+                api_context = self._context.api_with_timeout(time_left)
             try:
-                with self._context.api() as api:
+                with api_context as api:
                     process = api.get_process_identifier(identifier=identifier)
+            except httpx.TimeoutException as err:
+                if deadline is None:
+                    raise
+                last_error = err
             except Exception as err:
                 if not _is_retryable_wait_error(err):
                     raise
