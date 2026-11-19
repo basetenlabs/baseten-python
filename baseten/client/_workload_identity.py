@@ -18,7 +18,7 @@ from baseten.client._token_auth import (
     _utc_now,
 )
 from baseten.client._user_agent import with_user_agent
-from baseten.client.managementapi import ResponseError
+from baseten.client.managementapi import ResponseError, TokenExchangeRequest
 
 # The exchange takes an RFC 8693 request naming the trust rule as its audience.
 _TOKEN_EXCHANGE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:token-exchange"
@@ -76,21 +76,21 @@ class _Exchange:
             raise ValueError(f"identity token file {self.identity_token_file} is empty")
         return token
 
-    def body(self, identity_token: str) -> dict[str, str]:
+    def body(self, identity_token: str) -> TokenExchangeRequest:
         token = identity_token.strip()
         if token == "":
             raise ValueError("the identity token provider returned an empty token")
-        return {
-            "grant_type": _TOKEN_EXCHANGE_GRANT_TYPE,
-            "subject_token": token,
-            "subject_token_type": _JWT_TOKEN_TYPE,
-            "audience": self.trust_rule_id,
-        }
+        return TokenExchangeRequest(
+            grant_type=_TOKEN_EXCHANGE_GRANT_TYPE,
+            subject_token=token,
+            subject_token_type=_JWT_TOKEN_TYPE,
+            audience=self.trust_rule_id,
+        )
 
-    def post_kwargs(self, body: dict[str, str]) -> dict[str, Any]:
+    def post_kwargs(self, body: TokenExchangeRequest) -> dict[str, Any]:
         return {
             "url": self.url,
-            "json": body,
+            "json": body.model_dump(mode="json", exclude_unset=True),
             "headers": self.headers,
             "timeout": self.timeout,
             # The body carries the identity token, so it is never sent on to
