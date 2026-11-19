@@ -375,16 +375,15 @@ class SandboxProcess:
         )
         last_error: Exception | None = None
         while True:
+            # Each check is bounded by the time left, so a stalled one cannot
+            # hold the wait past its timeout.
+            if deadline is None:
+                api_context = self._context.api()
+            else:
+                time_left = timedelta(seconds=max(deadline - time.monotonic(), 0))
+                api_context = self._context.api_with_timeout(time_left)
             try:
-                # Each check is bounded by the time left, so a stalled one
-                # cannot hold the wait past its timeout.
-                with (
-                    self._context.api()
-                    if deadline is None
-                    else self._context.api_with_timeout(
-                        timedelta(seconds=max(deadline - time.monotonic(), 0))
-                    )
-                ) as api:
+                with api_context as api:
                     process = api.get_process_identifier(identifier=identifier)
             except httpx.TimeoutException as err:
                 if deadline is None:
