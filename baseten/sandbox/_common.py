@@ -437,9 +437,12 @@ def response_lines(response: httpx.Response) -> Generator[str, None, None]:
     decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
     buffer = ""
     for chunk in response.iter_bytes():
-        buffer += decoder.decode(chunk)
-        *lines, buffer = _LINE_BREAK.split(buffer)
-        yield from lines
+        text = decoder.decode(chunk)
+        buffer += text
+        # Split only when a line ends, so a long line isn't rescanned per chunk.
+        if "\n" in text:
+            *lines, buffer = _LINE_BREAK.split(buffer)
+            yield from lines
     buffer += decoder.decode(b"", final=True)
     if buffer:
         yield buffer
@@ -450,10 +453,12 @@ async def response_lines_async(response: httpx.Response) -> AsyncGenerator[str, 
     decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
     buffer = ""
     async for chunk in response.aiter_bytes():
-        buffer += decoder.decode(chunk)
-        *lines, buffer = _LINE_BREAK.split(buffer)
-        for line in lines:
-            yield line
+        text = decoder.decode(chunk)
+        buffer += text
+        if "\n" in text:
+            *lines, buffer = _LINE_BREAK.split(buffer)
+            for line in lines:
+                yield line
     buffer += decoder.decode(b"", final=True)
     if buffer:
         yield buffer

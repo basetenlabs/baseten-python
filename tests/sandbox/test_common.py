@@ -146,6 +146,8 @@ class _ChunkStream(httpx.SyncByteStream, httpx.AsyncByteStream):
         # A character split across chunks, and invalid UTF-8 replaced.
         (("é\n".encode()[:1], "é\n".encode()[1:]), ["é"]),
         ((b"a\xffb\n",), ["a�b"]),
+        # A long line across many chunks, ended by \r\n split across two.
+        ((*[b"x" * 1024] * 64, b"\r", b"\ny"), ["x" * 65536, "y"]),
     ],
 )
 class TestResponseLines:
