@@ -17,7 +17,7 @@ from typing import Protocol
 import httpx
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class AccessToken:
     """A short-lived Baseten access token, sent as ``Authorization: Bearer``."""
 
@@ -28,7 +28,7 @@ class AccessToken:
     """When the token expires."""
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class AccessTokenOptions:
     """What :class:`Credentials` are told about the token they are asked for."""
 
@@ -338,7 +338,8 @@ class CredentialsAuth(httpx.Auth):
         # The request is not sent again, since it may have side effects; only
         # the next request gets a new token.
         if refused_by_baseten(response):
-            self._refused = token
+            with self._refused_lock:
+                self._refused = token
 
 
 class AsyncCredentialsAuth(httpx.Auth):

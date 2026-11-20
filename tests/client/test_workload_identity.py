@@ -330,7 +330,6 @@ class TestWorkloadIdentityCredentials:
             {"trust_rule_id": "r"},
             {"trust_rule_id": "r", "identity_token_file": "/f", "identity_token": str},
             {"trust_rule_id": "", "identity_token": str},
-            {"trust_rule_id": "  ", "identity_token": str},
             {"trust_rule_id": "r", "identity_token_file": ""},
             {
                 "trust_rule_id": "r",

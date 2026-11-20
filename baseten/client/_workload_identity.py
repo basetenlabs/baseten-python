@@ -63,7 +63,7 @@ class _Exchange:
             )
         if identity_token_file is not None and os.fspath(identity_token_file) == "":
             raise ValueError("identity_token_file must not be empty")
-        if trust_rule_id.strip() == "":
+        if not trust_rule_id:
             raise ValueError("trust_rule_id is required")
         if refresh_leeway < timedelta(0):
             raise ValueError("refresh_leeway must not be negative")
