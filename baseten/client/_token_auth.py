@@ -318,6 +318,9 @@ class CredentialsAuth(httpx.Auth):
         # The last token Baseten refused, passed to the next access_token call
         # so the credentials replace it.
         self._refused: str | None = None
+        # Taken and cleared together, since requests on several threads share
+        # this auth.
+        self._refused_lock = threading.Lock()
 
     def sync_auth_flow(
         self, request: httpx.Request
@@ -326,8 +329,9 @@ class CredentialsAuth(httpx.Auth):
         if not _applies_to(request, self._origin):
             yield request
             return
-        options = AccessTokenOptions(refused_token=self._refused)
-        self._refused = None
+        with self._refused_lock:
+            refused, self._refused = self._refused, None
+        options = AccessTokenOptions(refused_token=refused)
         token = _non_empty(self._credentials.access_token(options))
         _set_authorization(request, token)
         response = yield request

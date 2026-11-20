@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import os
+import threading
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -26,6 +28,10 @@ from baseten.client.managementapi import (
     TokenExchangeRequest,
     TokenExchangeResponse,
 )
+
+# Sends a request as is, so the exchange never picks up an HTTP client's own
+# auth, such as another client's credentials.
+_NO_AUTH = httpx.Auth()
 
 # The exchange takes an RFC 8693 request naming the trust rule as its audience.
 _TOKEN_EXCHANGE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:token-exchange"
@@ -95,15 +101,22 @@ class _Exchange:
         )
 
     def api_kwargs(self) -> dict[str, Any]:
-        # No auth: the identity token in the body is what authenticates.
+        # The identity token in the body is what authenticates.
         return {
             "base_url": self.base_url,
             "headers": self.headers,
             "timeout": self.timeout,
+            "auth": _NO_AUTH,
         }
 
-    def add_refusal_note(self, error: ResponseError) -> None:
-        if _oauth_error(error.body) == "invalid_grant":
+    def add_context(self, error: Exception) -> None:
+        error.add_note(
+            f"while exchanging an identity token under trust rule {self.trust_rule_id}"
+        )
+        if (
+            isinstance(error, ResponseError)
+            and _oauth_error(error.body) == "invalid_grant"
+        ):
             # The server sends every refusal as the same invalid_grant, so the
             # note covers each possible cause.
             error.add_note(
@@ -198,10 +211,13 @@ class WorkloadIdentityCredentials:
             refresh_leeway: How long before expiry the access token is
                 replaced, capped at half the token's lifetime so a short-lived
                 token is still reused.
-            exchange_timeout: Bounds each phase of one exchange, which
-                every caller waiting for a token shares.
+            exchange_timeout: Bounds one whole exchange, including
+                *identity_token* and reading *identity_token_file*, which
+                every caller waiting for a token shares. An exchange that
+                overruns is abandoned on its own thread.
             http_client_override: HTTP client to send the exchange with.
-                ``None`` uses a new one per exchange.
+                ``None`` uses a new one per exchange. It should not follow
+                redirects, since the request body carries the identity token.
         """
         self._exchange = _Exchange(
             trust_rule_id=trust_rule_id,
@@ -228,6 +244,37 @@ class WorkloadIdentityCredentials:
         return self._cache.token()
 
     def _exchange_token(self) -> AccessToken:
+        # httpx bounds each phase of a request rather than the whole of it, and
+        # nothing bounds the identity token provider, so the exchange runs on
+        # its own thread and is abandoned when it overruns.
+        done = threading.Event()
+        outcome: list[AccessToken | BaseException] = []
+
+        def run() -> None:
+            try:
+                outcome.append(self._exchange_once())
+            except BaseException as e:  # noqa: BLE001 - re-raised on the caller's thread
+                outcome.append(e)
+            finally:
+                done.set()
+
+        threading.Thread(
+            target=contextvars.copy_context().run,
+            args=(run,),
+            name="baseten-workload-identity-exchange",
+            daemon=True,
+        ).start()
+        if not done.wait(self._exchange.timeout_sec):
+            raise TimeoutError(
+                "workload identity token exchange timed out after "
+                f"{self._exchange.timeout_sec}s"
+            )
+        result = outcome[0]
+        if isinstance(result, BaseException):
+            raise result
+        return result
+
+    def _exchange_once(self) -> AccessToken:
         if self._identity_token is not None:
             identity_token = self._identity_token()
         else:
@@ -245,10 +292,10 @@ class WorkloadIdentityCredentials:
                     response = ApiClient(
                         http_client, **self._exchange.api_kwargs()
                     ).post_auth_token(request=request)
-        except ResponseError as e:
-            self._exchange.add_refusal_note(e)
+            return self._exchange.parse(response, issued_at=issued_at)
+        except Exception as e:
+            self._exchange.add_context(e)
             raise
-        return self._exchange.parse(response, issued_at=issued_at)
 
 
 class AsyncWorkloadIdentityCredentials:
@@ -300,9 +347,12 @@ class AsyncWorkloadIdentityCredentials:
 
     async def _exchange_token(self) -> AccessToken:
         try:
-            async with asyncio.timeout(self._exchange.timeout_sec):
+            async with asyncio.timeout(self._exchange.timeout_sec) as deadline:
                 return await self._exchange_once()
         except TimeoutError as e:
+            # A TimeoutError of the provider's own is not the exchange's.
+            if not deadline.expired():
+                raise
             raise TimeoutError(
                 "workload identity token exchange timed out after "
                 f"{self._exchange.timeout_sec}s"
@@ -329,7 +379,7 @@ class AsyncWorkloadIdentityCredentials:
                     response = await AsyncApiClient(
                         http_client, **self._exchange.api_kwargs()
                     ).post_auth_token(request=request)
-        except ResponseError as e:
-            self._exchange.add_refusal_note(e)
+            return self._exchange.parse(response, issued_at=issued_at)
+        except Exception as e:
+            self._exchange.add_context(e)
             raise
-        return self._exchange.parse(response, issued_at=issued_at)

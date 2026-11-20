@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import socket
+import threading
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -31,6 +32,7 @@ _ORG = {
     "allow_service_account_api_keys": True,
 }
 _OPTIONS = AccessTokenOptions()
+_CONTEXT = "while exchanging an identity token under trust rule rule-1"
 
 
 class _Server:
@@ -199,9 +201,10 @@ class TestWorkloadIdentityCredentials:
             credentials.access_token(_OPTIONS)
         assert exc_info.value.status_code == 400
         assert exc_info.value.body == '{"error":"invalid_grant"}'
-        (note,) = exc_info.value.__notes__
-        assert "trust rule rule-1" in note
-        assert "may have expired" in note
+        context, hint = exc_info.value.__notes__
+        assert context == _CONTEXT
+        assert "trust rule rule-1" in hint
+        assert "may have expired" in hint
         with pytest.raises(ResponseError):
             credentials.access_token(_OPTIONS)
         assert len(server.assertions) == 2
@@ -213,14 +216,31 @@ class TestWorkloadIdentityCredentials:
         with pytest.raises(ResponseError) as exc_info:
             server.credentials().access_token(_OPTIONS)
         assert (exc_info.value.status_code, exc_info.value.body) == (502, body)
-        assert not hasattr(exc_info.value, "__notes__")
+        assert exc_info.value.__notes__ == [_CONTEXT]
 
     def test_other_error_status(self) -> None:
         server = _Server()
         server.exchange_response = _error_response(429, '{"error":"rate_limited"}')
         with pytest.raises(ResponseError, match="HTTP 429") as exc_info:
             server.credentials().access_token(_OPTIONS)
-        assert not hasattr(exc_info.value, "__notes__")
+        assert exc_info.value.__notes__ == [_CONTEXT]
+
+    def test_ignores_the_http_clients_own_auth(self) -> None:
+        class Leaky(httpx.Auth):
+            def auth_flow(self, request):
+                request.headers["Authorization"] = "Bearer other-client"
+                yield request
+
+        server = _Server()
+        credentials = WorkloadIdentityCredentials(
+            trust_rule_id="rule-1",
+            identity_token=lambda: "idp-jwt",
+            base_url_override=_BASE_URL,
+            http_client_override=httpx.Client(
+                auth=Leaky(), transport=httpx.MockTransport(server.handle)
+            ),
+        )
+        assert credentials.access_token(_OPTIONS).token == "access-1"
 
     def test_does_not_follow_redirects(self) -> None:
         server = _Server()
@@ -251,8 +271,25 @@ class TestWorkloadIdentityCredentials:
                 base_url_override=f"http://{host}:{port}",
                 exchange_timeout=timedelta(milliseconds=100),
             )
-            with pytest.raises(httpx.TimeoutException):
+            with pytest.raises((TimeoutError, httpx.TimeoutException)):
                 credentials.access_token(_OPTIONS)
+
+    def test_exchange_timeout_bounds_the_provider(self) -> None:
+        release = threading.Event()
+
+        def identity_token() -> str:
+            release.wait()
+            return "late"
+
+        credentials = _Server().credentials(
+            identity_token=identity_token,
+            exchange_timeout=timedelta(milliseconds=50),
+        )
+        try:
+            with pytest.raises(TimeoutError, match="timed out after"):
+                credentials.access_token(_OPTIONS)
+        finally:
+            release.set()
 
     @pytest.mark.parametrize(
         ("body", "match"),
@@ -364,6 +401,15 @@ class TestAsyncWorkloadIdentityCredentials:
             await credentials.access_token(_OPTIONS)
 
     @pytest.mark.asyncio
+    async def test_providers_own_timeout_is_not_relabeled(self) -> None:
+        async def identity_token() -> str:
+            raise TimeoutError("idp unreachable")
+
+        credentials = _Server().async_credentials(identity_token=identity_token)
+        with pytest.raises(TimeoutError, match="idp unreachable"):
+            await credentials.access_token(_OPTIONS)
+
+    @pytest.mark.asyncio
     async def test_invalid_grant_is_explained(self) -> None:
         server = _Server()
         server.exchange_response = lambda: httpx.Response(
@@ -372,8 +418,9 @@ class TestAsyncWorkloadIdentityCredentials:
         with pytest.raises(ResponseError) as exc_info:
             await server.async_credentials().access_token(_OPTIONS)
         assert exc_info.value.status_code == 400
-        (note,) = exc_info.value.__notes__
-        assert "trust rule rule-1" in note
+        context, hint = exc_info.value.__notes__
+        assert context == _CONTEXT
+        assert "trust rule rule-1" in hint
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -382,8 +429,16 @@ class TestAsyncWorkloadIdentityCredentials:
             (httpx.Response(200, text="<html>"), "unexpected content type"),
             (httpx.Response(200, json=["a"]), "validation error"),
             (
-                httpx.Response(200, json={"access_token": "a", "token_type": "Bearer"}),
-                "expires_in",
+                httpx.Response(
+                    200,
+                    json={
+                        "access_token": "a",
+                        "token_type": "Bearer",
+                        "expires_in": 0,
+                        "issued_token_type": _ACCESS_TOKEN_TYPE,
+                    },
+                ),
+                "invalid expires_in",
             ),
         ],
     )
