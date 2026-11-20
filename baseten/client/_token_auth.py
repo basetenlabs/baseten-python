@@ -430,7 +430,8 @@ def check_client_auth(
     headers: Mapping[str, str] | None,
 ) -> None:
     """Check that a client is given exactly one way to authenticate."""
-    if api_key is not None and credentials is not None:
+    # An empty api_key next to credentials counts as unset, as in Go.
+    if api_key and credentials is not None:
         raise ValueError("api_key and credentials are mutually exclusive")
     if api_key is None and credentials is None:
         raise ValueError("one of api_key or credentials is required")

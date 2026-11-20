@@ -225,6 +225,14 @@ class TestWorkloadIdentityCredentials:
             server.credentials().access_token(_OPTIONS)
         assert exc_info.value.__notes__ == [_CONTEXT]
 
+    def test_identity_token_errors_note_the_trust_rule(self) -> None:
+        def identity_token() -> str:
+            raise OSError("idp unreachable")
+
+        with pytest.raises(OSError, match="idp unreachable") as exc_info:
+            _Server().credentials(identity_token=identity_token).access_token(_OPTIONS)
+        assert exc_info.value.__notes__ == [_CONTEXT]
+
     def test_ignores_the_http_clients_own_auth(self) -> None:
         class Leaky(httpx.Auth):
             def auth_flow(self, request):
@@ -614,8 +622,8 @@ class TestClientsWithCredentials:
         credentials = _Server().credentials()
         with pytest.raises(ValueError, match="mutually exclusive"):
             ManagementClient(api_key="k", credentials=credentials)
-        with pytest.raises(ValueError, match="mutually exclusive"):
-            ManagementClient(api_key="", credentials=credentials)
+        # An empty api_key counts as unset, as in Go.
+        ManagementClient(api_key="", credentials=credentials).close()
         with pytest.raises(ValueError, match="required"):
             ManagementClient()
         for name in ["Authorization", "authorization"]:

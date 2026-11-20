@@ -275,14 +275,14 @@ class WorkloadIdentityCredentials:
         return result
 
     def _exchange_once(self) -> AccessToken:
-        if self._identity_token is not None:
-            identity_token = self._identity_token()
-        else:
-            identity_token = self._exchange.read_identity_token_file()
-        request = self._exchange.request(identity_token)
-        # Taken before sending, so the computed expiry errs early.
-        issued_at = self._now()
         try:
+            if self._identity_token is not None:
+                identity_token = self._identity_token()
+            else:
+                identity_token = self._exchange.read_identity_token_file()
+            request = self._exchange.request(identity_token)
+            # Taken before sending, so the computed expiry errs early.
+            issued_at = self._now()
             if self._http_client is not None:
                 response = ApiClient(
                     self._http_client, **self._exchange.api_kwargs()
@@ -359,17 +359,17 @@ class AsyncWorkloadIdentityCredentials:
             ) from e
 
     async def _exchange_once(self) -> AccessToken:
-        if self._identity_token is not None:
-            identity_token = await self._identity_token()
-        else:
-            # Off the event loop, since the file system can be slow.
-            identity_token = await asyncio.to_thread(
-                self._exchange.read_identity_token_file
-            )
-        request = self._exchange.request(identity_token)
-        # Taken before sending, so the computed expiry errs early.
-        issued_at = self._now()
         try:
+            if self._identity_token is not None:
+                identity_token = await self._identity_token()
+            else:
+                # Off the event loop, since the file system can be slow.
+                identity_token = await asyncio.to_thread(
+                    self._exchange.read_identity_token_file
+                )
+            request = self._exchange.request(identity_token)
+            # Taken before sending, so the computed expiry errs early.
+            issued_at = self._now()
             if self._http_client is not None:
                 response = await AsyncApiClient(
                     self._http_client, **self._exchange.api_kwargs()
