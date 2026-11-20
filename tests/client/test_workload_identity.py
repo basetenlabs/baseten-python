@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import json
 import socket
-import threading
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -20,6 +19,7 @@ from baseten.client import (
     InferenceClient,
     ManagementClient,
     WorkloadIdentityCredentials,
+    _workload_identity,
 )
 from baseten.client.managementapi import ResponseError
 
@@ -267,7 +267,8 @@ class TestWorkloadIdentityCredentials:
             credentials.access_token(_OPTIONS)
         assert server.assertions == ["idp-jwt"]
 
-    def test_exchange_timeout(self) -> None:
+    def test_exchange_timeout(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(_workload_identity, "_EXCHANGE_TIMEOUT", httpx.Timeout(0.1))
         # Accepts the connection but never answers it.
         with socket.socket() as listener:
             listener.bind(("127.0.0.1", 0))
@@ -277,27 +278,9 @@ class TestWorkloadIdentityCredentials:
                 trust_rule_id="rule-1",
                 identity_token=lambda: "idp-jwt",
                 base_url_override=f"http://{host}:{port}",
-                exchange_timeout=timedelta(milliseconds=100),
             )
-            with pytest.raises((TimeoutError, httpx.TimeoutException)):
+            with pytest.raises(httpx.TimeoutException):
                 credentials.access_token(_OPTIONS)
-
-    def test_exchange_timeout_bounds_the_provider(self) -> None:
-        release = threading.Event()
-
-        def identity_token() -> str:
-            release.wait()
-            return "late"
-
-        credentials = _Server().credentials(
-            identity_token=identity_token,
-            exchange_timeout=timedelta(milliseconds=50),
-        )
-        try:
-            with pytest.raises(TimeoutError, match="timed out after"):
-                credentials.access_token(_OPTIONS)
-        finally:
-            release.set()
 
     @pytest.mark.parametrize(
         ("body", "match"),
@@ -331,11 +314,6 @@ class TestWorkloadIdentityCredentials:
             {"trust_rule_id": "r", "identity_token_file": "/f", "identity_token": str},
             {"trust_rule_id": "", "identity_token": str},
             {"trust_rule_id": "r", "identity_token_file": ""},
-            {
-                "trust_rule_id": "r",
-                "identity_token": str,
-                "exchange_timeout": timedelta(0),
-            },
             {
                 "trust_rule_id": "r",
                 "identity_token": str,
@@ -393,28 +371,6 @@ class TestAsyncWorkloadIdentityCredentials:
         assert (await waiting).token == "access-1"
         with pytest.raises(asyncio.CancelledError):
             await cancelled
-
-    @pytest.mark.asyncio
-    async def test_exchange_timeout(self) -> None:
-        async def identity_token() -> str:
-            await asyncio.Event().wait()
-            return "never"
-
-        credentials = _Server().async_credentials(
-            identity_token=identity_token,
-            exchange_timeout=timedelta(milliseconds=10),
-        )
-        with pytest.raises(TimeoutError, match="timed out"):
-            await credentials.access_token(_OPTIONS)
-
-    @pytest.mark.asyncio
-    async def test_providers_own_timeout_is_not_relabeled(self) -> None:
-        async def identity_token() -> str:
-            raise TimeoutError("idp unreachable")
-
-        credentials = _Server().async_credentials(identity_token=identity_token)
-        with pytest.raises(TimeoutError, match="idp unreachable"):
-            await credentials.access_token(_OPTIONS)
 
     @pytest.mark.asyncio
     async def test_invalid_grant_is_explained(self) -> None:
