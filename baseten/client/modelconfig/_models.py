@@ -234,9 +234,15 @@ class FabricRequirement(BaseModel):
 class GRPCOptions(BaseModel):
     kind: Annotated[Literal["grpc"], Field(title="Kind")] = "grpc"
 
+    def model_post_init(self, context: Any, /) -> None:
+        self.__pydantic_fields_set__.update(("kind",))
+
 
 class HTTPOptions(BaseModel):
     kind: Annotated[Literal["http"], Field(title="Kind")] = "http"
+
+    def model_post_init(self, context: Any, /) -> None:
+        self.__pydantic_fields_set__.update(("kind",))
 
 
 class HealthChecks(BaseModel):
@@ -427,6 +433,9 @@ class WebsocketOptions(BaseModel):
     ping_timeout_seconds: Annotated[
         float | None, Field(title="Ping Timeout Seconds")
     ] = None
+
+    def model_post_init(self, context: Any, /) -> None:
+        self.__pydantic_fields_set__.update(("kind",))
 
 
 class NumDraftTokens(RootModel[int]):

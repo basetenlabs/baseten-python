@@ -25,6 +25,9 @@ class BasetenLatestCheckpointConfig(BaseModel):
         "baseten_latest_checkpoint"
     )
 
+    def model_post_init(self, context: Any, /) -> None:
+        self.__pydantic_fields_set__.update(("typ",))
+
 
 class BasetenNamedCheckpointConfig(BaseModel):
     checkpoint_name: Annotated[
@@ -47,6 +50,9 @@ class BasetenNamedCheckpointConfig(BaseModel):
     typ: Annotated[Literal["baseten_named_checkpoint"], Field(title="Typ")] = (
         "baseten_named_checkpoint"
     )
+
+    def model_post_init(self, context: Any, /) -> None:
+        self.__pydantic_fields_set__.update(("typ",))
 
 
 class CreateTrainingJobCacheConfig(BaseModel):
@@ -165,6 +171,9 @@ class LoopsCheckpointConfig(BaseModel):
         ),
     ] = "trainer"
     typ: Annotated[Literal["loops_checkpoint"], Field(title="Typ")] = "loops_checkpoint"
+
+    def model_post_init(self, context: Any, /) -> None:
+        self.__pydantic_fields_set__.update(("typ",))
 
 
 class TrussUserEnv(BaseModel):
@@ -4475,6 +4484,9 @@ class LibraryListingSource(BaseModel):
         ),
     ] = None
 
+    def model_post_init(self, context: Any, /) -> None:
+        self.__pydantic_fields_set__.update(("kind",))
+
 
 class AutoscalingSettings(BaseModel):
     min_replica: Annotated[
@@ -4821,6 +4833,9 @@ class DeploymentPatchOpConfig(BaseModel):
         str, Field(description="Config file path within the source.", title="Path")
     ] = "config.yaml"
 
+    def model_post_init(self, context: Any, /) -> None:
+        self.__pydantic_fields_set__.update(("type",))
+
 
 class DeploymentPatchOpEnvVar(BaseModel):
     type: Annotated[Literal["environment_variable"], Field(title="Type")] = (
@@ -4844,6 +4859,9 @@ class DeploymentPatchOpEnvVar(BaseModel):
         ),
     ] = None
 
+    def model_post_init(self, context: Any, /) -> None:
+        self.__pydantic_fields_set__.update(("type",))
+
 
 class DeploymentPatchOpExternalData(BaseModel):
     type: Annotated[Literal["external_data"], Field(title="Type")] = "external_data"
@@ -4858,6 +4876,9 @@ class DeploymentPatchOpExternalData(BaseModel):
         dict[str, str],
         Field(description="The single external data item descriptor.", title="Item"),
     ]
+
+    def model_post_init(self, context: Any, /) -> None:
+        self.__pydantic_fields_set__.update(("type",))
 
 
 class DeploymentPatchOpModelCode(BaseModel):
@@ -4896,6 +4917,9 @@ class DeploymentPatchOpModelCode(BaseModel):
         ),
     ] = False
 
+    def model_post_init(self, context: Any, /) -> None:
+        self.__pydantic_fields_set__.update(("type",))
+
 
 class DeploymentPatchOpPackage(BaseModel):
     type: Annotated[Literal["package"], Field(title="Type")] = "package"
@@ -4927,6 +4951,9 @@ class DeploymentPatchOpPackage(BaseModel):
         ),
     ] = None
 
+    def model_post_init(self, context: Any, /) -> None:
+        self.__pydantic_fields_set__.update(("type",))
+
 
 class DeploymentPatchOpPythonRequirement(BaseModel):
     type: Annotated[Literal["python_requirement"], Field(title="Type")] = (
@@ -4946,6 +4973,9 @@ class DeploymentPatchOpPythonRequirement(BaseModel):
             title="Requirement",
         ),
     ]
+
+    def model_post_init(self, context: Any, /) -> None:
+        self.__pydantic_fields_set__.update(("type",))
 
 
 class DeploymentPatchPoint(BaseModel):
@@ -7431,6 +7461,9 @@ class LoopsCheckpointFilesResponse(BaseModel):
 class LoopsCheckpointS3Source(BaseModel):
     kind: Annotated[Literal["s3"], Field(title="Kind")] = "s3"
 
+    def model_post_init(self, context: Any, /) -> None:
+        self.__pydantic_fields_set__.update(("kind",))
+
 
 class LoopsCheckpointVolumeSource(BaseModel):
     kind: Annotated[Literal["volume"], Field(title="Kind")] = "volume"
@@ -7448,6 +7481,9 @@ class LoopsCheckpointVolumeSource(BaseModel):
             title="Path",
         ),
     ]
+
+    def model_post_init(self, context: Any, /) -> None:
+        self.__pydantic_fields_set__.update(("kind",))
 
 
 class LoopsCheckpointSourceResponse(BaseModel):
@@ -18348,6 +18384,9 @@ class ModelArchiveSource(BaseModel):
         ),
     ] = False
 
+    def model_post_init(self, context: Any, /) -> None:
+        self.__pydantic_fields_set__.update(("kind",))
+
 
 class CreateModelRequest(BaseModel):
     source: Annotated[
@@ -18376,6 +18415,9 @@ class DeploymentArchiveSource(BaseModel):
             title="S3 Key",
         ),
     ] = None
+
+    def model_post_init(self, context: Any, /) -> None:
+        self.__pydantic_fields_set__.update(("kind",))
 
 
 class CreateModelDeploymentRequest(BaseModel):
