@@ -17,6 +17,13 @@ import httpx
 import baseten.client
 import baseten.client.managementapi
 import baseten.client.sandboxapi
+from baseten.client._token_auth import (
+    AsyncCredentials,
+    AsyncCredentialsAuth,
+    Credentials,
+    CredentialsAuth,
+    check_client_auth,
+)
 from baseten.client._user_agent import with_user_agent
 from baseten.sandbox._auth import (
     TOKEN_MINT_TIMEOUT,
@@ -83,14 +90,17 @@ class SandboxClientOptions:
     was constructed with.
     """
 
-    api_key: str
-    """API key for authentication."""
+    api_key: str | None = None
+    """API key for authentication, or ``None`` when another way is set."""
 
     team_id: str | None = None
     """Team to act in, or ``None`` for the caller's only team."""
 
     token_provider: SandboxTokenProvider | AsyncSandboxTokenProvider | None = None
     """Provider of each request's bearer token, in place of the API key."""
+
+    credentials: Credentials | AsyncCredentials | None = None
+    """Supplies short-lived access tokens, used in place of *api_key*."""
 
     base_url_override: str | None = None
     """Explicit base URL override, or ``None`` to use the default."""
@@ -153,9 +163,10 @@ class SandboxClient:
     def __init__(
         self,
         *,
-        api_key: str,
+        api_key: str | None = None,
         team_id: str | None = None,
         token_provider: SandboxTokenProvider | None = None,
+        credentials: Credentials | None = None,
         base_url_override: str | None = None,
         headers: Mapping[str, str] | None = None,
         retry: SandboxRetryOptions | None = None,
@@ -167,13 +178,17 @@ class SandboxClient:
         """Create a new sandbox client.
 
         Args:
-            api_key: API key for authentication. Empty, together with
-                *token_provider*, is the advanced opt-out of API key
-                authentication.
+            api_key: API key for authentication. Exactly one of *api_key*,
+                *credentials*, and *token_provider* is required. Empty, on its
+                own, is the advanced opt-out of sending Authorization.
             team_id: Team to act in. ``None`` uses the caller's only team,
                 and is an error for callers in more than one team.
             token_provider: Returns the bearer token for each request, instead
-                of one derived from the API key, which must then be empty.
+                of one derived from an API key or credentials.
+            credentials: Supplies short-lived access tokens in place of an
+                API key, such as
+                :class:`~baseten.client.WorkloadIdentityCredentials`. Sandbox
+                tokens are requested with them.
             base_url_override: Override the management API's base URL, which
                 defaults to ``https://api.baseten.co``.
             headers: Additional headers to send on every request.
@@ -203,10 +218,17 @@ class SandboxClient:
                 threads end once the sandbox is no longer referenced.
         """
         self._executor = executor
+        _check_auth(
+            api_key=api_key,
+            credentials=credentials,
+            token_provider=token_provider,
+            headers=headers,
+        )
         self._options = SandboxClientOptions(
             api_key=api_key,
             team_id=team_id,
             token_provider=token_provider,
+            credentials=credentials,
             base_url_override=base_url_override,
             headers=headers,
             retry=retry,
@@ -229,16 +251,22 @@ class SandboxClient:
                 else close_http_client_on_close
             )
         self._request_headers = with_user_agent(headers or {})
-        mint_api = baseten.client.managementapi.ApiClient(
-            self._http_client,
-            base_url=self._options.base_url,
-            headers={**self._request_headers, "Authorization": f"Bearer {api_key}"},
-            timeout=httpx.Timeout(TOKEN_MINT_TIMEOUT),
-        )
-        self._auth = TokenAuth(
-            TokenSource(
-                api_key=api_key, token_provider=token_provider, mint_api=mint_api
+        mint_api = None
+        if api_key or credentials is not None:
+            mint_headers = dict(self._request_headers)
+            if api_key:
+                mint_headers["Authorization"] = f"Bearer {api_key}"
+            mint_api = baseten.client.managementapi.ApiClient(
+                self._http_client,
+                base_url=self._options.base_url,
+                auth=None
+                if credentials is None
+                else CredentialsAuth(credentials, origin=self._options.base_url),
+                headers=mint_headers,
+                timeout=httpx.Timeout(TOKEN_MINT_TIMEOUT),
             )
+        self._auth = TokenAuth(
+            TokenSource(token_provider=token_provider, mint_api=mint_api)
         )
         self._raw_api = baseten.client.managementapi.ApiClient(
             self._http_client,
@@ -562,9 +590,10 @@ class AsyncSandboxClient:
     def __init__(
         self,
         *,
-        api_key: str,
+        api_key: str | None = None,
         team_id: str | None = None,
         token_provider: AsyncSandboxTokenProvider | None = None,
+        credentials: AsyncCredentials | None = None,
         base_url_override: str | None = None,
         headers: Mapping[str, str] | None = None,
         retry: SandboxRetryOptions | None = None,
@@ -575,13 +604,17 @@ class AsyncSandboxClient:
         """Create a new async sandbox client.
 
         Args:
-            api_key: API key for authentication. Empty, together with
-                *token_provider*, is the advanced opt-out of API key
-                authentication.
+            api_key: API key for authentication. Exactly one of *api_key*,
+                *credentials*, and *token_provider* is required. Empty, on its
+                own, is the advanced opt-out of sending Authorization.
             team_id: Team to act in. ``None`` uses the caller's only team,
                 and is an error for callers in more than one team.
             token_provider: Returns the bearer token for each request, instead
-                of one derived from the API key, which must then be empty.
+                of one derived from an API key or credentials.
+            credentials: Supplies short-lived access tokens in place of an
+                API key, such as
+                :class:`~baseten.client.AsyncWorkloadIdentityCredentials`. Sandbox
+                tokens are requested with them.
             base_url_override: Override the management API's base URL, which
                 defaults to ``https://api.baseten.co``.
             headers: Additional headers to send on every request.
@@ -603,10 +636,17 @@ class AsyncSandboxClient:
                 client is created internally, ``False`` when
                 *http_client_override* is provided.
         """
+        _check_auth(
+            api_key=api_key,
+            credentials=credentials,
+            token_provider=token_provider,
+            headers=headers,
+        )
         self._options = SandboxClientOptions(
             api_key=api_key,
             team_id=team_id,
             token_provider=token_provider,
+            credentials=credentials,
             base_url_override=base_url_override,
             headers=headers,
             retry=retry,
@@ -629,16 +669,22 @@ class AsyncSandboxClient:
                 else close_http_client_on_close
             )
         self._request_headers = with_user_agent(headers or {})
-        mint_api = baseten.client.managementapi.AsyncApiClient(
-            self._http_client,
-            base_url=self._options.base_url,
-            headers={**self._request_headers, "Authorization": f"Bearer {api_key}"},
-            timeout=httpx.Timeout(TOKEN_MINT_TIMEOUT),
-        )
-        self._auth = AsyncTokenAuth(
-            AsyncTokenSource(
-                api_key=api_key, token_provider=token_provider, mint_api=mint_api
+        mint_api = None
+        if api_key or credentials is not None:
+            mint_headers = dict(self._request_headers)
+            if api_key:
+                mint_headers["Authorization"] = f"Bearer {api_key}"
+            mint_api = baseten.client.managementapi.AsyncApiClient(
+                self._http_client,
+                base_url=self._options.base_url,
+                auth=None
+                if credentials is None
+                else AsyncCredentialsAuth(credentials, origin=self._options.base_url),
+                headers=mint_headers,
+                timeout=httpx.Timeout(TOKEN_MINT_TIMEOUT),
             )
+        self._auth = AsyncTokenAuth(
+            AsyncTokenSource(token_provider=token_provider, mint_api=mint_api)
         )
         self._raw_api = baseten.client.managementapi.AsyncApiClient(
             self._http_client,
@@ -888,3 +934,21 @@ def _use_http2(http2: bool | None) -> bool:
             'http2=True requires the h2 package, installed with "httpx[http2]"'
         )
     return available
+
+
+def _check_auth(
+    *,
+    api_key: str | None,
+    credentials: object | None,
+    token_provider: object | None,
+    headers: Mapping[str, str] | None,
+) -> None:
+    """Check that a client is given exactly one way to authenticate."""
+    if sum((bool(api_key), credentials is not None, token_provider is not None)) > 1:
+        raise ValueError(
+            "only one of api_key, credentials, and token_provider may be set"
+        )
+    if api_key is None and credentials is None and token_provider is None:
+        raise ValueError("one of api_key, credentials, or token_provider is required")
+    if credentials is not None:
+        check_client_auth(api_key=None, credentials=credentials, headers=headers)
