@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, TypeAlias
@@ -37,10 +38,21 @@ _JWT_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:jwt"
 # As in the Go SDK. httpx applies it to each phase of the request.
 _EXCHANGE_TIMEOUT = httpx.Timeout(10)
 
-IdentityTokenProvider: TypeAlias = Callable[[], str]
+
+@dataclass(frozen=True, kw_only=True)
+class IdentityTokenProviderContext:
+    """Passed to an :data:`IdentityTokenProvider`.
+
+    Empty for now; fields may be added in later versions.
+    """
+
+
+IdentityTokenProvider: TypeAlias = Callable[[IdentityTokenProviderContext], str]
 """Returns the identity provider's JWT. Called on every exchange."""
 
-AsyncIdentityTokenProvider: TypeAlias = Callable[[], Awaitable[str]]
+AsyncIdentityTokenProvider: TypeAlias = Callable[
+    [IdentityTokenProviderContext], Awaitable[str]
+]
 """Async form of :data:`IdentityTokenProvider`."""
 
 
@@ -199,7 +211,7 @@ class WorkloadIdentityCredentials:
                 Exactly one of *identity_token_file* and *identity_token* is
                 required.
             identity_token: Returns the identity provider's JWT. Called on
-                every exchange.
+                every exchange with an :class:`IdentityTokenProviderContext`.
             base_url_override: Management API base URL the exchange is sent
                 to. ``None`` uses :meth:`ManagementClient.default_base_url`.
                 Must point at the same Baseten environment as the clients
@@ -238,7 +250,7 @@ class WorkloadIdentityCredentials:
     def _exchange_token(self) -> AccessToken:
         try:
             if self._identity_token is not None:
-                identity_token = self._identity_token()
+                identity_token = self._identity_token(IdentityTokenProviderContext())
             else:
                 identity_token = self._exchange.read_identity_token_file()
             request = self._exchange.request(identity_token)
@@ -303,7 +315,9 @@ class AsyncWorkloadIdentityCredentials:
     async def _exchange_token(self) -> AccessToken:
         try:
             if self._identity_token is not None:
-                identity_token = await self._identity_token()
+                identity_token = await self._identity_token(
+                    IdentityTokenProviderContext()
+                )
             else:
                 # Off the event loop, since the file system can be slow.
                 identity_token = await asyncio.to_thread(

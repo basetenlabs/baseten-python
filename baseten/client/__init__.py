@@ -35,6 +35,7 @@ from baseten.client._workload_identity import (
     AsyncIdentityTokenProvider,
     AsyncWorkloadIdentityCredentials,
     IdentityTokenProvider,
+    IdentityTokenProviderContext,
     WorkloadIdentityCredentials,
 )
 
@@ -49,6 +50,7 @@ __all__ = [
     "AsyncWorkloadIdentityCredentials",
     "Credentials",
     "IdentityTokenProvider",
+    "IdentityTokenProviderContext",
     "InferenceClient",
     "InferenceClientOptions",
     "ManagementClient",

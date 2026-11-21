@@ -16,6 +16,7 @@ from baseten.client import (
     AsyncInferenceClient,
     AsyncManagementClient,
     AsyncWorkloadIdentityCredentials,
+    IdentityTokenProviderContext,
     InferenceClient,
     ManagementClient,
     WorkloadIdentityCredentials,
@@ -86,7 +87,7 @@ class _Server:
     def credentials(self, **kwargs) -> WorkloadIdentityCredentials:
         kwargs.setdefault("trust_rule_id", "rule-1")
         if "identity_token_file" not in kwargs:
-            kwargs.setdefault("identity_token", lambda: "idp-jwt")
+            kwargs.setdefault("identity_token", lambda _: "idp-jwt")
         return WorkloadIdentityCredentials(
             base_url_override=_BASE_URL,
             http_client_override=httpx.Client(
@@ -98,7 +99,7 @@ class _Server:
     def async_credentials(self, **kwargs) -> AsyncWorkloadIdentityCredentials:
         kwargs.setdefault("trust_rule_id", "rule-1")
 
-        async def identity_token() -> str:
+        async def identity_token(_: IdentityTokenProviderContext) -> str:
             return "idp-jwt"
 
         if "identity_token_file" not in kwargs:
@@ -225,8 +226,18 @@ class TestWorkloadIdentityCredentials:
             server.credentials().access_token(_OPTIONS)
         assert exc_info.value.__notes__ == [_CONTEXT]
 
+    def test_identity_token_is_given_a_context(self) -> None:
+        received: list[object] = []
+
+        def identity_token(context: IdentityTokenProviderContext) -> str:
+            received.append(context)
+            return "idp-jwt"
+
+        _Server().credentials(identity_token=identity_token).access_token(_OPTIONS)
+        assert received == [IdentityTokenProviderContext()]
+
     def test_identity_token_errors_note_the_trust_rule(self) -> None:
-        def identity_token() -> str:
+        def identity_token(_: IdentityTokenProviderContext) -> str:
             raise OSError("idp unreachable")
 
         with pytest.raises(OSError, match="idp unreachable") as exc_info:
@@ -242,7 +253,7 @@ class TestWorkloadIdentityCredentials:
         server = _Server()
         credentials = WorkloadIdentityCredentials(
             trust_rule_id="rule-1",
-            identity_token=lambda: "idp-jwt",
+            identity_token=lambda _: "idp-jwt",
             base_url_override=_BASE_URL,
             http_client_override=httpx.Client(
                 auth=Leaky(), transport=httpx.MockTransport(server.handle)
@@ -257,7 +268,7 @@ class TestWorkloadIdentityCredentials:
         )
         credentials = WorkloadIdentityCredentials(
             trust_rule_id="rule-1",
-            identity_token=lambda: "idp-jwt",
+            identity_token=lambda _: "idp-jwt",
             base_url_override=_BASE_URL,
             http_client_override=httpx.Client(
                 transport=httpx.MockTransport(server.handle)
@@ -276,7 +287,7 @@ class TestWorkloadIdentityCredentials:
             host, port = listener.getsockname()
             credentials = WorkloadIdentityCredentials(
                 trust_rule_id="rule-1",
-                identity_token=lambda: "idp-jwt",
+                identity_token=lambda _: "idp-jwt",
                 base_url_override=f"http://{host}:{port}",
             )
             with pytest.raises(httpx.TimeoutException):
@@ -358,7 +369,7 @@ class TestAsyncWorkloadIdentityCredentials:
         server = _Server()
         release = asyncio.Event()
 
-        async def identity_token() -> str:
+        async def identity_token(_: IdentityTokenProviderContext) -> str:
             await release.wait()
             return "idp-jwt"
 
