@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 from collections.abc import Awaitable, Callable
@@ -319,10 +318,7 @@ class AsyncWorkloadIdentityCredentials:
                     IdentityTokenProviderContext()
                 )
             else:
-                # Off the event loop, since the file system can be slow.
-                identity_token = await asyncio.to_thread(
-                    self._exchange.read_identity_token_file
-                )
+                identity_token = self._exchange.read_identity_token_file()
             request = self._exchange.request(identity_token)
             # Taken before sending, so the computed expiry errs early.
             issued_at = self._now()
