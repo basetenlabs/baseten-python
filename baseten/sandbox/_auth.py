@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 import asyncio
-import threading
 import time
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import TypeAlias
 
 import httpx
 
 import baseten.client.managementapi
+from baseten.client._token_auth import (
+    AccessToken,
+    AsyncTokenCache,
+    TokenCache,
+    _set_authorization,
+)
 
 
 @dataclass(kw_only=True)
@@ -40,10 +45,11 @@ AsyncSandboxTokenProvider: TypeAlias = Callable[
 """Async form of :data:`SandboxTokenProvider`."""
 
 # Refresh this long before the token's stated expiry, to allow for clock skew
-# between this machine and the server, and for time spent in flight.
+# between this machine and the server, and for time spent in flight. Capped at
+# half the token's lifetime.
 _TOKEN_EXPIRY_LEEWAY = timedelta(seconds=60)
 
-# A few resends cover a new token being invalidated in the same event as the
+# A few retries cover a new token being invalidated in the same event as the
 # old one. Past that, the rejection is returned, since tokens that keep getting
 # rejected point at something a new token cannot fix.
 _TOKEN_INVALIDATION_MAX_RETRIES = 2
@@ -53,7 +59,7 @@ _TOKEN_INVALIDATION_MAX_RETRIES = 2
 # after the event can fall before the cutoff and be rejected too, so after the
 # first resend, each one waits this long to be minted past it. A module
 # variable so tests can shorten it.
-_token_revoked_retry_delay = 1.0
+_token_revoked_retry_delay_sec = 1.0
 
 TOKEN_MINT_TIMEOUT = 30.0
 """Seconds that one token exchange may take.
@@ -62,77 +68,57 @@ No caller's cancellation reaches a shared exchange, so this keeps a stalled one
 from holding up every later caller.
 """
 
-
-@dataclass(frozen=True)
-class _MintedToken:
-    """A token minted from an API key, with its expiry."""
-
-    token: str
-    expires_at: datetime
-
-    def fresh(self) -> bool:
-        """Report whether the token is far enough from expiry to use."""
-        return datetime.now(UTC) < self.expires_at - _TOKEN_EXPIRY_LEEWAY
+_SANDBOX_TOKEN_REQUEST = baseten.client.managementapi.CreateTokenRequest(
+    scopes=["sandboxes"]
+)
 
 
 class TokenSource:
     """Where each request's bearer token comes from.
 
-    Either a caller's token provider, or a token minted from an API key and
-    cached until shortly before it expires. The API key is exchanged for a
-    token because the sandbox APIs do not accept API keys directly. Should that
-    change, only this class changes.
+    Either a caller's token provider, or a token minted through *mint_api* and
+    cached until shortly before it expires. *mint_api* authenticates with an
+    API key or credentials, which are exchanged for a token because the
+    sandbox APIs do not accept them directly. Should that change, only this
+    class changes.
     """
 
     def __init__(
         self,
         *,
-        api_key: str,
         token_provider: SandboxTokenProvider | None,
-        mint_api: baseten.client.managementapi.ApiClient,
+        mint_api: baseten.client.managementapi.ApiClient | None,
     ) -> None:
-        """Create a token source. ``mint_api`` authenticates with the API key."""
-        if token_provider is not None and api_key != "":
-            raise ValueError("api_key must be empty when token_provider is set")
+        """Create a token source.
+
+        With neither *token_provider* nor *mint_api*, no Authorization is
+        sent, which is the advanced opt-out of an empty API key.
+        """
         self._provider = token_provider
-        self._mint_api = mint_api if api_key != "" else None
-        self._lock = threading.Lock()
-        self._cached: _MintedToken | None = None
+        self._cache = (
+            None
+            if token_provider is not None or mint_api is None
+            else _token_cache(mint_api)
+        )
 
     def token(self, revoked_token: str | None = None) -> str | None:
-        """Return the token for a request.
+        """Return the token for a request, or ``None`` to send no Authorization.
 
-        ``None`` means no Authorization is sent, which is the advanced opt-out
-        of an empty API key with no token provider.
+        ``revoked_token`` is the token the previous attempt was refused with,
+        if any.
         """
         if self._provider is not None:
             return self._provider(
                 SandboxTokenProviderContext(revoked_token=revoked_token)
             )
-        if self._mint_api is None:
+        if self._cache is None:
             return None
-        # Held across the mint, so a burst on a cold cache sends one exchange.
-        with self._lock:
-            cached = self._cached
-            if cached is not None and cached.fresh():
-                return cached.token
-            minted = self._mint_api.post_token(
-                request=baseten.client.managementapi.CreateTokenRequest(
-                    scopes=["sandboxes"]
-                )
-            )
-            self._cached = _MintedToken(
-                token=minted.token, expires_at=minted.expires_at
-            )
-            return minted.token
+        return self._cache.token().token
 
     def invalidate(self, token: str) -> None:
         """Drop a token the server rejected, so the next request gets a new one."""
-        with self._lock:
-            # Compared by value, so a rejection of an older token never
-            # discards a newer one another request already minted.
-            if self._cached is not None and self._cached.token == token:
-                self._cached = None
+        if self._cache is not None:
+            self._cache.invalidate(token)
 
 
 class AsyncTokenSource:
@@ -141,17 +127,16 @@ class AsyncTokenSource:
     def __init__(
         self,
         *,
-        api_key: str,
         token_provider: AsyncSandboxTokenProvider | None,
-        mint_api: baseten.client.managementapi.AsyncApiClient,
+        mint_api: baseten.client.managementapi.AsyncApiClient | None,
     ) -> None:
-        """Create a token source. ``mint_api`` authenticates with the API key."""
-        if token_provider is not None and api_key != "":
-            raise ValueError("api_key must be empty when token_provider is set")
+        """Create a token source, as :class:`TokenSource` does."""
         self._provider = token_provider
-        self._mint_api = mint_api if api_key != "" else None
-        self._cached: _MintedToken | None = None
-        self._minting: asyncio.Task[_MintedToken] | None = None
+        self._cache = (
+            None
+            if token_provider is not None or mint_api is None
+            else _async_token_cache(mint_api)
+        )
 
     async def token(self, revoked_token: str | None = None) -> str | None:
         """Return the token for a request, as :meth:`TokenSource.token` does."""
@@ -159,51 +144,23 @@ class AsyncTokenSource:
             return await self._provider(
                 SandboxTokenProviderContext(revoked_token=revoked_token)
             )
-        if self._mint_api is None:
+        if self._cache is None:
             return None
-        cached = self._cached
-        if cached is not None and cached.fresh():
-            return cached.token
-        # Every caller shares one mint, so a burst on a cold cache sends one
-        # exchange. Shielded, since one caller being cancelled must not cancel
-        # the mint the others are waiting on.
-        if self._minting is None:
-            self._minting = asyncio.create_task(self._mint(self._mint_api))
-            # Retrieved here so a failure no caller is left to see is not
-            # reported as never retrieved.
-            self._minting.add_done_callback(
-                lambda task: task.cancelled() or task.exception()
-            )
-        minted = await asyncio.shield(self._minting)
-        return minted.token
+        return (await self._cache.token()).token
 
-    async def invalidate(self, token: str) -> None:
+    def invalidate(self, token: str) -> None:
         """Drop a token the server rejected, so the next request gets a new one."""
-        # Compared by value, so a rejection of an older token never discards a
-        # newer one another request already minted.
-        if self._cached is not None and self._cached.token == token:
-            self._cached = None
-
-    async def _mint(
-        self, mint_api: baseten.client.managementapi.AsyncApiClient
-    ) -> _MintedToken:
-        """Exchange the API key for a token and cache it."""
-        try:
-            minted = await mint_api.post_token(
-                request=baseten.client.managementapi.CreateTokenRequest(
-                    scopes=["sandboxes"]
-                )
-            )
-            self._cached = _MintedToken(
-                token=minted.token, expires_at=minted.expires_at
-            )
-            return self._cached
-        finally:
-            self._minting = None
+        if self._cache is not None:
+            self._cache.invalidate(token)
 
 
 class TokenAuth(httpx.Auth):
-    """Authenticates every request with a token from a :class:`TokenSource`."""
+    """Authenticates every request with a token from a :class:`TokenSource`.
+
+    When the server rejects the token as revoked (see :func:`is_token_revoked`),
+    the request is sent again with a new one when its body can be, at most
+    twice.
+    """
 
     def __init__(self, tokens: TokenSource) -> None:
         """Create the auth."""
@@ -214,23 +171,25 @@ class TokenAuth(httpx.Auth):
     ) -> Generator[httpx.Request, httpx.Response, None]:
         """Send the request, again with a new token if its token was revoked."""
         replayable = _is_replayable(request)
-        revoked_token: str | None = None
+        revoked: str | None = None
         for retry in range(_TOKEN_INVALIDATION_MAX_RETRIES + 1):
-            token = self.tokens.token(revoked_token)
+            token = self.tokens.token(revoked)
             _set_authorization(request, token)
             response = yield request
-            if token is None or not replayable or not _is_token_revoked(response):
+            if token is None or not is_token_revoked(response):
                 return
-            if retry == _TOKEN_INVALIDATION_MAX_RETRIES:
-                return
+            # Dropped even when the request is not sent again, so later
+            # requests do not reuse it.
             self.tokens.invalidate(token)
-            revoked_token = token
+            if not replayable or retry == _TOKEN_INVALIDATION_MAX_RETRIES:
+                return
+            revoked = token
             if retry > 0:
-                time.sleep(_token_revoked_retry_delay)
+                time.sleep(_token_revoked_retry_delay_sec)
 
 
 class AsyncTokenAuth(httpx.Auth):
-    """Authenticates every request with a token from an :class:`AsyncTokenSource`."""
+    """Async form of :class:`TokenAuth`."""
 
     def __init__(self, tokens: AsyncTokenSource) -> None:
         """Create the auth."""
@@ -241,19 +200,34 @@ class AsyncTokenAuth(httpx.Auth):
     ) -> AsyncGenerator[httpx.Request, httpx.Response]:
         """Send the request, again with a new token if its token was revoked."""
         replayable = _is_replayable(request)
-        revoked_token: str | None = None
+        revoked: str | None = None
         for retry in range(_TOKEN_INVALIDATION_MAX_RETRIES + 1):
-            token = await self.tokens.token(revoked_token)
+            token = await self.tokens.token(revoked)
             _set_authorization(request, token)
             response = yield request
-            if token is None or not replayable or not _is_token_revoked(response):
+            if token is None or not is_token_revoked(response):
                 return
-            if retry == _TOKEN_INVALIDATION_MAX_RETRIES:
+            self.tokens.invalidate(token)
+            if not replayable or retry == _TOKEN_INVALIDATION_MAX_RETRIES:
                 return
-            await self.tokens.invalidate(token)
-            revoked_token = token
+            revoked = token
             if retry > 0:
-                await asyncio.sleep(_token_revoked_retry_delay)
+                await asyncio.sleep(_token_revoked_retry_delay_sec)
+
+
+def is_token_revoked(response: httpx.Response) -> bool:
+    """Report whether the server rejected a request's token as revoked.
+
+    It can do so before the token's stated expiry, for example after a role
+    change. The request was rejected before any work was done, so sending it
+    again with a new token is safe even when it has side effects.
+    """
+    # Both the control plane and sandboxes send this header, while their
+    # bodies differ.
+    return (
+        response.status_code == 401
+        and response.headers.get("x-blaxel-error-code") == "TOKEN_REVOKED"
+    )
 
 
 def _is_replayable(request: httpx.Request) -> bool:
@@ -263,21 +237,21 @@ def _is_replayable(request: httpx.Request) -> bool:
     return isinstance(request.stream, httpx.ByteStream)
 
 
-def _set_authorization(request: httpx.Request, token: str | None) -> None:
-    """Set the request's bearer token, or leave Authorization unset for ``None``."""
-    if token is not None:
-        request.headers["Authorization"] = f"Bearer {token}"
-
-
-def _is_token_revoked(response: httpx.Response) -> bool:
-    """Report whether the server rejected a request's token as revoked.
-
-    The request was rejected before any work was done, so sending it again
-    with a new token is safe even when it has side effects.
-    """
-    # Both the control plane and sandboxes send this header, while their
-    # bodies differ.
-    return (
-        response.status_code == 401
-        and response.headers.get("x-blaxel-error-code") == "TOKEN_REVOKED"
+def _token_cache(mint_api: baseten.client.managementapi.ApiClient) -> TokenCache:
+    return TokenCache(
+        mint=lambda: _access_token(mint_api.post_token(request=_SANDBOX_TOKEN_REQUEST)),
+        refresh_leeway=_TOKEN_EXPIRY_LEEWAY,
     )
+
+
+def _async_token_cache(
+    mint_api: baseten.client.managementapi.AsyncApiClient,
+) -> AsyncTokenCache:
+    async def mint() -> AccessToken:
+        return _access_token(await mint_api.post_token(request=_SANDBOX_TOKEN_REQUEST))
+
+    return AsyncTokenCache(mint=mint, refresh_leeway=_TOKEN_EXPIRY_LEEWAY)
+
+
+def _access_token(minted: baseten.client.managementapi.Token) -> AccessToken:
+    return AccessToken(token=minted.token, expires_at=minted.expires_at)

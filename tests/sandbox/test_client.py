@@ -10,6 +10,7 @@ import httpx
 import pytest
 
 import baseten.sandbox._client
+from baseten.client import AccessToken, AccessTokenOptions
 from baseten.sandbox import (
     AsyncSandboxClient,
     SandboxAPIError,
@@ -34,6 +35,7 @@ class _Api:
         self.requests: list[httpx.Request] = []
         self.authorizations: list[str | None] = []
         self.mints = 0
+        self.mint_authorizations: list[str | None] = []
         self.routes: dict[
             tuple[str, str], Callable[[httpx.Request], httpx.Response]
         ] = {}
@@ -67,6 +69,7 @@ class _Api:
     def handle(self, request: httpx.Request) -> httpx.Response:
         if request.url.path == "/v1/token":
             self.mints += 1
+            self.mint_authorizations.append(request.headers.get("Authorization"))
             return httpx.Response(
                 200,
                 json={
@@ -100,6 +103,18 @@ class _Api:
             ),
             **options,
         )
+
+
+class _Credentials:
+    def access_token(self, options: AccessTokenOptions) -> AccessToken:
+        return AccessToken(
+            token="access-token", expires_at=datetime.now(UTC) + timedelta(hours=1)
+        )
+
+
+class _AsyncCredentials:
+    async def access_token(self, options: AccessTokenOptions) -> AccessToken:
+        return _Credentials().access_token(options)
 
 
 def _record(name: str = "sbx", **fields: Any) -> dict[str, Any]:
@@ -378,6 +393,37 @@ class TestSandboxClient:
         )
         assert api.client().delete(name="sbx").status == "DELETING"
 
+    def test_mints_sandbox_token_with_credentials(self) -> None:
+        api = _Api()
+        api.route("GET", "/v1/sandboxes/instances/sbx", _record())
+        client = SandboxClient(
+            credentials=_Credentials(),
+            base_url_override="https://api.test",
+            http_client_override=httpx.Client(
+                transport=httpx.MockTransport(api.handle)
+            ),
+        )
+        client.get(name="sbx")
+        assert api.mint_authorizations == ["Bearer access-token"]
+        assert api.authorizations == ["Bearer token-1"]
+
+    def test_validates_auth_options(self) -> None:
+        def provider(context: object) -> str:
+            return "t"
+
+        with pytest.raises(ValueError, match="only one of"):
+            SandboxClient(api_key="key", credentials=_Credentials())
+        with pytest.raises(ValueError, match="only one of"):
+            SandboxClient(api_key="key", token_provider=provider)
+        with pytest.raises(ValueError, match="only one of"):
+            SandboxClient(credentials=_Credentials(), token_provider=provider)
+        with pytest.raises(ValueError, match="required"):
+            SandboxClient()
+        with pytest.raises(ValueError, match="Authorization"):
+            SandboxClient(
+                credentials=_Credentials(), headers={"authorization": "Bearer x"}
+            )
+
     def test_closes_only_its_own_http_client(self) -> None:
         own = SandboxClient(api_key="key", http2=False)
         own.close()
@@ -435,6 +481,25 @@ class TestAsyncSandboxClient:
         with pytest.raises(SandboxAPIError) as info:
             await api.async_client().delete(name="sbx")
         assert info.value.code == "NOT_FOUND"
+
+    @pytest.mark.asyncio
+    async def test_mints_sandbox_token_with_credentials(self) -> None:
+        api = _Api()
+        api.route("GET", "/v1/sandboxes/instances/sbx", _record())
+
+        async def handle(request: httpx.Request) -> httpx.Response:
+            return api.handle(request)
+
+        client = AsyncSandboxClient(
+            credentials=_AsyncCredentials(),
+            base_url_override="https://api.test",
+            http_client_override=httpx.AsyncClient(
+                transport=httpx.MockTransport(handle)
+            ),
+        )
+        await client.get(name="sbx")
+        assert api.mint_authorizations == ["Bearer access-token"]
+        assert api.authorizations == ["Bearer token-1"]
 
     @pytest.mark.asyncio
     async def test_closes_only_its_own_http_client(self) -> None:
