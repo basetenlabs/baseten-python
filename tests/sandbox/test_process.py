@@ -367,6 +367,19 @@ class TestSandboxProcess:
         assert raised.value.identifier == "job"
         assert isinstance(raised.value.__cause__, SandboxGatewayError)
 
+    def test_wait_bounds_each_check_by_the_time_left(self) -> None:
+        api = _Api()
+        api.route("GET", "/process/job", httpx.ReadTimeout("stalled"))
+        with pytest.raises(SandboxProcessWaitTimeoutError) as raised:
+            api.sandbox().process.wait(
+                identifier="job",
+                timeout=timedelta(milliseconds=50),
+                poll_interval=timedelta(milliseconds=1),
+            )
+        assert isinstance(raised.value.__cause__, httpx.ReadTimeout)
+        read_timeout = api.requests[0].extensions["timeout"]["read"]
+        assert read_timeout is not None and read_timeout <= 0.05
+
     def test_writes_stdin_as_bytes(self) -> None:
         api = _Api()
         api.route("POST", "/process/job/stdin", {"message": "ok"})
